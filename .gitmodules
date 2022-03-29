@@ -1,0 +1,6 @@
+[submodule "ssl"]
+	path = ssl
+	url = https://github.com/zhaojh329/ssl.git
+[submodule "log"]
+	path = log
+	url = https://github.com/zhaojh329/log.git

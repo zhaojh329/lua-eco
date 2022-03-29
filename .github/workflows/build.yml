@@ -1,0 +1,32 @@
+name: build
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - lua: lua5.1
+            name: lua5.1
+            pkg: liblua5.1-0-dev
+          - lua: lua5.2
+            name: lua5.2
+            pkg: liblua5.2-dev
+          - lua: lua5.3
+            name: lua5.3
+            pkg: liblua5.3-dev
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: build
+        env:
+          name: ${{ matrix.name }}
+          pkg: ${{ matrix.pkg }}
+        run: |
+          sudo apt install -y libev-dev libjson-c-dev libssl-dev libmnl-dev $pkg
+          git clone https://git.openwrt.org/project/libubox.git
+          git clone https://git.openwrt.org/project/ubus.git
+          cd libubox && cmake . -DBUILD_LUA=OFF && sudo make install && cd ..
+          cd ubus && cmake . -DBUILD_LUA=OFF && sudo make install && cd ..
+          cmake . && make && sudo make install

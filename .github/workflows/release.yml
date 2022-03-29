@@ -1,0 +1,33 @@
+name: release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - id: get-version
+        uses: battila7/get-version-action@v2
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      
+      - id: release-asset
+        run: |
+          version=${{ steps.get-version.outputs.version-without-v }}
+          cd ..
+          cp -r lua-eco lua-eco-$version
+          rm -rf lua-eco-$version/.git* lua-eco-$version/ssl/.git* lua-eco-$version/log/.git*
+          tar zcfv lua-eco-$version.tar.gz lua-eco-$version
+
+      - uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
+          prerelease: false
+          files: ../lua-eco-*.tar.gz
