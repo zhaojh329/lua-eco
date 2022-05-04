@@ -71,18 +71,18 @@ eco.run(
 eco.loop()
 ```
 
-# Requirements
+## Requirements
 * [libev] - A full-featured and high-performance event loop
 
-# Build
+## Build
 
     sudo apt install -y liblua5.3-dev lua5.3 libev-dev libmnl-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && make install
 
-# [Reference](REFERENCE.md)
+## [Reference](REFERENCE.md)
 
-# Contributing
+## Contributing
 If you would like to help making [lua-eco](https://github.com/zhaojh329/lua-eco) better,
 see the [CONTRIBUTING.md](https://github.com/zhaojh329/lua-eco/blob/master/CONTRIBUTING.md) file.

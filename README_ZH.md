@@ -73,17 +73,17 @@ eco.run(
 eco.loop()
 ```
 
-# 依赖
+## 依赖
 * [libev] - 高性能的事件循环库
 
-# 编译
+## 编译
 
     sudo apt install -y liblua5.3-dev lua5.3 libev-dev libmnl-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && make install
 
-# [参考](REFERENCE_ZH.md)
+## [参考](REFERENCE_ZH.md)
 
-# 贡献代码
+## 贡献代码
 如果您想帮助 lua-eco 变得更好，请参考 [CONTRIBUTING_ZH.md](/CONTRIBUTING_ZH.md)。
