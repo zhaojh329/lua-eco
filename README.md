@@ -79,7 +79,7 @@ eco.loop()
     sudo apt install -y liblua5.3-dev lua5.3 libev-dev libmnl-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
-    cmake .. && make install
+    cmake .. && sudo make install
 
 ## [Reference](REFERENCE.md)
 
