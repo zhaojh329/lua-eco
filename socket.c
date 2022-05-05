@@ -607,9 +607,20 @@ static int eco_socket_close(lua_State *L)
 {
     struct eco_socket *sock = lua_touserdata(L, 1);
     struct ev_loop *loop = sock->ctx->loop;
+    struct sockaddr_storage addr = {};
+    socklen_t addrlen = sizeof(addr);
+    int ret;
 
     if (sock->fd < 0)
         return 0;
+
+    ret = getsockname(sock->fd, (struct sockaddr *)&addr, &addrlen);
+    if (!ret && addr.ss_family == AF_UNIX) {
+        struct sockaddr_un *un = (struct sockaddr_un *)&addr;
+
+        if (!access(un->sun_path, F_OK))
+            unlink(un->sun_path);
+    }
 
     ev_timer_stop(loop, &sock->tmr);
     ev_io_stop(loop, &sock->ior);
