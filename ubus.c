@@ -201,6 +201,8 @@ static int eco_ubus_close(lua_State *L)
     if (!ctx->u)
         return 0;
 
+    ev_io_stop(ctx->ctx->loop, &ctx->ior);
+
     ubus_free(ctx->u);
     ctx->u = NULL;
 
