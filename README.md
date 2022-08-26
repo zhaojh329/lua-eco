@@ -81,7 +81,7 @@ eco.loop()
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
 
-## [Reference](REFERENCE.md)
+## [Documentation](DOC.md)
 
 ## Contributing
 If you would like to help making [lua-eco](https://github.com/zhaojh329/lua-eco) better,

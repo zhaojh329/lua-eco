@@ -83,7 +83,7 @@ eco.loop()
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
 
-## [参考](REFERENCE_ZH.md)
+## [文档](DOC_ZH.md)
 
 ## 贡献代码
 如果您想帮助 lua-eco 变得更好，请参考 [CONTRIBUTING_ZH.md](/CONTRIBUTING_ZH.md)。
