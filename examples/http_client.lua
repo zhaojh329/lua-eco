@@ -4,42 +4,35 @@ local eco = require "eco"
 local ssl = require "eco.ssl"
 local dns = require "eco.dns"
 local socket = require "eco.socket"
+local hp = require "eco.http_parser"
 
 local function http_get(url)
-    local scheme, host, port, path
+    local url_info = hp.parse_url(url)
 
-    local scheme, url = url:match("(%a+)://(.+)")
-    if not scheme or not url then
+    if not url_info.schema then
         return nil, "invalid url"
     end
 
-    host, path = url:match('([^/]+)(.*)')
-    if not path or #path == 0 then
-        path = "/"
-    end
-
-    host, port = host:match('([^:]+):?(%d*)')
-
-    if not port or #port == 0 then
-        if scheme == "https" then
-            port = "443"
+    if url_info.port == 0 then
+        if url_info.schema == "https" then
+            url_info.port = 443
         else
-            port = "80"
+            url_info.port = 80
         end
     end
 
     local resolver = dns.resolver()
-    local ipaddrs, err = resolver:query(host)
+    local ipaddrs, err = resolver:query(url_info.host)
     if not ipaddrs or #ipaddrs == 0 then
         return nil, "resolve fail"
     end
 
-    if port ~= "80" and port ~= "443" then
-        host = host .. ":" .. port
+    if url_info.port ~= 80 and url_info.port ~= 443 then
+        url_info.host = url_info.host .. ":" .. url_info.port
     end
 
     local s = socket.tcp()
-    local ok, err = s:connect(ipaddrs[1], port)
+    local ok, err = s:connect(ipaddrs[1], url_info.port)
     if not ok then
         return nil, "connect:" .. err
     end
@@ -47,7 +40,7 @@ local function http_get(url)
     local ssl_ctx, ssl_session
     local c
 
-    if scheme == "https" then
+    if url_info.schema == "https" then
         ssl_ctx = ssl.context()
         ssl_session = ssl_ctx:new(s:getfd(), true)
         c = ssl_session
@@ -55,108 +48,53 @@ local function http_get(url)
         c = s
     end
 
-    c:write("GET " .. path .. " HTTP/1.1\r\n")
-    c:write("Host: " .. host .. "\r\n")
+    c:write("GET " .. (url_info.path or "/") .. " HTTP/1.1\r\n")
+    c:write("Host: " .. url_info.host .. "\r\n")
     c:write("User-Agent: lua-eco/" .. eco.VERSION .. "\r\n")
     c:write("Accept: */*\r\n")
     c:write("\r\n")
 
-    local res = { headers = {} }
-
-    local data, err = c:read("L")
-    if not data then
-        return nil, "read fail:" .. err
-    end
-    local ver, code, reason = data:match("HTTP/(%d%.%d)%s+(%d+)%s+(%S+)\r\n")
-    if not ver or not code or not reason then
-        return nil, "invalid http"
-    end
-
-    res.ver = ver
-    res.status = code
-    res.reason = reason
-
-    local content_length = 0
-    local chunked = false
+    local done = false
     local body = {}
+    local headers = {}
+    local cur_header_name
 
-    while true do
-        local data, err = c:read("L")
+    local settings = {
+        on_header_field = function(data)
+            cur_header_name = data
+        end,
+        on_header_value = function(data)
+            headers[cur_header_name] = data
+        end,
+        on_body = function(data)
+            body[#body + 1] = data
+        end,
+        on_message_complete = function()
+            done = true
+        end
+    }
+
+    local parser = hp.response(settings)
+
+    while not done do
+        local data, err = c:read()
         if not data then
             return nil, "read fail:" .. err
         end
 
-        if data == "\r\n" then
-            if not chunked and content_length == 0 then
-                return res
-            end
-            break
-        else
-            local name, value = data:match("(%S+):%s*(%C+)\r\n")
-            if not name or not value then
-                return nil, "invalid http"
-            end
-
-            res.headers[name] = value
-            if name:lower() == "content-length" then
-                content_length = tonumber(value)
-            elseif name:lower() == "transfer-encoding" and value == "chunked" then
-                chunked = true
-            end
-        end
+        parser:execute(data)
     end
 
-    if chunked then
-        while true do
-            local data, err = c:read("L")
-            if not data then
-                return nil, "read fail:" .. err
-            end
+    local http_major, http_minor = parser:http_version()
 
-            local size = data:match("(%x+)\r\n")
-            if not size then
-                return "invalid http"
-            end
+    local res = {
+        ver = http_major .. '.' ..  http_minor,
+        status = parser:status_code(),
+        headers = headers,
+        body = table.concat(body)
+    }
 
-            size = tonumber(size, 16)
-            if size == 0 then
-                res.body = table.concat(body)
-                return res
-            end
-
-            local buf = {}
-
-            while size > 0 do
-                local piece = 1024
-                if piece > size then piece = size end
-                data, err = c:read(piece)
-                if not data then
-                    return nil, "read fail:" .. err
-                end
-                size = size - #data
-                buf[#buf + 1] = data
-            end
-
-            c:read(2)
-
-            body[#body + 1] = table.concat(buf)
-        end
-    else
-        while content_length > 0 do
-            local piece = 1024
-            if piece > content_length then piece = content_length end
-            data, err = c:read(piece)
-            if not data then
-                return nil, "read fail:" .. err
-            end
-
-            content_length = content_length - #data
-            body[#body + 1] = data
-        end
-
-        res.body = table.concat(body)
-        return res
-    end
+    return res
 end
 
 eco.run(
