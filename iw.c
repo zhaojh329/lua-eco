@@ -2015,7 +2015,7 @@ static int eco_iw_new(lua_State *L)
     genl->cmd = CTRL_CMD_GETFAMILY;
     genl->version = 1;
 
-    mnl_attr_put_u32(nlh, CTRL_ATTR_FAMILY_ID, GENL_ID_CTRL);
+    mnl_attr_put_u16(nlh, CTRL_ATTR_FAMILY_ID, GENL_ID_CTRL);
     mnl_attr_put_strz(nlh, CTRL_ATTR_FAMILY_NAME, "nl80211");
 
     if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
