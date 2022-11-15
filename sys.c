@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <sys/sysinfo.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -44,6 +45,16 @@ struct eco_sys_exec {
     int code;
     lua_State *co;
 };
+
+static int eco_sys_uptime(lua_State *L)
+{
+    struct sysinfo info = {};
+
+    sysinfo(&info);
+    lua_pushnumber(L, info.uptime);
+
+    return 1;
+}
 
 static int eco_sys_getpid(lua_State *L)
 {
@@ -431,6 +442,9 @@ static const struct luaL_Reg exec_metatable[] =  {
 int luaopen_eco_sys(lua_State *L)
 {
     lua_newtable(L);
+
+    lua_pushcfunction(L, eco_sys_uptime);
+    lua_setfield(L, -2, "uptime");
 
     lua_pushcfunction(L, eco_sys_getpid);
     lua_setfield(L, -2, "getpid");

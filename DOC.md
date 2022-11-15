@@ -79,6 +79,10 @@ Get the current time
 
 # sys
 
+`sys.uptime()`
+
+Gets The time how long the system has been running
+
 `sys.getpid()`
 
 Gets process identification

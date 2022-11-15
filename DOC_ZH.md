@@ -79,6 +79,10 @@ time.sleep(1.2)
 
 # sys
 
+`sys.uptime()`
+
+获取系统已经运行的时间
+
 `sys.getpid()`
 
 获取当前进程的ID
