@@ -52,13 +52,10 @@ static void __lua_log(lua_State *L, int priority)
     n = lua_gettop(L);
 
     for (i = 1; i <= n && room > 0; i++) {
+        const char *s;
         size_t len;
-        const char *s = lua_tolstring(L, i, &len);
 
-        if (i > 1) {
-            *pos++ = ' ';
-            room--;
-        }
+        s = lua_tolstring(L, i, &len);
 
         if (len > room)
             len = room;
