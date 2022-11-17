@@ -37,8 +37,8 @@ eco.run(
         local ok, err = iw:scan_trigger("sta0", { freq = {2442, 2437}, ssid = { "test1", "test2" } })
         if not ok then error("scan_trigger: " .. err) end
 
-        local cmd = iw:wait(10.0, iw.NEW_SCAN_RESULTS, iw.SCAN_ABORTED)
-        if cmd == iw.SCAN_ABORTED then
+        local cmd = iw:wait(10.0, IW.NEW_SCAN_RESULTS, IW.SCAN_ABORTED)
+        if cmd == IW.SCAN_ABORTED then
             print("aborted")
             return
         end
