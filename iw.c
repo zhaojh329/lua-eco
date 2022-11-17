@@ -253,6 +253,9 @@ static void eco_iw_io_cb(struct ev_loop *loop, ev_io *w, int revents)
             else
                 errs = strerror(errno);
         } else {
+            /* caused by libmnl due to NLM_F_DUMP_INTR */
+            if (errno == EINTR)
+                goto done;
             errs = strerror(errno);
         }
 
