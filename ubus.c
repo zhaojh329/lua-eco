@@ -41,6 +41,7 @@ struct eco_ubus_request {
     struct ubus_request req;
     struct ev_timer tmr;
     lua_State *co;
+    bool has_data;
 };
 
 struct eco_ubus_event {
@@ -293,12 +294,23 @@ static void eco_ubus_call_timer_cb(struct ev_loop *loop, ev_timer *w, int revent
     eco_resume(L, co, 2);
 }
 
-static void eco_ubus_call_cb(struct ubus_request *req, int type, struct blob_attr *msg)
+static void eco_ubus_call_data_cb(struct ubus_request *req, int type, struct blob_attr *msg)
+{
+    struct eco_ubus_request *eco_req = container_of(req, struct eco_ubus_request, req);
+    lua_State *co = eco_req->co;
+
+    blob_to_lua_table(co, blob_data(msg), blob_len(msg), false);
+
+    eco_req->has_data = true;
+}
+
+static void eco_ubus_call_complete_cb(struct ubus_request *req, int ret)
 {
     struct eco_ubus_request *eco_req = container_of(req, struct eco_ubus_request, req);
     struct ev_loop *loop = eco_req->ctx->ctx->loop;
     lua_State *L = eco_req->ctx->ctx->L;
     lua_State *co = eco_req->co;
+    int narg = 0;
 
     ev_timer_stop(loop, &eco_req->tmr);
 
@@ -306,12 +318,15 @@ static void eco_ubus_call_cb(struct ubus_request *req, int type, struct blob_att
     lua_pushnil(L);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
-    if (!msg)
+    if (eco_req->has_data) {
+        narg = 1;
+    } else if (ret != UBUS_STATUS_OK) {
+        narg = 2;
         lua_pushnil(co);
-    else
-        blob_to_lua_table(co, blob_data(msg), blob_len(msg), false);
+        lua_pushstring(co, ubus_strerror(ret));
+    }
 
-    eco_resume(L, co, 1);
+    eco_resume(L, co, narg);
 }
 
 static int eco_ubus_call(lua_State *L)
@@ -334,6 +349,7 @@ static int eco_ubus_call(lua_State *L)
     lua_table_to_blob(L, 4, &ctx->buf, false);
 
     req = lua_newuserdata(L, sizeof(struct eco_ubus_request));
+    req->has_data = false;
     req->ctx = ctx;
     req->co = L;
 
@@ -344,8 +360,8 @@ static int eco_ubus_call(lua_State *L)
         return 2;
     }
 
-    req->req.data_cb = eco_ubus_call_cb;
-
+    req->req.data_cb = eco_ubus_call_data_cb;
+    req->req.complete_cb = eco_ubus_call_complete_cb;
     ubus_complete_request_async(ctx->u, &req->req);
 
     ev_timer_init(&req->tmr, eco_ubus_call_timer_cb, ctx->timeout, 0);
