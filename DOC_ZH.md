@@ -158,6 +158,12 @@ end
 
 其中 `info` 包括的字段同上面介绍的 `stat` 方法
 
+`chown(path, uid, gid)`
+
+修改文件的用户 ID 和组 ID
+
+如果 `uid` 或者 `gid` 为 nil, 该 ID 不会被修改
+
 # dns
 
 `dns.resolver(options)`

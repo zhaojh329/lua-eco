@@ -158,6 +158,12 @@ end
 
 The `info` contains the same fields as the `stat` method described above  
 
+`chown(path, uid, gid)`
+
+change file owner and group
+
+If the `uid` or `gid` is nil, then that ID is not changed.
+
 # dns
 
 `dns.resolver(options)`

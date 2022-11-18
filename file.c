@@ -208,6 +208,29 @@ static const struct luaL_Reg dir_metatable[] =  {
     {NULL, NULL}
 };
 
+static int eco_file_chown(lua_State *L)
+{
+    const char *pathname = luaL_checkstring(L, 1);
+    uid_t uid = -1;
+    gid_t gid = -1;
+
+    if (lua_isnumber(L, 2))
+        uid = (uid_t)lua_tointeger(L, 2);
+
+    if (lua_isnumber(L, 3))
+        gid = (gid_t)lua_tointeger(L, 3);
+
+    if (chown(pathname, uid, gid)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
+
+    return 1;
+}
+
 int luaopen_eco_file(lua_State *L)
 {
     lua_newtable(L);
@@ -227,6 +250,9 @@ int luaopen_eco_file(lua_State *L)
     eco_new_metatable(L, dir_metatable);
     lua_pushcclosure(L, eco_file_dir, 1);
     lua_setfield(L, -2, "dir");
+
+    lua_pushcfunction(L, eco_file_chown);
+    lua_setfield(L, -2, "chown");
 
     return 1;
 }
