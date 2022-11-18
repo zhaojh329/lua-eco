@@ -2,13 +2,18 @@
 
 local eco = require "eco"
 local sys = require "eco.sys"
+local file = require "eco.file"
 local socket = require "eco.socket"
 
 local function get_status(ifname)
     local s = socket.unix_dgram()
 
-    local ok, err = s:bind("/tmp/wpa_ctrl_" .. sys.getpid())
+    local path = "/tmp/wpa_ctrl_" .. sys.getpid()
+
+    local ok, err = s:bind(path)
     if not ok then return nil, err end
+
+    file.chown(path, 101, 101)
 
     ok, err = s:connect("/var/run/wpa_supplicant/" .. ifname)
     if not ok then return nil, err end
