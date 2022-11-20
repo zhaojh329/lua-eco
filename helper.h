@@ -112,7 +112,7 @@ static inline int lua_gettablelen(lua_State *L, int index)
 static inline bool lua_table_is_array(lua_State *L)
 {
     lua_Integer prv = 0;
-    lua_Integer cur = 0;
+    lua_Integer cur;
 
     /* Find out whether table is array-like */
     for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {

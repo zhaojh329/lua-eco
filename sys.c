@@ -74,28 +74,14 @@ static int file_is_executable(const char *name)
     return (!access(name, X_OK) && !stat(name, &s) && S_ISREG(s.st_mode));
 }
 
-static char *last_char_is(const char *s, int c)
-{
-    if (s && *s) {
-        size_t sz = strlen(s) - 1;
-        s += sz;
-        if ((unsigned char) *s == c)
-            return (char *) s;
-    }
-    return NULL;
-}
-
 static char *concat_path_file(const char *path, const char *filename)
 {
+    bool end_with_slash = path[strlen(path) - 1] == '/';
     char *strp;
-    char *lc;
 
-    if (!path)
-        path = "";
-    lc = last_char_is(path, '/');
     while (*filename == '/')
         filename++;
-    if (asprintf(&strp, "%s%s%s", path, (lc == NULL ? "/" : ""), filename) < 0)
+    if (asprintf(&strp, "%s%s%s", path, (end_with_slash ? "" : "/"), filename) < 0)
         return NULL;
     return strp;
 }
@@ -145,7 +131,7 @@ static int which(const char *prog)
 
         path = env_path;
 
-        while ((p = find_executable(prog, &path)) != NULL) {
+        while ((p = find_executable(prog, &path))) {
             missing = 0;
             free(p);
             break;

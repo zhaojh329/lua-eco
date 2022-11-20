@@ -119,7 +119,7 @@ static size_t eco_dns_parse_name_depth(const uint8_t *s, size_t len, size_t ofs,
             to[j] = '\0';  /* Zero-terminate this chunk */
     }
     if (tolen > 0)
-        to[tolen - 1] = '\0';  /* Make sure make sure it is nul-term */
+        to[tolen - 1] = '\0';  /* Make sure it is nul-term */
     return i;
 }
 
@@ -169,7 +169,7 @@ static void eco_dns_parse(struct eco_dns_resolver *res, const uint8_t *buf, size
     char name[256] = "";
 
     if (len < sizeof(*h))
-        return;  /* Too small, headers dont fit */
+        return;  /* Too small, headers don't fit */
     if (ntohs(h->questions) > 1)
         return;  /* Sanity */
     if (ntohs(h->num_answers) > 10)
@@ -453,7 +453,6 @@ static void parse_resolvconf(struct eco_dns_resolver *res)
         }
 
         if (!strcmp(p, "search")) {
-            char *p;
             /* search DOM1 DOM2... */
             have_search_directive = true;
 set_search:
@@ -469,7 +468,6 @@ set_search:
 
         /* nameserver DNS */
         if (!strcmp(p, "nameserver")) {
-            char *p = arg;
             char *q;
             while (*p == ' ')
                 p++;

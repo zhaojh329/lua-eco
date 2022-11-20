@@ -301,7 +301,7 @@ static int eco_iw_send(struct eco_iw *iw, lua_State *L,
     iw->cb = cb;
     iw->num = 1;
     iw->seq = nlh->nlmsg_seq;
-    iw->dump = !!(nlh->nlmsg_flags & NLM_F_DUMP);
+    iw->dump = (nlh->nlmsg_flags & NLM_F_DUMP) != 0;
 
     return lua_yield(L, 0);
 }
