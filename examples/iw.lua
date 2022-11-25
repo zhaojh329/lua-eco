@@ -29,12 +29,15 @@ eco.run(
         local ip, err = IP.new()
         if not ip then error(err) end
 
-        local ok, err = iw:add_interface(0, "sta0", "mgd", { addr = "02:00:00:00:00:00" })
+        local phyidx = 0
+        local ifname = "sta0"
+
+        local ok, err = iw:add_interface(phyidx, ifname, "mgd", { addr = "02:00:00:00:00:00" })
         if not ok then error(err) end
 
-        ip:link("set", "sta0", "up")
+        ip:link("set", ifname, "up")
 
-        local ok, err = iw:scan_trigger("sta0", { freq = {2442, 2437}, ssid = { "test1", "test2" } })
+        local ok, err = iw:scan_trigger(ifname, { freq = {2442, 2437}, ssid = { "test1", "test2" } })
         if not ok then error("scan_trigger: " .. err) end
 
         local cmd = iw:wait(10.0, IW.NEW_SCAN_RESULTS, IW.SCAN_ABORTED)
@@ -43,7 +46,7 @@ eco.run(
             return
         end
 
-        local res = iw:scan_dump("sta0")
+        local res = iw:scan_dump(ifname)
         for bssid, attr in pairs(res) do
             print(bssid)
             for k, v in pairs(attr) do
@@ -55,7 +58,7 @@ eco.run(
             end
         end
 
-        iw:del_interface("sta0")
+        iw:del_interface(ifname)
     end
 )
 
