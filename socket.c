@@ -40,16 +40,20 @@ enum {
     ECO_SOCKET_TYPE_UNIX_DGRAM
 };
 
+enum {
+    ECO_SOCKET_FLAG_CONNECTED = (1 << 0)
+};
+
 struct eco_socket {
     struct eco_context *ctx;
     struct ev_timer tmr;
     struct ev_io ior;
     struct ev_io iow;
     lua_State *co;
+    uint8_t flag;
     int fd;
 
     double connect_timeout;
-    bool connected;
     int domain;
 
     struct {
@@ -78,6 +82,11 @@ struct eco_socket_opt {
 };
 
 static char socket_established_metatable_key;
+
+static inline bool eco_socket_has_flag(struct eco_socket *sock, int flag)
+{
+    return (sock->flag & flag) != 0;
+}
 
 static void push_sockaddr(lua_State *L, const struct sockaddr *addr)
 {
@@ -172,7 +181,7 @@ static void eco_socket_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
     ev_io_stop(loop, &sock->ior);
     ev_io_stop(loop, &sock->iow);
 
-    if (!sock->connected)
+    if (!eco_socket_has_flag(sock, ECO_SOCKET_FLAG_CONNECTED))
         lua_pushboolean(co, false);
     else
         lua_pushnil(co);
@@ -310,7 +319,7 @@ static void eco_socket_write_cb(struct ev_loop *loop, ev_io *w, int revents)
     lua_State *L = sock->ctx->L;
     lua_State *co = sock->co;
 
-    if (unlikely(!sock->connected)) {
+    if (unlikely(!eco_socket_has_flag(sock, ECO_SOCKET_FLAG_CONNECTED))) {
         int err = 0, narg = 1;
         socklen_t len = sizeof(err);
 
@@ -325,7 +334,7 @@ static void eco_socket_write_cb(struct ev_loop *loop, ev_io *w, int revents)
             lua_pushboolean(co, false);
             lua_pushstring(co, strerror(err));
         } else {
-            sock->connected = true;
+            sock->flag |= ECO_SOCKET_FLAG_CONNECTED;
             lua_pushboolean(L, true);
             lua_xmove(L, co, 1);
         }
@@ -713,7 +722,7 @@ static int eco_socket_connect(lua_State *L)
         return lua_yield(L, 0);
     }
 
-    sock->connected = true;
+    sock->flag |= ECO_SOCKET_FLAG_CONNECTED;
 
     lua_pushboolean(L, true);
     return 1;
