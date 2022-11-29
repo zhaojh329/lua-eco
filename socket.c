@@ -41,7 +41,8 @@ enum {
 };
 
 enum {
-    ECO_SOCKET_FLAG_CONNECTED = (1 << 0)
+    ECO_SOCKET_FLAG_CONNECTED = (1 << 0),
+    ECO_SOCKET_FLAG_ACCEPTED = (1 << 1)
 };
 
 struct eco_socket {
@@ -396,6 +397,7 @@ static void eco_socket_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 
     cli->ctx = ctx;
     cli->fd = fd;
+    cli->flag |= ECO_SOCKET_FLAG_ACCEPTED;
 
     lua_xmove(L, co, 1);
     eco_resume(L, co, 1);
@@ -624,7 +626,8 @@ static int eco_socket_close(lua_State *L)
         return 0;
 
     ret = getsockname(sock->fd, (struct sockaddr *)&addr, &addrlen);
-    if (!ret && addr.ss_family == AF_UNIX) {
+    if (!ret && addr.ss_family == AF_UNIX &&
+        !eco_socket_has_flag(sock, ECO_SOCKET_FLAG_ACCEPTED)) {
         struct sockaddr_un *un = (struct sockaddr_un *)&addr;
 
         if (!access(un->sun_path, F_OK))
