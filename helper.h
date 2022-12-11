@@ -64,9 +64,10 @@
     do {                                                        \
         int top = lua_gettop(L);                                \
         int i;                                                  \
-                                                                \
+        printf("--------stack dump--------\n");                 \
         for (i = 1; i <= top; i++) {                            \
             int t = lua_type(L, i);                             \
+            printf("%2d: ", i);                                 \
             switch (t) {                                        \
             case LUA_TSTRING:                                   \
                 printf("'%s'", lua_tostring(L, i));             \
@@ -74,7 +75,7 @@
             case LUA_TBOOLEAN:                                  \
                 printf(lua_toboolean(L, i) ? "true" : "false"); \
                 break;                                          \
-            case LUA_TNUMBER:                                       \
+            case LUA_TNUMBER:                                   \
                 printf("%g", lua_tonumber(L, i));               \
                 break;                                          \
             default:                                            \
@@ -84,6 +85,7 @@
             printf(" ");                                        \
         }                                                       \
         printf("\n");                                           \
+        printf("++++++++++++++++++++++++++\n");                 \
     } while (0)
 
 #endif
