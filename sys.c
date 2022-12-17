@@ -24,27 +24,15 @@
 
 #include <sys/sysinfo.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <stdbool.h>
+#include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
 
 #include "eco.h"
-
-struct eco_sys_exec {
-    struct eco_context *ctx;
-    struct ev_child proc;
-    struct ev_io out;
-    struct ev_io err;
-    struct ev_timer tmr;
-    double wait_timeout;
-    double read_timeout;
-    int out_fd;
-    int err_fd;
-    bool exited;
-    pid_t pid;
-    int code;
-    lua_State *co;
-};
 
 static int eco_sys_uptime(lua_State *L)
 {
@@ -65,6 +53,23 @@ static int eco_sys_getpid(lua_State *L)
 static int eco_sys_getppid(lua_State *L)
 {
     lua_pushinteger(L, getppid());
+    return 1;
+}
+
+static int eco_sys_kill(lua_State *L)
+{
+    int pid = luaL_checkinteger(L, 1);
+    int sig = luaL_checkinteger(L, 2);
+    int ret;
+
+    ret = kill(pid, sig);
+    if (ret < 0) {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
     return 1;
 }
 
@@ -140,186 +145,9 @@ static int which(const char *prog)
     return missing;
 }
 
-static void eco_sys_exec_clean(struct eco_sys_exec *proc)
-{
-    struct ev_loop *loop = proc->ctx->loop;
-
-    if (proc->exited)
-        return;
-
-    ev_child_stop(loop, &proc->proc);
-    ev_timer_stop(loop, &proc->tmr);
-    ev_io_stop(loop, &proc->out);
-    ev_io_stop(loop, &proc->err);
-
-    close(proc->out_fd);
-    close(proc->err_fd);
-}
-
-static int eco_sys_exec_gc(lua_State *L)
-{
-    struct eco_sys_exec *proc = lua_touserdata(L, 1);
-
-    eco_sys_exec_clean(proc);
-
-    return 0;
-}
-
-static void eco_exec_timer_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
-{
-    struct eco_sys_exec *proc = container_of(w, struct eco_sys_exec, tmr);
-    lua_State *co = proc->co;
-
-    lua_pushnil(co);
-    lua_pushliteral(co, "timeout");
-
-    eco_resume(proc->ctx->L, co, 2);
-}
-
-static void eco_exec_child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
-{
-    struct eco_sys_exec *proc = container_of(w, struct eco_sys_exec, proc);
-    lua_State *co = proc->co;
-
-    if (w->pid != w->rpid)
-        return;
-
-    eco_sys_exec_clean(proc);
-
-    proc->exited = true;
-    proc->code = WEXITSTATUS(w->rstatus);
-
-    if (co) {
-        proc->co = NULL;
-        lua_pushinteger(co, proc->code);
-        eco_resume(proc->ctx->L, co, 1);
-    }
-}
-
-static void eco_exec_read_cb(struct ev_loop *loop, struct ev_io *w, struct eco_sys_exec *proc)
-{
-    lua_State *co = proc->co;
-    char buf[4096];
-    int narg = 1;
-    int r;
-
-    ev_io_stop(loop, w);
-
-    r = read(w->fd, buf, sizeof(buf));
-    if (r <= 0) {
-        narg++;
-        lua_pushnil(co);
-
-        if (r == 0)
-            lua_pushliteral(co, "exited");
-        else
-            lua_pushstring(co, strerror(errno));
-    }
-
-    proc->co = NULL;
-
-    lua_pushlstring(co, buf, r);
-    eco_resume(proc->ctx->L, co, narg);
-}
-
-static void eco_exec_stdout_cb(struct ev_loop *loop, struct ev_io *w, int revents)
-{
-    struct eco_sys_exec *proc = container_of(w, struct eco_sys_exec, out);
-    eco_exec_read_cb(loop, w, proc);
-}
-
-static void eco_exec_stderr_cb(struct ev_loop *loop, struct ev_io *w, int revents)
-{
-    struct eco_sys_exec *proc = container_of(w, struct eco_sys_exec, err);
-    eco_exec_read_cb(loop, w, proc);
-}
-
-static int eco_sys_exec_read(lua_State *L, bool is_stderr)
-{
-    struct eco_sys_exec *proc = lua_touserdata(L, 1);
-    struct ev_loop *loop = proc->ctx->loop;
-    struct ev_io *w = &proc->out;
-
-    if (proc->exited) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "exited");
-        return 2;
-    }
-
-    if (is_stderr)
-        w = &proc->err;
-
-    if (proc->read_timeout > 0) {
-        ev_timer_set(&proc->tmr, proc->read_timeout, 0);
-        ev_timer_start(loop, &proc->tmr);
-    }
-
-    proc->co = L;
-    ev_io_start(loop, w);
-    return lua_yield(L, 0);
-}
-
-static int eco_sys_exec_stdout_read(lua_State *L)
-{
-    return eco_sys_exec_read(L, false);
-}
-
-static int eco_sys_exec_stderr_read(lua_State *L)
-{
-    return eco_sys_exec_read(L, true);
-}
-
-static int eco_sys_exec_wait(lua_State *L)
-{
-    struct eco_sys_exec *proc = lua_touserdata(L, 1);
-    struct ev_loop *loop = proc->ctx->loop;
-
-    if (proc->exited) {
-        lua_pushinteger(L, proc->code);
-        return 1;
-    }
-
-    if (proc->wait_timeout > 0) {
-        ev_timer_set(&proc->tmr, proc->wait_timeout, 0);
-        ev_timer_start(loop, &proc->tmr);
-    }
-
-    proc->co = L;
-    return lua_yield(L, 0);
-}
-
-static int eco_sys_exec_kill(lua_State *L)
-{
-    struct eco_sys_exec *proc = lua_touserdata(L, 1);
-    int sig = luaL_checkinteger(L, 2);
-
-    if (proc->exited)
-        return 0;
-
-    kill(proc->pid, sig);
-    return 0;
-}
-
-static int eco_sys_exec_settimeout(lua_State *L)
-{
-    struct eco_sys_exec *proc = lua_touserdata(L, 1);
-    const char *type = luaL_checkstring(L, 2);
-    double timeout = luaL_checknumber(L, 3);
-
-    if (type[0] == 'w')
-        proc->wait_timeout = timeout;
-    else if (type[0] == 'r')
-        proc->read_timeout = timeout;
-
-    return 0;
-}
-
 static int eco_sys_exec(lua_State *L)
 {
-    struct eco_context *ctx = eco_check_context(L);
     const char *cmd = luaL_checkstring(L, 1);
-    struct ev_loop *loop = ctx->loop;
-    struct eco_sys_exec *proc;
     int n = lua_gettop(L);
     int opipe[2] = {};
     int epipe[2] = {};
@@ -377,25 +205,11 @@ static int eco_sys_exec(lua_State *L)
         close(opipe[1]);
         close(epipe[1]);
 
-        proc = lua_newuserdata(L, sizeof(struct eco_sys_exec));
-        memset(proc, 0, sizeof(struct eco_sys_exec));
-        lua_pushvalue(L, lua_upvalueindex(1));
-        lua_setmetatable(L, -2);
+        lua_pushinteger(L, pid);
+        lua_pushinteger(L, opipe[0]);
+        lua_pushinteger(L, epipe[0]);
 
-        proc->pid = pid;
-        proc->ctx = ctx;
-        proc->out_fd = opipe[0];
-        proc->err_fd = epipe[0];
-
-        ev_init(&proc->tmr, eco_exec_timer_cb);
-
-        ev_child_init(&proc->proc, eco_exec_child_cb, pid, 0);
-        ev_child_start(loop, &proc->proc);
-
-        ev_io_init(&proc->out, eco_exec_stdout_cb, proc->out_fd, EV_READ);
-        ev_io_init(&proc->err, eco_exec_stderr_cb, proc->err_fd, EV_READ);
-
-        return 1;
+        return 3;
     }
 
 err:
@@ -415,17 +229,15 @@ err:
     return 2;
 }
 
-static const struct luaL_Reg exec_metatable[] =  {
-    {"stdout_read", eco_sys_exec_stdout_read},
-    {"stderr_read", eco_sys_exec_stderr_read},
-    {"settimeout", eco_sys_exec_settimeout},
-    {"wait", eco_sys_exec_wait},
-    {"kill", eco_sys_exec_kill},
-    {"__gc", eco_sys_exec_gc},
-    {NULL, NULL}
-};
+static int eco_sys_strerror(lua_State *L)
+{
+    int no = luaL_checkinteger(L, 1);
 
-int luaopen_eco_sys(lua_State *L)
+    lua_pushstring(L, strerror(no));
+    return 1;
+}
+
+int luaopen_eco_core_sys(lua_State *L)
 {
     lua_newtable(L);
 
@@ -438,9 +250,154 @@ int luaopen_eco_sys(lua_State *L)
     lua_pushcfunction(L, eco_sys_getppid);
     lua_setfield(L, -2, "getppid");
 
-    eco_new_metatable(L, exec_metatable);
-    lua_pushcclosure(L, eco_sys_exec, 1);
+    lua_pushcfunction(L, eco_sys_kill);
+    lua_setfield(L, -2, "kill");
+
+    lua_pushcfunction(L, eco_sys_exec);
     lua_setfield(L, -2, "exec");
+
+    lua_pushcfunction(L, eco_sys_strerror);
+    lua_setfield(L, -2, "strerror");
+
+    /* signal */
+    lua_add_constant(L, "SIGABRT", SIGABRT);
+    lua_add_constant(L, "SIGALRM", SIGALRM);
+    lua_add_constant(L, "SIGBUS", SIGBUS);
+    lua_add_constant(L, "SIGCHLD", SIGCHLD);
+    lua_add_constant(L, "SIGCONT", SIGCONT);
+    lua_add_constant(L, "SIGFPE", SIGFPE);
+    lua_add_constant(L, "SIGHUP", SIGHUP);
+    lua_add_constant(L, "SIGINT", SIGINT);
+    lua_add_constant(L, "SIGIO", SIGIO);
+    lua_add_constant(L, "SIGIOT", SIGIOT);
+    lua_add_constant(L, "SIGKILL", SIGKILL);
+    lua_add_constant(L, "SIGPIPE", SIGPIPE);
+#ifdef SIGPOLL
+    lua_add_constant(L, "SIGPOLL", SIGPOLL);
+#endif
+    lua_add_constant(L, "SIGPROF", SIGPROF);
+#ifdef SIGPWR
+    lua_add_constant(L, "SIGPWR", SIGPWR);
+#endif
+    lua_add_constant(L, "SIGQUIT", SIGQUIT);
+    lua_add_constant(L, "SIGSEGV", SIGSEGV);
+#ifdef SIGSTKFLT
+    lua_add_constant(L, "SIGSTKFLT", SIGSTKFLT);
+#endif
+    lua_add_constant(L, "SIGSYS", SIGSYS);
+    lua_add_constant(L, "SIGTERM", SIGTERM);
+    lua_add_constant(L, "SIGTRAP", SIGTRAP);
+    lua_add_constant(L, "SIGTSTP", SIGTSTP);
+    lua_add_constant(L, "SIGTTIN", SIGTTIN);
+    lua_add_constant(L, "SIGTTOU", SIGTTOU);
+    lua_add_constant(L, "SIGURG", SIGURG);
+    lua_add_constant(L, "SIGUSR1", SIGUSR1);
+    lua_add_constant(L, "SIGUSR2", SIGUSR2);
+    lua_add_constant(L, "SIGVTALRM", SIGVTALRM);
+    lua_add_constant(L, "SIGWINCH", SIGWINCH);
+    lua_add_constant(L, "SIGXCPU", SIGXCPU);
+    lua_add_constant(L, "SIGXFSZ", SIGXFSZ);
+
+    /* errno */
+    lua_add_constant(L, "EDEADLK", EDEADLK);
+    lua_add_constant(L, "ENAMETOOLONG", ENAMETOOLONG);
+    lua_add_constant(L, "ENOLCK", ENOLCK);
+    lua_add_constant(L, "ENOSYS", ENOSYS);
+    lua_add_constant(L, "ENOTEMPTY", ENOTEMPTY);
+    lua_add_constant(L, "ELOOP", ELOOP);
+    lua_add_constant(L, "EWOULDBLOCK", EWOULDBLOCK);
+    lua_add_constant(L, "ENOMSG", ENOMSG);
+    lua_add_constant(L, "EIDRM", EIDRM);
+    lua_add_constant(L, "ECHRNG", ECHRNG);
+    lua_add_constant(L, "ELNSYNC", EL2NSYNC);
+    lua_add_constant(L, "ELHLT", EL3HLT);
+    lua_add_constant(L, "ELRST", EL3RST);
+    lua_add_constant(L, "ELNRNG", ELNRNG);
+    lua_add_constant(L, "EUNATCH", EUNATCH);
+    lua_add_constant(L, "ENOCSI", ENOCSI);
+    lua_add_constant(L, "ELHLT", EL2HLT);
+    lua_add_constant(L, "EBADE", EBADE);
+    lua_add_constant(L, "EBADR", EBADR);
+    lua_add_constant(L, "EXFULL", EXFULL);
+    lua_add_constant(L, "ENOANO", ENOANO);
+    lua_add_constant(L, "EBADRQC", EBADRQC);
+    lua_add_constant(L, "EBADSLT", EBADSLT);
+    lua_add_constant(L, "EDEADLOCK", EDEADLOCK);
+    lua_add_constant(L, "EBFONT", EBFONT);
+    lua_add_constant(L, "ENOSTR", ENOSTR);
+    lua_add_constant(L, "ENODATA", ENODATA);
+    lua_add_constant(L, "ETIME", ETIME);
+    lua_add_constant(L, "ENOSR", ENOSR);
+    lua_add_constant(L, "ENONET", ENONET);
+    lua_add_constant(L, "ENOPKG", ENOPKG);
+    lua_add_constant(L, "EREMOTE", EREMOTE);
+    lua_add_constant(L, "ENOLINK", ENOLINK);
+    lua_add_constant(L, "EADV", EADV);
+    lua_add_constant(L, "ESRMNT", ESRMNT);
+    lua_add_constant(L, "ECOMM", ECOMM);
+    lua_add_constant(L, "EPROTO", EPROTO);
+    lua_add_constant(L, "EMULTIHOP", EMULTIHOP);
+    lua_add_constant(L, "EDOTDOT", EDOTDOT);
+    lua_add_constant(L, "EBADMSG", EBADMSG);
+    lua_add_constant(L, "EOVERFLOW", EOVERFLOW);
+    lua_add_constant(L, "ENOTUNIQ", ENOTUNIQ);
+    lua_add_constant(L, "EBADFD", EBADFD);
+    lua_add_constant(L, "EREMCHG", EREMCHG);
+    lua_add_constant(L, "ELIBACC", ELIBACC);
+    lua_add_constant(L, "ELIBBAD", ELIBBAD);
+    lua_add_constant(L, "ELIBSCN", ELIBSCN);
+    lua_add_constant(L, "ELIBMAX", ELIBMAX);
+    lua_add_constant(L, "ELIBEXEC", ELIBEXEC);
+    lua_add_constant(L, "EILSEQ", EILSEQ);
+    lua_add_constant(L, "ERESTART", ERESTART);
+    lua_add_constant(L, "ESTRPIPE", ESTRPIPE);
+    lua_add_constant(L, "EUSERS", EUSERS);
+    lua_add_constant(L, "ENOTSOCK", ENOTSOCK);
+    lua_add_constant(L, "EDESTADDRREQ", EDESTADDRREQ);
+    lua_add_constant(L, "EMSGSIZE", EMSGSIZE);
+    lua_add_constant(L, "EPROTOTYPE", EPROTOTYPE);
+    lua_add_constant(L, "ENOPROTOOPT", ENOPROTOOPT);
+    lua_add_constant(L, "EPROTONOSUPPORT", EPROTONOSUPPORT);
+    lua_add_constant(L, "ESOCKTNOSUPPORT", ESOCKTNOSUPPORT);
+    lua_add_constant(L, "EOPNOTSUPP", EOPNOTSUPP);
+    lua_add_constant(L, "EPFNOSUPPORT", EPFNOSUPPORT);
+    lua_add_constant(L, "EAFNOSUPPORT", EAFNOSUPPORT);
+    lua_add_constant(L, "EADDRINUSE", EADDRINUSE);
+    lua_add_constant(L, "EADDRNOTAVAIL", EADDRNOTAVAIL);
+    lua_add_constant(L, "ENETDOWN", ENETDOWN);
+    lua_add_constant(L, "ENETUNREACH", ENETUNREACH);
+    lua_add_constant(L, "ENETRESET", ENETRESET);
+    lua_add_constant(L, "ECONNABORTED", ECONNABORTED);
+    lua_add_constant(L, "ECONNRESET", ECONNRESET);
+    lua_add_constant(L, "ENOBUFS", ENOBUFS);
+    lua_add_constant(L, "EISCONN", EISCONN);
+    lua_add_constant(L, "ENOTCONN", ENOTCONN);
+    lua_add_constant(L, "ESHUTDOWN", ESHUTDOWN);
+    lua_add_constant(L, "ETOOMANYREFS", ETOOMANYREFS);
+    lua_add_constant(L, "ETIMEDOUT", ETIMEDOUT);
+    lua_add_constant(L, "ECONNREFUSED", ECONNREFUSED);
+    lua_add_constant(L, "EHOSTDOWN", EHOSTDOWN);
+    lua_add_constant(L, "EHOSTUNREACH", EHOSTUNREACH);
+    lua_add_constant(L, "EALREADY", EALREADY);
+    lua_add_constant(L, "EINPROGRESS", EINPROGRESS);
+    lua_add_constant(L, "ESTALE", ESTALE);
+    lua_add_constant(L, "EUCLEAN", EUCLEAN);
+    lua_add_constant(L, "ENOTNAM", ENOTNAM);
+    lua_add_constant(L, "ENAVAIL", ENAVAIL);
+    lua_add_constant(L, "EISNAM", EISNAM);
+    lua_add_constant(L, "EREMOTEIO", EREMOTEIO);
+    lua_add_constant(L, "EDQUOT", EDQUOT);
+    lua_add_constant(L, "ENOMEDIUM", ENOMEDIUM);
+    lua_add_constant(L, "EMEDIUMTYPE", EMEDIUMTYPE);
+    lua_add_constant(L, "ECANCELED", ECANCELED);
+    lua_add_constant(L, "ENOKEY", ENOKEY);
+    lua_add_constant(L, "EKEYEXPIRED", EKEYEXPIRED);
+    lua_add_constant(L, "EKEYREVOKED", EKEYREVOKED);
+    lua_add_constant(L, "EKEYREJECTED", EKEYREJECTED);
+    lua_add_constant(L, "EOWNERDEAD", EOWNERDEAD);
+    lua_add_constant(L, "ENOTRECOVERABLE", ENOTRECOVERABLE);
+    lua_add_constant(L, "ERFKILL", ERFKILL);
+    lua_add_constant(L, "EHWPOISON", EHWPOISON);
 
     return 1;
 }

@@ -22,7 +22,9 @@
  * SOFTWARE.
  */
 
-#include "eco.h"
+#include <lauxlib.h>
+#include <stdio.h>
+
 #include "log/log.h"
 
 static int lua_log_level(lua_State *L)
@@ -111,6 +113,15 @@ static int lua_log(lua_State *L)
     return 0;
 }
 
+static int lua_log_set_path(lua_State *L)
+{
+    const char *path = luaL_checkstring(L, 1);
+
+    set_log_path(path);
+
+    return 0;
+}
+
 int luaopen_eco_log(lua_State *L)
 {
     lua_newtable(L);
@@ -153,6 +164,9 @@ int luaopen_eco_log(lua_State *L)
 
     lua_pushcfunction(L, lua_log);
     lua_setfield(L, -2, "log");
+
+    lua_pushcfunction(L, lua_log_set_path);
+    lua_setfield(L, -2, "set_path");
 
     return 1;
 }

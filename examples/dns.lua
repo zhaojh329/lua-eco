@@ -1,21 +1,17 @@
-#!/usr/bin/env lua
+#!/usr/bin/env eco
 
-local eco = require "eco"
-local dns = require "eco.dns"
+local dns = require 'eco.dns'
 
-eco.run(
-    function()
-        --local resolver = dns.resolver()
+local answers, err = dns.query('bing.com')
 
-        local resolver = dns.resolver({
-            nameserver = "8.8.8.8",
-            timeout = 3.0
-        })
+if not answers then
+    print('query fail:', err)
+    return
+end
 
-        local address = resolver:query("bing.com")
-
-        print(table.concat(address, ", "))
+for _, a in ipairs(answers) do
+    for k, v in pairs(a) do
+        print(k, v)
     end
-)
-
-eco.loop()
+    print()
+end

@@ -20,57 +20,35 @@
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=zhaojh329.lua-eco)
 [![Chinese Chat][11]][12]
 
+[lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
 
-Lua-eco 是一个基于 `IO` 事件机制实现的 Lua 协程库。包括 time, socket, ssl, dns, ubus, ip, iw, 以及未来将添加更多的模块。
+Lua-eco 是一个内置了 [libev] 事件循环的 [Lua] 解释器。它使所有的 [Lua] 代码在 `Lua协程` 中运行，它
+可以挂起执行 `I/O` 操作的代码，直到数据准备好。这允许您编写代码就好像您在使用阻塞 `I/O` 一样，同时在
+您等待 `I/O` 时仍然允许其它协程中的代码运行。这很像 `Goroutines`。
+
+Lua-eco 还提供了一些有用的模块，包括 timer、file、signal、exec、socket、ssl、dns、ubus 等。
 
 想试试吗？很有趣的!
 
 ```lua
-local eco = require "eco"
-local time = require "eco.time"
-local socket = require "eco.socket"
+#!/usr/bin/env eco
 
-local function handle_client(c)
+local time = require 'eco.time'
+
+eco.run(function(name)
     while true do
-        local data, err = c:recv()
-        if not data then
-            print(err)
-            break
-        end
-        c:send(data)
+        print(time.now(), name, eco.id())
+        time.sleep(1.0)
     end
-end
+end, 'eco1')
 
-eco.run(
-    function()
-        local s = socket.tcp()
-        local ok, err = s:bind(nil, 8080)
-        if not ok then
-            error(err)
-        end
-
-        s:listen()
-
-        while true do
-            local c = s:accept()
-            local peer = c:getpeername()
-            print("new connection:", peer.ipaddr, peer.port)
-            eco.run(handle_client, c)
-        end
+eco.run(function(name)
+    while true do
+        print(time.now(), name, eco.id())
+        time.sleep(2.0)
     end
-)
-
-eco.run(
-    function()
-        while true do
-            print(time.now())
-            time.sleep(1.0)
-        end
-    end
-)
-
-eco.loop()
+end, 'eco2')
 ```
 
 ## 依赖
@@ -78,12 +56,18 @@ eco.loop()
 
 ## 编译
 
-    sudo apt install -y liblua5.3-dev lua5.3 libev-dev libmnl-dev libssl-dev
+    sudo apt install -y liblua5.3-dev lua5.3 libev-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
 
-## [文档](DOC_ZH.md)
+## TODO
+
+- [ ] termios
+- [ ] http/https
+- [ ] websocket
+- [ ] mqtt
+- [ ] sqlite3
 
 ## 贡献代码
 如果您想帮助 lua-eco 变得更好，请参考 [CONTRIBUTING_ZH.md](/CONTRIBUTING_ZH.md)。

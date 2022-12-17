@@ -29,6 +29,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "lua-compat.h"
+
 #ifndef likely
 #define likely(x)   (__builtin_expect(((x) != 0), 1))
 #endif
@@ -36,29 +38,6 @@
 #ifndef unlikely
 #define unlikely(x) (__builtin_expect(((x) != 0), 0))
 #endif
-
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#endif
-
-#define BIT(x) (1ULL << (x))
-
-#if LUA_VERSION_NUM < 502
-#define lua_rawlen lua_objlen
-#endif
-
-#if LONG_BIT == 64
-#define lua_pushint lua_pushinteger
-#define lua_pushuint lua_pushinteger
-#else
-#define lua_pushint lua_pushnumber
-#define lua_pushuint lua_pushinteger
-#endif
-
-#define nl_socket_enable_seq_check(sk)                                      \
-    do {                                                                    \
-        nl_socket_modify_cb(sk, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, NULL, NULL); \
-    } while (0)
 
 #define stack_dump(L)                                           \
     do {                                                        \
@@ -88,63 +67,31 @@
         printf("++++++++++++++++++++++++++\n");                 \
     } while (0)
 
-#endif
-
-#define lua_add_constant(n, v)  \
-    do {                        \
-        lua_pushinteger(L, v);  \
-        lua_setfield(L, -2, n); \
+#define lua_add_constant(L, n, v)   \
+    do {                            \
+        lua_pushinteger(L, (v));    \
+        lua_setfield(L, -2, (n));   \
     } while (0)
 
-static inline int lua_gettablelen(lua_State *L, int index)
-{
-    int cnt = 0;
+#define lua_gettablelen(L, idx)             \
+    ({                                      \
+        int index = lua_absindex(L, (idx)); \
+        int cnt = 0;                        \
+        lua_pushnil(L);                     \
+        while (lua_next(L, index)) {        \
+            cnt++;                          \
+            lua_pop(L, 1);                  \
+        }                                   \
+        cnt;                                \
+     })
 
-    lua_pushnil(L);
-    index -= 1;
+#define lua_table_is_array(L, idx) lua_gettablelen(L, (idx)) == lua_rawlen(L, (idx))
 
-    while (lua_next(L, index) != 0) {
-        cnt++;
-        lua_pop(L, 1);
-    }
-
-    return cnt;
-}
-
-static inline bool lua_table_is_array(lua_State *L)
-{
-    lua_Integer prv = 0;
-    lua_Integer cur;
-
-    /* Find out whether table is array-like */
-    for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {
-#ifdef LUA_TINT
-        if (lua_type(L, -2) != LUA_TNUMBER && lua_type(L, -2) != LUA_TINT) {
-#else
-        if (lua_type(L, -2) != LUA_TNUMBER) {
-#endif
-            lua_pop(L, 2);
-            return false;
-        }
-
-        cur = lua_tointeger(L, -2);
-
-        if ((cur - 1) != prv) {
-            lua_pop(L, 2);
-            return false;
-        }
-
-        prv = cur;
-    }
-
-    return true;
-}
-
-static inline void eco_new_metatable(lua_State *L, const struct luaL_Reg regs[])
+static inline void eco_new_metatable(lua_State *L, const char *name, const struct luaL_Reg regs[])
 {
     const struct luaL_Reg *reg;
 
-    lua_newtable(L);
+    luaL_newmetatable(L, name);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
 
@@ -156,3 +103,5 @@ static inline void eco_new_metatable(lua_State *L, const struct luaL_Reg regs[])
         reg++;
     }
 }
+
+#endif

@@ -22,55 +22,50 @@
  * SOFTWARE.
  */
 
+#include <errno.h>
+#include <time.h>
+
 #include "eco.h"
-
-struct eco_time_sleeper {
-    struct eco_context *ctx;
-    struct ev_timer tmr;
-    lua_State *co;
-};
-
-static void eco_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
-{
-    struct eco_time_sleeper *s = container_of(w, struct eco_time_sleeper, tmr);
-
-    eco_resume(s->ctx->L, s->co, 0);
-}
-
-static int eco_time_sleep(lua_State *L)
-{
-    struct eco_context *ctx = eco_check_context(L);
-    struct ev_loop *loop = ctx->loop;
-    double delay = lua_tonumber(L, 1);
-    struct eco_time_sleeper *s;
-
-    s = lua_newuserdata(L, sizeof(struct eco_time_sleeper));
-    s->ctx = ctx;
-    s->co = L;
-
-    ev_timer_init(&s->tmr, eco_timer_cb, delay, 0.0);
-    ev_timer_start(loop, &s->tmr);
-
-    return lua_yield(L, 0);
-}
 
 static int eco_time_now(lua_State *L)
 {
-    struct eco_context *ctx = eco_check_context(L);
-    struct ev_loop *loop = ctx->loop;
-    lua_pushnumber(L, ev_now(loop));
+    struct eco_context *ctx = luaL_checkudata(L, 1, ECO_CTX_MT);
+    lua_pushnumber(L, ev_now(ctx->loop));
     return 1;
 }
 
-int luaopen_eco_time(lua_State *L)
+static int eco_time_sleep_sync(lua_State *L)
+{
+    double delay = luaL_checknumber(L, 1);
+    struct timespec req = {
+        .tv_sec = delay,
+        .tv_nsec = (delay - (time_t)delay) * 1000000000
+    };
+    struct timespec rem;
+
+again:
+    if (nanosleep(&req, &rem)) {
+        if (errno == EINTR)
+            goto again;
+
+        lua_pushboolean(L, false);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+int luaopen_eco_core_time(lua_State *L)
 {
     lua_newtable(L);
 
-    lua_pushcfunction(L, eco_time_sleep);
-    lua_setfield(L, -2, "sleep");
-
     lua_pushcfunction(L, eco_time_now);
     lua_setfield(L, -2, "now");
+
+    lua_pushcfunction(L, eco_time_sleep_sync);
+    lua_setfield(L, -2, "sleep_sync");
 
     return 1;
 }

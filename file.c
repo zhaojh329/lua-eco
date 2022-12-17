@@ -22,13 +22,175 @@
  * SOFTWARE.
  */
 
+#include <sys/sendfile.h>
 #include <sys/statvfs.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <errno.h>
 
+#include "buffer.h"
 #include "eco.h"
+
+#define ECO_FILE_DIR_MT "eco{file-dir}"
+
+static int eco_file_open(lua_State *L)
+{
+    const char *pathname = luaL_checkstring(L, 1);
+    int flags = luaL_checkinteger(L, 2);
+    int mode = luaL_optinteger(L, 3, 0);
+    int fd;
+
+    fd = open(pathname, flags, mode);
+    if (fd < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, fd);
+    return 1;
+}
+
+static int eco_file_close(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    int ret;
+
+    ret = close(fd);
+    if (ret < 0) {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+static int eco_file_read(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    size_t n = luaL_optinteger(L, 2, LUAL_BUFFERSIZE);
+    luaL_Buffer b;
+    ssize_t ret;
+    char *p;
+
+    luaL_buffinit(L, &b);
+
+    p = luaL_prepbuffer(&b);
+
+    if (n > LUAL_BUFFERSIZE)
+        n = LUAL_BUFFERSIZE;
+
+again:
+    ret = read(fd, p, n);
+    if (unlikely(ret < 0)) {
+        if (errno == EINTR)
+            goto again;
+        luaL_pushresult(&b);
+        lua_pushstring(L, strerror(errno));
+        lua_pushnil(L);
+        lua_replace(L, -3);
+        return 2;
+    }
+
+    luaL_addsize(&b, ret);
+    luaL_pushresult(&b);
+
+    return 1;
+}
+
+static int eco_file_read_to_buffer(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
+    size_t n = buffer_room(b);
+    ssize_t ret;
+
+    if (n == 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, "buffer is full");
+        return 2;
+    }
+
+again:
+    ret = read(fd, b->data + b->last, n);
+    if (unlikely(ret < 0)) {
+        if (errno == EINTR)
+            goto again;
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    b->last += ret;
+    lua_pushinteger(L, ret);
+
+    return 1;
+}
+
+static int eco_file_write_data(lua_State *L, int fd, const void *data, size_t len)
+{
+    ssize_t ret;
+
+again:
+    ret = write(fd, data, len);
+    if (unlikely(ret < 0)) {
+        if (errno == EINTR)
+            goto again;
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushnumber(L, ret);
+    return 1;
+}
+
+static int eco_file_write_from_buffer(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
+    size_t blen = buffer_length(b);
+    size_t len = luaL_optinteger(L, 3, blen);
+
+
+    if (len > blen)
+        len = blen;
+
+    return eco_file_write_data(L, fd, buffer_data(b), len);
+}
+
+static int eco_file_write(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    size_t len;
+    const char *data = luaL_checklstring(L, 2, &len);
+
+    return eco_file_write_data(L, fd, data, len);
+}
+
+static int eco_file_sendfile(lua_State *L)
+{
+    int out_fd = luaL_checkinteger(L, 1);
+    int in_fd = luaL_checkinteger(L, 2);
+    off_t offset = luaL_optinteger(L, 3, 0);
+    size_t count = luaL_checkinteger(L, 4);
+    ssize_t ret;
+
+    ret = sendfile(out_fd, in_fd, &offset, count);
+    if (ret < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, ret);
+    lua_pushinteger(L, offset);
+    return 2;
+}
 
 static int eco_file_access(lua_State *L)
 {
@@ -178,7 +340,7 @@ static int eco_file_dir_iter(lua_State *L)
 
 static int eco_file_dir_gc(lua_State *L)
 {
-    DIR *d = *(DIR **)lua_touserdata(L, 1);
+    DIR *d = *(DIR **)luaL_checkudata(L, 1, ECO_FILE_DIR_MT);
 
     if (d)
         closedir(d);
@@ -203,7 +365,7 @@ static int eco_file_dir(lua_State *L)
     return 1;
 }
 
-static const struct luaL_Reg dir_metatable[] =  {
+static const struct luaL_Reg dir_methods[] =  {
     {"__gc", eco_file_dir_gc},
     {NULL, NULL}
 };
@@ -231,9 +393,58 @@ static int eco_file_chown(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_file(lua_State *L)
+int luaopen_eco_core_file(lua_State *L)
 {
     lua_newtable(L);
+
+    lua_add_constant(L, "O_RDONLY", O_RDONLY);
+    lua_add_constant(L, "O_WRONLY", O_WRONLY);
+    lua_add_constant(L, "O_RDWR", O_RDWR);
+
+    lua_add_constant(L, "O_APPEND", O_APPEND);
+    lua_add_constant(L, "O_CLOEXEC", O_CLOEXEC);
+    lua_add_constant(L, "O_CREAT", O_CREAT);
+    lua_add_constant(L, "O_EXCL", O_EXCL);
+    lua_add_constant(L, "O_NOCTTY", O_NOCTTY);
+    lua_add_constant(L, "O_NONBLOCK", O_NONBLOCK);
+    lua_add_constant(L, "O_TRUNC", O_TRUNC);
+
+    lua_add_constant(L, "S_IRWXU", S_IRWXU);
+    lua_add_constant(L, "S_IRUSR", S_IRUSR);
+    lua_add_constant(L, "S_IWUSR", S_IWUSR);
+    lua_add_constant(L, "S_IXUSR", S_IXUSR);
+    lua_add_constant(L, "S_IRWXG", S_IRWXG);
+    lua_add_constant(L, "S_IRGRP", S_IRGRP);
+    lua_add_constant(L, "S_IWGRP", S_IWGRP);
+    lua_add_constant(L, "S_IXGRP", S_IXGRP);
+    lua_add_constant(L, "S_IRWXO", S_IRWXO);
+    lua_add_constant(L, "S_IROTH", S_IROTH);
+    lua_add_constant(L, "S_IWOTH", S_IWOTH);
+    lua_add_constant(L, "S_IXOTH", S_IXOTH);
+    lua_add_constant(L, "S_ISUID", S_ISUID);
+    lua_add_constant(L, "S_ISGID", S_ISGID);
+    lua_add_constant(L, "S_ISVTX", S_ISVTX);
+
+    lua_pushcfunction(L, eco_file_open);
+    lua_setfield(L, -2, "open");
+
+    lua_pushcfunction(L, eco_file_close);
+    lua_setfield(L, -2, "close");
+
+    lua_pushcfunction(L, eco_file_read);
+    lua_setfield(L, -2, "read");
+
+    lua_pushcfunction(L, eco_file_read_to_buffer);
+    lua_setfield(L, -2, "read_buffer");
+
+    lua_pushcfunction(L, eco_file_write_from_buffer);
+    lua_setfield(L, -2, "write_buffer");
+
+    lua_pushcfunction(L, eco_file_write);
+    lua_setfield(L, -2, "write");
+
+    lua_pushcfunction(L, eco_file_sendfile);
+    lua_setfield(L, -2, "sendfile");
 
     lua_pushcfunction(L, eco_file_access);
     lua_setfield(L, -2, "access");
@@ -247,7 +458,7 @@ int luaopen_eco_file(lua_State *L)
     lua_pushcfunction(L, eco_file_statvfs);
     lua_setfield(L, -2, "statvfs");
 
-    eco_new_metatable(L, dir_metatable);
+    eco_new_metatable(L, ECO_FILE_DIR_MT, dir_methods);
     lua_pushcclosure(L, eco_file_dir, 1);
     lua_setfield(L, -2, "dir");
 

@@ -1,4 +1,4 @@
-/*
+--[[
  * MIT License
  *
  * Copyright (c) 2022 Jianhui Zhao <zhaojh329@gmail.com>
@@ -20,22 +20,31 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- */
+--]]
 
-#ifndef __ECO_H
-#define __ECO_H
+local time = require 'eco.core.time'
 
-#include <lauxlib.h>
-#include <lua.h>
-#include <ev.h>
+local M = {}
 
-#include "helper.h"
+function M.now()
+    return time.now(eco.context())
+end
 
-struct eco_context {
-    struct ev_loop *loop;
-    lua_State *L;
-};
+function M.sleep(delay)
+    local w = eco.watcher(eco.TIMER)
+    w:wait(delay)
+end
 
-#define ECO_CTX_MT "eco{ctx}"
+function M.at(delay, cb, ...)
+    local w = eco.watcher(eco.TIMER)
 
-#endif
+    eco.run(function(...)
+        if w:wait(delay) then
+            cb(...)
+        end
+    end, ...)
+
+    return w
+end
+
+return setmetatable(M, { __index = time })

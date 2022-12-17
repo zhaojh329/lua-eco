@@ -28,6 +28,7 @@
 #include <glob.h>
 
 #include "ssl/ssl.h"
+#include "buffer.h"
 #include "eco.h"
 
 struct eco_ssl_context {
@@ -36,35 +37,59 @@ struct eco_ssl_context {
 };
 
 struct eco_ssl_session {
-    struct eco_context *eco;
     struct ssl_context *cxt;
-    bool ssl_negotiated;
-    struct ev_timer tmr;
-    struct ev_io ior;
-    struct ev_io iow;
+    struct ssl *ssl;
     bool is_server;
     bool insecure;
-    lua_State *co;
-    void *ssl;
-    int fd;
-    struct {
-        struct eco_buf *b;
-        double timeout;
-        size_t need;
-        char eol;
-    } reader;
-
-    struct {
-        const char *data;
-        size_t left;
-        size_t len;
-    } writer;
+    int state;
 };
+
+#define ECO_SSL_CTX_MT  "eco{ssl-ctx}"
+#define ECO_SSL_MT  "eco{ssl}"
+
+static int eco_ssl_context_free(lua_State *L)
+{
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
+
+    if (!ctx->ctx)
+        return 0;
+
+    ssl_context_free(ctx->ctx);
+    ctx->ctx = NULL;
+
+    return 0;
+}
 
 static int eco_ssl_context_gc(lua_State *L)
 {
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
-    ssl_context_free(ctx->ctx);
+    return eco_ssl_context_free(L);
+}
+
+static int eco_ssl_free(lua_State *L)
+{
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
+
+    if (!s->ssl)
+        return 0;
+
+    ssl_session_free(s->ssl);
+    s->ssl = NULL;
+
+    return 0;
+}
+
+static int eco_ssl_gc(lua_State *L)
+{
+    return eco_ssl_free(L);
+}
+
+static int eco_ssl_set_server_name(lua_State *L)
+{
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
+    const char *name = luaL_checkstring(L, 2);
+
+    ssl_set_server_name(s->ssl, name);
+
     return 0;
 }
 
@@ -75,10 +100,11 @@ static void on_ssl_verify_error(int error, const char *str, void *arg)
     *valid_cert = false;
 }
 
-/* -1 error, 0 pending, 1 ok */
-static int ssl_negotiated(struct eco_ssl_session *s, char *err_buf, int errbuf_len)
+static int eco_ssl_ssl_negotiate(lua_State *L)
 {
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
     bool valid_cert = true;
+    char err_buf[128];
     int ret;
 
     if (s->is_server)
@@ -86,301 +112,136 @@ static int ssl_negotiated(struct eco_ssl_session *s, char *err_buf, int errbuf_l
     else
         ret = ssl_connect(s->ssl, on_ssl_verify_error, &valid_cert);
 
-    if (ret == SSL_PENDING)
-        return 0;
-
-    if (ret == SSL_ERROR) {
-        ssl_last_error_string(err_buf, errbuf_len);
-        return -1;
-    }
-
-    if (!valid_cert && !s->insecure) {
-        snprintf(err_buf, errbuf_len, "SSL certificate verify fail");
-        return -1;
-    }
-
-    s->ssl_negotiated = true;
-
-    return 1;
-}
-
-static void eco_ssl_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
-{
-    struct eco_ssl_session *s = container_of(w, struct eco_ssl_session, tmr);
-    struct eco_context *eco = s->eco;
-    lua_State *co = s->co;
-
-    ev_io_stop(loop, &s->ior);
-    ev_io_stop(loop, &s->iow);
-
-    lua_pushnil(co);
-    lua_pushliteral(co, "timeout");
-    eco_resume(eco->L, co, 2);
-}
-
-/*
-** Return value:
-**  0: need read actually
-** -1: error
-**  1: success
-*/
-static int eco_ssl_read_from_buf(struct eco_ssl_session *s, lua_State *L)
-{
-    struct eco_buf *b = s->reader.b;
-    char eol = s->reader.eol;
-    size_t ate = 0;
-
-    if (unlikely(!b))
-        return 0;
-
-    if (s->reader.need > 0 || eol) {
-        if (eol) {
-            char *pos = memchr(b->data, '\n', b->len);
-            if (pos)
-                ate = pos - b->data + 1;
-        } else if (b->len >= s->reader.need) {
-            ate = s->reader.need;
+    if (ret < 0) {
+        s->state = ret;
+        lua_pushboolean(L, false);
+        if (ret == SSL_ERROR) {
+            lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
+            return 2;
         }
-
-        if (ate == 0 && (b->size - b->len == 0)) {
-            lua_pushnil(L);
-            lua_pushliteral(L, "buffer is full");
-            return -1;
-        }
-    } else if (b->len > 0) {
-        ate = b->len;
-    }
-
-    if (ate > 0) {
-        b->len -= ate;
-
-        if (eol == 'l')
-            lua_pushlstring(L, b->data, ate - 1);
-        else
-            lua_pushlstring(L, b->data, ate);
-
-        memmove(b->data, b->data + ate, b->len);
         return 1;
     }
 
-    return 0;
-}
+    s->state = SSL_OK;
 
-static void eco_ssl_read_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-    struct eco_ssl_session *s = container_of(w, struct eco_ssl_session, ior);
-    struct eco_context *eco = s->eco;
-    static char err_buf[128];
-    lua_State *co = s->co;
-    struct eco_buf *b;
-    int narg = 1;
-    ssize_t r;
+    if (!valid_cert && !s->insecure) {
 
-    if (unlikely(!s->ssl_negotiated)) {
-        r = ssl_negotiated(s, err_buf, sizeof(err_buf));
-        if (r < 0) {
-            narg++;
-            lua_pushnil(co);
-            lua_pushstring(co, err_buf);
-            goto done;
-        }
-        if (r == 0)
-            return;
+        lua_pushboolean(L, false);
+        lua_pushliteral(L, "SSL certificate verify fail");
+        return 2;
     }
 
-    if (unlikely(!s->reader.b)) {
-        size_t size = getpagesize();
-        s->reader.b = malloc(sizeof(struct eco_buf) + size);
-        if (!s->reader.b) {
-            narg++;
-            lua_pushnil(co);
-            lua_pushstring(co, strerror(errno));
-            goto done;
-        }
-        s->reader.b->size = size;
-        s->reader.b->len = 0;
-    }
-
-    b = s->reader.b;
-
-    r = ssl_read(s->ssl, b->data + b->len, b->size - b->len);
-    if (unlikely(r < 0)) {
-        if (r == SSL_PENDING)
-            return;
-        narg++;
-        lua_pushnil(co);
-        lua_pushstring(co, ssl_last_error_string(err_buf, sizeof(err_buf)));
-    } else if (r == 0) {
-        if (b->len > 0) {
-            lua_pushlstring(co, b->data, b->len);
-            b->len = 0;
-        } else {
-            narg++;
-            lua_pushnil(co);
-            lua_pushliteral(co, "closed");
-        }
-    } else {
-        b->len += r;
-        r = eco_ssl_read_from_buf(s, co);
-        if (r == 0)
-            return;
-        if (r < 0)
-            narg++;
-    }
-
-done:
-    ev_io_stop(loop, w);
-    ev_timer_stop(loop, &s->tmr);
-    eco_resume(eco->L, co, narg);
-}
-
-static void eco_ssl_write_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-    struct eco_ssl_session *s = container_of(w, struct eco_ssl_session, iow);
-    static char err_buf[128];
-    lua_State *co = s->co;
-    int narg = 1;
-    ssize_t r;
-
-    if (unlikely(!s->ssl_negotiated)) {
-        r = ssl_negotiated(s, err_buf, sizeof(err_buf));
-        if (r < 0) {
-            narg++;
-            lua_pushnil(co);
-            lua_pushstring(co, err_buf);
-            goto done;
-        }
-        if (r == 0)
-            return;
-    }
-
-    r = ssl_write(s->ssl, s->writer.data, s->writer.left);
-    if (unlikely(r < 0)) {
-        if (r == SSL_PENDING)
-            return;
-        narg++;
-        lua_pushuint(co, s->writer.len - s->writer.left);
-        lua_pushstring(co, ssl_last_error_string(err_buf, sizeof(err_buf)));
-        goto done;
-    }
-
-    s->writer.data += r;
-    s->writer.left -= r;
-
-    if (s->writer.left > 0)
-        return;
-    lua_pushuint(co, s->writer.len);
-
-done:
-    ev_io_stop(loop, w);
-    eco_resume(s->eco->L, co, narg);
-}
-
-static int eco_ssl_gc(lua_State *L)
-{
-    struct eco_ssl_session *s = lua_touserdata(L, 1);
-    ssl_session_free(s->ssl);
-    free(s->reader.b);
-    return 0;
-}
-
-static int eco_ssl_settimeout(lua_State *L)
-{
-    struct eco_ssl_session *s = lua_touserdata(L, 1);
-    s->reader.timeout = luaL_checknumber(L, 2);
-    return 0;
-}
-
-static int eco_ssl_set_server_name(lua_State *L)
-{
-    struct eco_ssl_session *s = lua_touserdata(L, 1);
-    const char *name = luaL_checkstring(L, 2);
-
-    ssl_set_server_name(s->ssl, name);
-
-    return 0;
+    lua_pushboolean(L, true);
+    return 1;
 }
 
 static int eco_ssl_read(lua_State *L)
 {
-    struct eco_ssl_session *s = lua_touserdata(L, 1);
-    struct ev_loop *loop = s->eco->loop;
-    int r;
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
+    size_t n = luaL_optinteger(L, 2, LUAL_BUFFERSIZE);
+    static char err_buf[128];
+    luaL_Buffer b;
+    char *p;
+    int ret;
 
-    s->reader.need = 0;
-    s->reader.eol = 0;
+    luaL_buffinit(L, &b);
 
-    if (lua_gettop(L) > 1) {
-        if (lua_isnumber(L, 2)) {
-            size_t need = lua_tointeger(L, 2);
-            if (unlikely(need == 0)) {
-                lua_pushliteral(L, "");
-                return 1;
-            }
-            s->reader.need = need;
-        } else if (lua_isstring(L, 2)) {
-            const char *eol = lua_tostring(L, 2);
-            if (*eol == 'l' || *eol == 'L')
-                s->reader.eol = *eol;
-        }
-    }
+    p = luaL_prepbuffer(&b);
 
-    r = eco_ssl_read_from_buf(s, L);
-    if (r < 0)
+    if (n > LUAL_BUFFERSIZE)
+        n = LUAL_BUFFERSIZE;
+
+    ret = ssl_read(s->ssl, p, n);
+    if (unlikely(ret < 0)) {
+        s->state = ret;
+        luaL_pushresult(&b);
+        if (ret == SSL_ERROR)
+            lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
+        else
+            lua_pushnil(L);
+        lua_pushnil(L);
+        lua_replace(L, -3);
         return 2;
-    else if (r > 0)
-        return 1;
-
-    if (s->reader.timeout > 0) {
-        ev_timer_set(&s->tmr, s->reader.timeout, 0);
-        ev_timer_start(loop, &s->tmr);
     }
 
-    s->co = L;
+    s->state = SSL_OK;
 
-    ev_io_start(loop, &s->ior);
+    luaL_addsize(&b, ret);
+    luaL_pushresult(&b);
 
-    return lua_yield(L, 0);
+    return 1;
+}
+
+static int eco_ssl_read_buffer(lua_State *L)
+{
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
+    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
+    size_t n = buffer_room(b);
+    static char err_buf[128];
+    ssize_t ret;
+
+    if (n == 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, "buffer is full");
+        return 2;
+    }
+
+    ret = ssl_read(s->ssl, b->data + b->last, n);
+    if (unlikely(ret < 0)) {
+        s->state = ret;
+        lua_pushnil(L);
+        if (ret == SSL_ERROR) {
+            lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
+            return 2;
+        }
+        return 1;
+    }
+
+    s->state = SSL_OK;
+
+    b->last += ret;
+    lua_pushinteger(L, ret);
+
+    return 1;
 }
 
 static int eco_ssl_write(lua_State *L)
 {
-    struct eco_ssl_session *s = lua_touserdata(L, 1);
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
     static char err_buf[128];
     const char *data;
-    size_t len;
     int ret = 0;
+    size_t len;
 
     data = luaL_checklstring(L, 2, &len);
 
-    if (s->ssl_negotiated) {
-        ret = ssl_write(s->ssl, data, len);
-        if (unlikely(ret == SSL_ERROR)) {
-            lua_pushnil(L);
-            lua_pushstring(L, ssl_last_error_string(err_buf, sizeof(err_buf)));
+    ret = ssl_write(s->ssl, data, len);
+    if (unlikely(ret < 0)) {
+        s->state = ret;
+        lua_pushnil(L);
+        if (ret == SSL_ERROR) {
+            lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
             return 2;
         }
-    }
-
-    if (likely(ret == len)) {
-        lua_pushuint(L, len);
         return 1;
     }
 
-    s->writer.data = data + ret;
-    s->writer.left = len - ret;
-    s->writer.len = len;
-    s->co = L;
+    s->state = SSL_OK;
 
-    ev_io_start(s->eco->loop, &s->iow);
+    lua_pushinteger(L, ret);
+    return 1;
+}
 
-    return lua_yield(L, 0);
+static int eco_ssl_state(lua_State *L)
+{
+    struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
+    lua_pushinteger(L, s->state);
+    return 1;
 }
 
 static int eco_ssl_session_new(lua_State *L)
 {
-    struct eco_context *eco = eco_check_context(L);
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     int fd = luaL_checkinteger(L, 2);
     bool insecure = lua_toboolean(L, 3);
     struct eco_ssl_session *s;
@@ -393,19 +254,13 @@ static int eco_ssl_session_new(lua_State *L)
     s->ssl = ssl_session_new(ctx->ctx, fd);
     s->is_server = ctx->is_server;
     s->insecure = insecure;
-    s->eco = eco;
-    s->fd = fd;
-
-    ev_init(&s->tmr, eco_ssl_timer_cb);
-    ev_io_init(&s->ior, eco_ssl_read_cb, fd, EV_READ);
-    ev_io_init(&s->iow, eco_ssl_write_cb, fd, EV_WRITE);
 
     return 1;
 }
 
 static int eco_ssl_load_ca_crt_file(lua_State *L)
 {
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     const char *file = luaL_checkstring(L, 2);
 
     lua_pushboolean(L, !!!ssl_load_ca_crt_file(ctx->ctx, file));
@@ -414,7 +269,7 @@ static int eco_ssl_load_ca_crt_file(lua_State *L)
 
 static int eco_ssl_load_crt_file(lua_State *L)
 {
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     const char *file = luaL_checkstring(L, 2);
 
     lua_pushboolean(L, !!!ssl_load_crt_file(ctx->ctx, file));
@@ -423,7 +278,7 @@ static int eco_ssl_load_crt_file(lua_State *L)
 
 static int eco_ssl_load_key_file(lua_State *L)
 {
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     const char *file = luaL_checkstring(L, 2);
 
     lua_pushboolean(L, !!!ssl_load_key_file(ctx->ctx, file));
@@ -432,7 +287,7 @@ static int eco_ssl_load_key_file(lua_State *L)
 
 static int eco_ssl_set_ciphers(lua_State *L)
 {
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     const char *ciphers = luaL_checkstring(L, 2);
 
     lua_pushboolean(L, !!!ssl_set_ciphers(ctx->ctx, ciphers));
@@ -441,7 +296,7 @@ static int eco_ssl_set_ciphers(lua_State *L)
 
 static int eco_ssl_set_require_validation(lua_State *L)
 {
-    struct eco_ssl_context *ctx = lua_touserdata(L, 1);
+    struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     bool require = lua_toboolean(L, 2);
 
     ssl_set_require_validation(ctx->ctx, require);
@@ -479,8 +334,9 @@ static int eco_ssl_context_new(lua_State *L)
     return 1;
 }
 
-static const struct luaL_Reg ssl_ctx_metatable[] =  {
+static const struct luaL_Reg ssl_ctx_methods[] =  {
     {"__gc", eco_ssl_context_gc},
+    {"free", eco_ssl_context_free},
     {"load_ca_crt_file", eco_ssl_load_ca_crt_file},
     {"load_crt_file", eco_ssl_load_crt_file},
     {"load_key_file", eco_ssl_load_key_file},
@@ -489,22 +345,25 @@ static const struct luaL_Reg ssl_ctx_metatable[] =  {
     {NULL, NULL}
 };
 
-static const struct luaL_Reg ssl_metatable[] =  {
+static const struct luaL_Reg ssl_methods[] =  {
     {"__gc", eco_ssl_gc},
-    {"settimeout", eco_ssl_settimeout},
+    {"free", eco_ssl_free},
     {"set_server_name", eco_ssl_set_server_name},
+    {"negotiate", eco_ssl_ssl_negotiate},
     {"read", eco_ssl_read},
+    {"read_buffer", eco_ssl_read_buffer},
     {"write", eco_ssl_write},
+    {"state", eco_ssl_state},
     {NULL, NULL}
 };
 
-int luaopen_eco_ssl(lua_State *L)
+int luaopen_eco_core_ssl(lua_State *L)
 {
     lua_newtable(L);
 
-    eco_new_metatable(L, ssl_ctx_metatable);
+    eco_new_metatable(L, ECO_SSL_CTX_MT, ssl_ctx_methods);
 
-    eco_new_metatable(L, ssl_metatable);
+    eco_new_metatable(L, ECO_SSL_MT, ssl_methods);
     lua_pushcclosure(L, eco_ssl_session_new, 1);
     lua_setfield(L, -2, "new");
 

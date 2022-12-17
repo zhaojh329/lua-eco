@@ -28,13 +28,18 @@ while true do
 
     eco.run(function(c)
         while true do
-            local data, err = c:recv('*l')
-            if not data then
-                print(err)
-                break
+            while true do
+                local data, err = c:recv('*l')
+                if not data then
+                    print(err)
+                    c:close()
+                    return
+                end
+                if data == '\r' then
+                    break
+                end
             end
-            print('read:', data)
-            c:send('I am eco:' .. data .. '\n')
+            c:send('HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello')
         end
     end, c)
 end

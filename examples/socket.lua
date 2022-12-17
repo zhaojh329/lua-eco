@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
+local file = require 'eco.file'
 local sys = require 'eco.sys'
 
 sys.signal(sys.SIGPIPE, function()end)
@@ -10,15 +11,21 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = socket.listen_tcp(nil, 8080)
-if not s then
+local sock = socket.tcp()
+
+sock:setoption('reuseaddr', true)
+
+local ok, err = sock:bind(nil, 8080)
+if not ok then
     error(err)
 end
+
+sock:listen(128)
 
 print('listen...')
 
 while true do
-    local c, peer = s:accept()
+    local c, peer = sock:accept()
     if not c then
         print(peer)
         break
@@ -28,13 +35,13 @@ while true do
 
     eco.run(function(c)
         while true do
-            local data, err = c:recv('*l')
+            local data, err = c:recv(1024)
             if not data then
                 print(err)
                 break
             end
             print('read:', data)
-            c:send('I am eco:' .. data .. '\n')
+            c:send('I am eco:' .. data)
         end
     end, c)
 end

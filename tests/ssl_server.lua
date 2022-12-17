@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local socket = require 'eco.socket'
+local ssl = require 'eco.ssl'
 local sys = require 'eco.sys'
 
 sys.signal(sys.SIGPIPE, function()end)
@@ -10,12 +10,14 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = socket.listen_tcp(nil, 8080)
+local s, err = ssl.listen(nil, 8080, { crt = 'cert.pem', key = 'key.pem' })
 if not s then
     error(err)
 end
 
 print('listen...')
+
+local cnt = 0
 
 while true do
     local c, peer = s:accept()
@@ -24,17 +26,21 @@ while true do
         break
     end
 
-    print('new connection:', peer.ipaddr, peer.port)
+    cnt = cnt + 1
+
+    print(cnt .. ': new connection:', cnt, peer.ipaddr, peer.port)
 
     eco.run(function(c)
         while true do
             local data, err = c:recv('*l')
             if not data then
-                print(err)
+                if err ~= 'closed' then
+                    print(err)
+                end
+                c:close()
                 break
             end
-            print('read:', data)
-            c:send('I am eco:' .. data .. '\n')
+            c:send(data .. '\n')
         end
     end, c)
 end

@@ -17,58 +17,37 @@
 ![Build Status][9]
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=zhaojh329.lua-eco)
 
+[lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
 
-Lua-eco is a `Lua coroutine` library which was implemented based on `IO event`.
-Including time, socket, ssl, dns, ubus, ip, iw, and more which will be added in the future.
+Lua-eco is a [Lua] interpreter with a built-in [libev] event loop. It makes
+all [Lua] code running in `Lua coroutines` so code that does I/O can be
+suspended until data is ready. This allows you write code as if you're using
+blocking I/O, while still allowing code in other coroutines to run when you'd
+otherwise wait for I/O. It's kind of like `Goroutines`.
+
+Lua-eco also provides some modules including timer, file, socket, ssl, dns, ubus and so on.
 
 Would you like to try it? Kinda interesting.
 
 ```lua
-local eco = require "eco"
-local time = require "eco.time"
-local socket = require "eco.socket"
+#!/usr/bin/env eco
 
-local function handle_client(c)
+local time = require 'eco.time'
+
+eco.run(function(name)
     while true do
-        local data, err = c:recv()
-        if not data then
-            print(err)
-            break
-        end
-        c:send(data)
+        print(time.now(), name, eco.id())
+        time.sleep(1.0)
     end
-end
+end, 'eco1')
 
-eco.run(
-    function()
-        local s = socket.tcp()
-        local ok, err = s:bind(nil, 8080)
-        if not ok then
-            error(err)
-        end
-
-        s:listen()
-
-        while true do
-            local c = s:accept()
-            local peer = c:getpeername()
-            print("new connection:", peer.ipaddr, peer.port)
-            eco.run(handle_client, c)
-        end
+eco.run(function(name)
+    while true do
+        print(time.now(), name, eco.id())
+        time.sleep(2.0)
     end
-)
-
-eco.run(
-    function()
-        while true do
-            print(time.now())
-            time.sleep(1.0)
-        end
-    end
-)
-
-eco.loop()
+end, 'eco2')
 ```
 
 ## Requirements
@@ -76,12 +55,18 @@ eco.loop()
 
 ## Build
 
-    sudo apt install -y liblua5.3-dev lua5.3 libev-dev libmnl-dev libssl-dev
+    sudo apt install -y liblua5.3-dev lua5.3 libev-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
 
-## [Documentation](DOC.md)
+## TODO
+
+- [ ] termios
+- [ ] http/https
+- [ ] websocket
+- [ ] mqtt
+- [ ] sqlite3
 
 ## Contributing
 If you would like to help making [lua-eco](https://github.com/zhaojh329/lua-eco) better,

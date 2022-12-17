@@ -22,20 +22,43 @@
  * SOFTWARE.
  */
 
-#ifndef __ECO_H
-#define __ECO_H
+#ifndef __ECO_BUFFER_H
+#define __ECO_BUFFER_H
 
-#include <lauxlib.h>
-#include <lua.h>
-#include <ev.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-#include "helper.h"
+#define ECO_BUFFER_MT "eco{buffer}"
 
-struct eco_context {
-    struct ev_loop *loop;
-    lua_State *L;
+struct eco_buffer {
+    size_t size;
+    size_t first;
+    size_t last;
+    char data[0];
 };
 
-#define ECO_CTX_MT "eco{ctx}"
+#define buffer_skip(b, n)           \
+    do {                            \
+        b->first += n;              \
+        if (b->first >= b->last)    \
+            b->first = b->last = 0; \
+    } while(0)
+
+#define buffer_length(b) (b->last - b->first)
+
+#define buffer_data(b) (b->data + b->first)
+
+#define buffer_room(b) (b->size - b->last)
+
+#define buffer_addchar(b, c)        \
+    ({                              \
+        bool ret = false;                \
+        if (buffer_room(b)) {       \
+            b->data[b->last] = c;   \
+            b->last++;              \
+            ret = true;                \
+        }                           \
+        ret;                        \
+    })
 
 #endif

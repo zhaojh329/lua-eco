@@ -1,4 +1,4 @@
-/*
+--[[
  * MIT License
  *
  * Copyright (c) 2022 Jianhui Zhao <zhaojh329@gmail.com>
@@ -20,22 +20,58 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- */
+--]]
 
-#ifndef __ECO_H
-#define __ECO_H
+local file = require 'eco.core.file'
 
-#include <lauxlib.h>
-#include <lua.h>
-#include <ev.h>
+local M = {}
 
-#include "helper.h"
+function M.readfile(path, m)
+    local f, err = io.open(path, 'r')
+    if not f then
+        return nil, err
+    end
 
-struct eco_context {
-    struct ev_loop *loop;
-    lua_State *L;
-};
+    local data = f:read(m or '*a')
+    f:close()
 
-#define ECO_CTX_MT "eco{ctx}"
+    return data
+end
 
-#endif
+function M.writefile(path, data, append)
+    local m = 'w'
+
+    if append then
+        m = 'a'
+    end
+
+    local f, err = io.open(path, m)
+    if not f then
+        return nil, err
+    end
+
+    local n, err = f:write(data)
+    f:close()
+
+    return n, err
+end
+
+function M.read(fd, n, timeout)
+    local w = eco.watcher(eco.IO, fd)
+
+    if not w:wait(timeout) then
+        return nil, 'timeout'
+    end
+
+    return file.read(fd, n)
+end
+
+function M.write(fd, data)
+    local w = eco.watcher(eco.IO, fd, eco.WRITE)
+
+    w:wait()
+
+    return file.write(fd, data)
+end
+
+return setmetatable(M, { __index = file })
