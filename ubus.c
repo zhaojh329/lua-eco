@@ -531,7 +531,7 @@ static void eco_ubus_load_object(lua_State *L, struct eco_ubus_object *o)
     while (lua_next(L, 3)) {
         if ((lua_type(L, -2) != LUA_TSTRING) ||
             (lua_type(L, -1) != LUA_TTABLE) ||
-            !lua_objlen(L, -1)) {
+            !lua_rawlen(L, -1)) {
             lua_pop(L, 1);
             continue;
         }
