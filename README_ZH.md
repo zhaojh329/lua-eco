@@ -66,7 +66,6 @@ end, 'eco2')
 - [ ] termios
 - [ ] http/https
 - [ ] websocket
-- [ ] mqtt
 - [ ] sqlite3
 
 ## 贡献代码
