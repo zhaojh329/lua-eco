@@ -113,6 +113,6 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua dns.lua socket.lua
+    FILES time.lua sys.lua file.lua dns.lua socket.lua url.lua http.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
