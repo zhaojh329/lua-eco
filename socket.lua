@@ -428,8 +428,8 @@ local dgram_methods = {
     getoption = sock_getoption
 }
 
-local function create_socket(family, type, methods, name)
-    local fd, err = socket.socket(family, type)
+local function create_socket(family, type, protocol, methods, name)
+    local fd, err = socket.socket(family, type, protocol)
     if not fd then
         return nil, 'create socket: ' .. sys.strerror(err)
     end
@@ -438,27 +438,31 @@ local function create_socket(family, type, methods, name)
 end
 
 function M.tcp()
-    return create_socket(socket.AF_INET, socket.SOCK_STREAM, stream_methods, SOCK_MT_STREAM)
+    return create_socket(socket.AF_INET, socket.SOCK_STREAM, 0, stream_methods, SOCK_MT_STREAM)
 end
 
 function M.tcp6()
-    return create_socket(socket.AF_INET6, socket.SOCK_STREAM, stream_methods, SOCK_MT_STREAM)
+    return create_socket(socket.AF_INET6, socket.SOCK_STREAM, 0, stream_methods, SOCK_MT_STREAM)
 end
 
 function M.unix()
-    return create_socket(socket.AF_UNIX, socket.SOCK_STREAM, stream_methods, SOCK_MT_STREAM)
+    return create_socket(socket.AF_UNIX, socket.SOCK_STREAM, 0, stream_methods, SOCK_MT_STREAM)
 end
 
 function M.udp()
-    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
 end
 
 function M.udp6()
-    return create_socket(socket.AF_INET6, socket.SOCK_DGRAM, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_INET6, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
+end
+
+function M.icmp()
+    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, 1, dgram_methods, SOCK_MT_DGRAM)
 end
 
 function M.unix_dgram()
-    return create_socket(socket.AF_UNIX, socket.SOCK_DGRAM, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
 end
 
 function M.listen_unix(path, backlog)
