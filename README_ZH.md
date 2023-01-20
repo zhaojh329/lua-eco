@@ -64,7 +64,7 @@ end, 'eco2')
 ## TODO
 
 - [ ] termios
-- [ ] http/https
+- [ ] http/https server
 - [ ] websocket
 - [ ] sqlite3
 
