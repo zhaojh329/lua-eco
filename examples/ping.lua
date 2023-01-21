@@ -9,13 +9,15 @@ local socket = require 'eco.socket'
 local time = require 'eco.time'
 local bit = require 'bit'
 
+local ICMP_HEADER_LEN = 8
 local ICMP_ECHO = 8
 local ICMP_ECHOREPLY = 0
 
-local timeout = 5.0
-
-local local_id = 12
+local dest_ip = '127.0.0.1'
+local local_id = math.random(0, 65535)
 local local_seq = 1
+local local_data = 'hello'
+local timeout = 5.0
 
 local function build_icmp_req()
     local data = {
@@ -24,10 +26,8 @@ local function build_icmp_req()
         string.char(0, 0),      -- checksum
         string.char(0, 0),      -- id: the kernel will assign it with local port
         string.char(bit.rshift(local_seq, 8), bit.band(local_seq, 0xff)),   -- sequence
-        'Hello'
+        local_data
     }
-
-    print('send ICMP ECHO request id=' .. local_id, 'seq=' .. local_seq)
 
     local_seq = local_seq + 1
 
@@ -35,6 +35,10 @@ local function build_icmp_req()
 end
 
 local function parse_icmp_resp(data)
+    if #data < ICMP_HEADER_LEN then
+        return nil, 'invalid icmp resp'
+    end
+
     local icmp_type = data:byte(1)
     local id_hi = data:byte(5)
     local id_lo = data:byte(6)
@@ -44,7 +48,7 @@ local function parse_icmp_resp(data)
     local seq_lo = data:byte(8)
     local seq = bit.lshift(seq_hi, 8) + seq_lo
 
-    return icmp_type, id, seq
+    return icmp_type, id, seq, #data - ICMP_HEADER_LEN
 end
 
 local s, err = socket.icmp()
@@ -55,25 +59,37 @@ end
 
 s:bind(nil, local_id)
 
+print(string.format('PING %s, %d bytes of data.', dest_ip, #local_data))
+
 while true do
-    local _, err = s:sendto(build_icmp_req(), '127.0.0.1', 0)
+    local _, err = s:sendto(build_icmp_req(), dest_ip, 0)
     if err then
         print('send fail:', err)
         break
     end
 
+    local start = time.now()
+
     local resp, peer = s:recvfrom(1024, timeout)
     if not resp then
-        print('recv fail:', err)
+        print('recv fail:', peer)
         break
     end
 
-    local icmp_type, id, seq = parse_icmp_resp(resp)
+    local elapsed = time.now() - start
 
-    if icmp_type == ICMP_ECHOREPLY then
-        print('recv ICMP ECHO reply   id=' .. id, 'seq=' .. seq, 'from ' .. peer.ipaddr)
+    local icmp_type, id, seq, n = parse_icmp_resp(resp)
+
+    if icmp_type then
+        if icmp_type == ICMP_ECHOREPLY then
+            if id == local_id then
+                print(string.format('%d bytes from %s: icmp_seq=%d time=%.2f ms', n, dest_ip, seq, elapsed))
+            end
+        else
+            print('Got ICMP packet with type ' .. icmp_type)
+        end
     else
-        print('Got ICMP packet with type ' .. icmp_type)
+        print(id)
     end
 
     time.sleep(1.0)
