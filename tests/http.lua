@@ -35,7 +35,7 @@ while true do
                     c:close()
                     return
                 end
-                if data == '\r' then
+                if data == '' then
                     break
                 end
             end

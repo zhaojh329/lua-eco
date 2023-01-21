@@ -76,7 +76,7 @@ local function recv_http_headers(s)
             return nil, err
         end
 
-        if data == '\r' then
+        if data == '' then
             break
         end
 

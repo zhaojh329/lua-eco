@@ -87,23 +87,37 @@ static int eco_buffer_readline(lua_State *L)
     size_t include = lua_toboolean(L, 3);
     const char *data = buffer_data(b);
     size_t blen = buffer_length(b);
+    bool found_lr = false;
     size_t pos = 0;
     int ret = 0;
 
-    while (pos < blen && data[pos] != '\n') {
-        if (!buffer_addchar(bl, data[pos])) {
+    while (pos < blen) {
+        char c = data[pos];
+
+        if (c == '\n')
+            break;
+
+        if (!buffer_addchar(bl, c)) {
             ret = -1;
             break;
         }
+
+        if (c == '\r')
+            found_lr = true;
+
         pos++;
     }
 
     if (ret == 0 && pos < blen) {
         ret = 1;
 
-        if (include && !buffer_addchar(bl, data[pos])) {
-            ret = -1;
-            goto skip;
+        if (include) {
+            if (!buffer_addchar(bl, data[pos])) {
+                ret = -1;
+                goto skip;
+            }
+        } else if (found_lr) {
+            bl->last--;
         }
 
         pos++;
