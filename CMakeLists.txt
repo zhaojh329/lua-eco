@@ -111,12 +111,12 @@ install(
 )
 
 install(
-    TARGETS termios
+    TARGETS buffer termios
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
-    TARGETS sys file time buffer socket
+    TARGETS sys file time socket
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 

@@ -23,8 +23,8 @@
 --]]
 
 local socket = require 'eco.core.socket'
-local buffer = require 'eco.core.buffer'
 local file = require 'eco.core.file'
+local buffer = require 'eco.buffer'
 local sys = require 'eco.core.sys'
 local time = require 'eco.time'
 

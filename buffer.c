@@ -156,7 +156,7 @@ static const struct luaL_Reg buffer_methods[] =  {
     {NULL, NULL}
 };
 
-int luaopen_eco_core_buffer(lua_State *L)
+int luaopen_eco_buffer(lua_State *L)
 {
     lua_newtable(L);
 

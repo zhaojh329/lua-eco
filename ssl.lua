@@ -22,8 +22,8 @@
  * SOFTWARE.
 --]]
 
-local buffer = require 'eco.core.buffer'
 local socket = require 'eco.socket'
+local buffer = require 'eco.buffer'
 local ssl = require 'eco.core.ssl'
 local time = require 'eco.time'
 
