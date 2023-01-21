@@ -26,7 +26,7 @@ suspended until data is ready. This allows you write code as if you're using
 blocking I/O, while still allowing code in other coroutines to run when you'd
 otherwise wait for I/O. It's kind of like `Goroutines`.
 
-Lua-eco also provides some modules including timer, file, socket, ssl, dns, ubus and so on.
+Lua-eco also provides some modules including timer, file, signal, exec, socket, ssl, dns, termios, ubus and so on.
 
 Would you like to try it? Kinda interesting.
 
@@ -62,7 +62,6 @@ end, 'eco2')
 
 ## TODO
 
-- [ ] termios
 - [ ] http/https server
 - [ ] websocket
 - [ ] sqlite3

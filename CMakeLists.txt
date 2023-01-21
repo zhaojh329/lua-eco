@@ -52,6 +52,9 @@ set_target_properties(file PROPERTIES OUTPUT_NAME file PREFIX "")
 add_library(socket MODULE socket.c)
 set_target_properties(socket PROPERTIES OUTPUT_NAME socket PREFIX "")
 
+add_library(termios MODULE termios.c)
+set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
+
 add_library(log MODULE log.c log/log.c)
 set_target_properties(log PROPERTIES OUTPUT_NAME log PREFIX "")
 
@@ -104,6 +107,11 @@ install(
 
 install(
     TARGETS log
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco
+)
+
+install(
+    TARGETS termios
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
