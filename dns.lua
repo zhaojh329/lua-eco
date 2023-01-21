@@ -559,14 +559,6 @@ local function parse_response(buf, id)
     local nan_lo = string.byte(buf, 8)
     local nan = lshift(nan_hi, 8) + nan_lo
 
-    local nns_hi = string.byte(buf, 9)
-    local nns_lo = string.byte(buf, 10)
-    local nns = lshift(nns_hi, 8) + nns_lo
-
-    local nar_hi = string.byte(buf, 11)
-    local nar_lo = string.byte(buf, 12)
-    local nar = lshift(nar_hi, 8) + nar_lo
-
     -- skip the question part
     local ans_qname, pos = decode_name(buf, 13)
     if not ans_qname then
