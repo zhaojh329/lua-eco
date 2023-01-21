@@ -91,7 +91,9 @@ static inline void eco_new_metatable(lua_State *L, const char *name, const struc
 {
     const struct luaL_Reg *reg;
 
-    luaL_newmetatable(L, name);
+    if (!luaL_newmetatable(L, name))
+        return;
+
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
 
