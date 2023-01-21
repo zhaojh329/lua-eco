@@ -27,7 +27,7 @@ Lua-eco 是一个内置了 [libev] 事件循环的 [Lua] 解释器。它使所�
 可以挂起执行 `I/O` 操作的代码，直到数据准备好。这允许您编写代码就好像您在使用阻塞 `I/O` 一样，同时在
 您等待 `I/O` 时仍然允许其它协程中的代码运行。这很像 `Goroutines`。
 
-Lua-eco 还提供了一些有用的模块，包括 timer、file、signal、exec、socket、ssl、dns、termios、ubus 等。
+Lua-eco 还提供了一些有用的模块，包括 timer、file、signal、exec、socket、http、ssl、dns、termios、ubus 等。
 
 想试试吗？很有趣的!
 
@@ -65,7 +65,6 @@ end, 'eco2')
 
 - [ ] http/https server
 - [ ] websocket
-- [ ] sqlite3
 
 ## 贡献代码
 如果您想帮助 lua-eco 变得更好，请参考 [CONTRIBUTING_ZH.md](/CONTRIBUTING_ZH.md)。
