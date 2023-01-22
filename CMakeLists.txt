@@ -111,16 +111,16 @@ install(
 )
 
 install(
-    TARGETS buffer termios
+    TARGETS termios
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
-    TARGETS sys file time socket
+    TARGETS sys file time buffer socket
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
 install(
-    FILES time.lua sys.lua file.lua dns.lua socket.lua url.lua http.lua
+    FILES time.lua sys.lua file.lua buffer.lua dns.lua socket.lua url.lua http.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )

@@ -87,30 +87,6 @@ function client_methods:send(data)
     return sent
 end
 
-local function pattern_reader(mt, b)
-    local ssl, iow = mt.ssl, mt.iow
-    local n, err
-
-    while not n do
-        n, err = ssl:read_buffer(b)
-        if not n then
-            if err then
-                return nil, err
-            end
-
-            if ssl:state() == -3 then
-                iow:wait()
-            end
-        end
-    end
-
-    if n == 0 then
-        return nil, 'closed'
-    end
-
-    return n
-end
-
 --[[
     Reads data from a socket, according to the specified read pattern.
     '*l': reads a line of text from the socket. The line is terminated by a LF character (ASCII 10).
@@ -131,7 +107,16 @@ function client_methods:recv(pattern, timeout)
         return nil, 'closed'
     end
 
-    return socket.recv_pattern(pattern_reader, mt, pattern, timeout)
+    assert((type(pattern) == 'number' and pattern > 0)
+        or pattern == '*l' or pattern == '*L', 'pattern must be a number great than 0 or "*l" or "*L"')
+
+    local b = mt.b
+
+    if type(pattern) == 'number' then
+        return b:read(pattern, timeout)
+    end
+
+    return b:readline(timeout, pattern == '*l')
 end
 
 local function ssl_negotiate(mt, deadtime)
@@ -186,8 +171,39 @@ local function ssl_setmetatable(ctx, sock, methods, name)
     else
         mt.ssl = ctx:new(fd, true)
         mt.iow = eco.watcher(eco.IO, fd, eco.WRITE)
-        mt.b = buffer.new()
-        mt.bl = buffer.new(1024)
+        mt.b = buffer.new(function(b, timeout)
+            if not mt.ior:wait(timeout) then
+                return nil, 'timeout'
+            end
+
+            while true do
+                local n, err = mt.ssl:read_buffer(b)
+                if not n then
+                    if err then
+                        return nil, err
+                    end
+
+                    local state = mt.ssl:state()
+                    local ok
+
+                    if state == -2 then
+                        ok = mt.ior:wait(timeout)
+                    else
+                        ok = mt.iow:wait(timeout)
+                    end
+
+                    if not ok then
+                        return nil, 'timeout'
+                    end
+                else
+                    if n == 0 then
+                        return nil, 'closed'
+                    end
+
+                    return n
+                end
+            end
+        end)
     end
 
     local ok, err = ssl_negotiate(mt, time.now() + 3.0)

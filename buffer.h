@@ -50,15 +50,4 @@ struct eco_buffer {
 
 #define buffer_room(b) (b->size - b->last)
 
-#define buffer_addchar(b, c)        \
-    ({                              \
-        bool ret = false;                \
-        if (buffer_room(b)) {       \
-            b->data[b->last] = c;   \
-            b->last++;              \
-            ret = true;                \
-        }                           \
-        ret;                        \
-    })
-
 #endif

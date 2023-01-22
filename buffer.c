@@ -74,61 +74,6 @@ static int eco_buffer_read(lua_State *L)
     return 1;
 }
 
-/*
-** return value:
-**  1: success
-**  0: need more data
-** -1: dest buffer is full
-*/
-static int eco_buffer_readline(lua_State *L)
-{
-    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
-    struct eco_buffer *bl = luaL_checkudata(L, 2, ECO_BUFFER_MT);
-    size_t include = lua_toboolean(L, 3);
-    const char *data = buffer_data(b);
-    size_t blen = buffer_length(b);
-    bool found_lr = false;
-    size_t pos = 0;
-    int ret = 0;
-
-    while (pos < blen) {
-        char c = data[pos];
-
-        if (c == '\n')
-            break;
-
-        if (!buffer_addchar(bl, c)) {
-            ret = -1;
-            break;
-        }
-
-        if (c == '\r')
-            found_lr = true;
-
-        pos++;
-    }
-
-    if (ret == 0 && pos < blen) {
-        ret = 1;
-
-        if (include) {
-            if (!buffer_addchar(bl, data[pos])) {
-                ret = -1;
-                goto skip;
-            }
-        } else if (found_lr) {
-            bl->last--;
-        }
-
-        pos++;
-    }
-
-skip:
-    buffer_skip(b, pos);
-    lua_pushinteger(L, ret);
-    return 1;
-}
-
 static int eco_buffer_skip(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
@@ -160,17 +105,37 @@ static int eco_buffer_append(lua_State *L)
     return 1;
 }
 
+static int eco_buffer_index(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    const char *c = luaL_checkstring(L, 2);
+    int offset = luaL_optinteger(L, 3, 0);
+    const char *data = buffer_data(b);
+    int pos = -1;
+    int i;
+
+    for (i = offset; i < buffer_length(b); i++) {
+        if (data[i] == *c) {
+            pos = i;
+            break;
+        }
+    }
+
+    lua_pushinteger(L, pos);
+    return 1;
+}
+
 static const struct luaL_Reg buffer_methods[] =  {
     {"size", eco_buffer_size},
     {"length", eco_buffer_length},
     {"read", eco_buffer_read},
-    {"read_line", eco_buffer_readline},
     {"skip", eco_buffer_skip},
     {"append", eco_buffer_append},
+    {"index", eco_buffer_index},
     {NULL, NULL}
 };
 
-int luaopen_eco_buffer(lua_State *L)
+int luaopen_eco_core_buffer(lua_State *L)
 {
     lua_newtable(L);
 

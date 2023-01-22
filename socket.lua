@@ -26,7 +26,6 @@ local socket = require 'eco.core.socket'
 local file = require 'eco.core.file'
 local buffer = require 'eco.buffer'
 local sys = require 'eco.core.sys'
-local time = require 'eco.time'
 
 local SOCK_MT_STREAM = 0
 local SOCK_MT_DGRAM  = 1
@@ -85,76 +84,6 @@ local function sock_closed(sock)
     return sock_getfd(sock) < 0
 end
 
-function M.recv_pattern(reader, mt, pattern, timeout)
-    assert((type(pattern) == 'number' and pattern > 0)
-        or pattern == '*l' or pattern == '*L', 'pattern must be a number great than 0 or "*l" or "*L"')
-
-    local ior = mt.ior
-    local b = mt.b
-
-    if type(pattern) == 'number' then
-        local blen = b:length()
-
-        if blen == 0 then
-            if not ior:wait(timeout) then
-                return nil, 'timeout'
-            end
-
-            local n, err = reader(mt, b)
-            if not n then
-                return nil, err
-            end
-        end
-
-        blen = b:length()
-
-        if pattern > blen then
-            pattern = blen
-        end
-
-        return b:read(pattern)
-    end
-
-    local deadtime
-
-    if timeout then
-        deadtime = time.now() + timeout
-    end
-
-    local bl = mt.bl
-
-    while true do
-        local ret = b:read_line(bl, pattern == '*L')
-        if ret == 0 then
-            if not ior:wait(deadtime and deadtime - time.now()) then
-                return nil, 'timeout', bl:read()
-            end
-
-            local n, err = reader(mt, b)
-            if not n then
-                return nil, err, bl:read()
-            end
-        elseif ret == -1 then
-            return nil, 'buffer is full', bl:read()
-        else
-            return bl:read()
-        end
-    end
-end
-
-local function pattern_reader(mt, b)
-    local n, err = file.read_buffer(mt.fd, b)
-    if not n then
-        return nil, err
-    end
-
-    if mt.type == socket.SOCK_STREAM and n == 0 then
-        return nil, 'closed'
-    end
-
-    return n
-end
-
 --[[
     Reads data from a socket, according to the specified read pattern.
     '*l': reads a line of text from the socket. The line is terminated by a LF character (ASCII 10).
@@ -175,7 +104,16 @@ local function sock_recv(sock, pattern, timeout)
         return nil, 'closed'
     end
 
-    return M.recv_pattern(pattern_reader, mt, pattern, timeout)
+    assert((type(pattern) == 'number' and pattern > 0)
+        or pattern == '*l' or pattern == '*L', 'pattern must be a number great than 0 or "*l" or "*L"')
+
+    local b = mt.b
+
+    if type(pattern) == 'number' then
+        return b:read(pattern, timeout)
+    end
+
+    return b:readline(timeout, pattern == '*l')
 end
 
 local function sock_send(sock, data)
@@ -280,8 +218,12 @@ local function sock_update_mt(sock, methods, name)
     if name == SOCK_MT_SERVER then
         mt.iow = nil
     else
-        mt.b = buffer.new()
-        mt.bl = buffer.new(1024)
+        mt.b = buffer.new(function(b, timeout)
+            if not mt.ior:wait(timeout) then
+                return nil, 'timeout'
+            end
+            return file.read_buffer(mt.fd, b)
+        end)
     end
 end
 
@@ -306,8 +248,18 @@ local function sock_setmetatable(fd, family, type, methods, name)
     }
 
     if type == socket.SOCK_DGRAM or name == SOCK_MT_ESTAB then
-        mt.b = buffer.new()
-        mt.bl = buffer.new(1024)
+        mt.b = buffer.new(function(b, timeout)
+            if not mt.ior:wait(timeout) then
+                return nil, 'timeout'
+            end
+
+            local n, err = file.read_buffer(mt.fd, b)
+            if n == 0 then
+                return nil, 'closed'
+            end
+
+            return n, err
+        end)
     end
 
     setmetatable(sock, mt)
