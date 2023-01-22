@@ -174,8 +174,11 @@ static int eco_socket_accept(lua_State *L)
     socklen_t addrlen = sizeof(addr);
     int fd;
 
+again:
     fd = accept4(lfd, (struct sockaddr *)&addr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (fd < 0) {
+        if (errno == EINTR)
+            goto again;
         lua_pushnil(L);
         lua_pushinteger(L, errno);
         return 2;
