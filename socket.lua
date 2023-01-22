@@ -138,6 +138,32 @@ local function sock_send(sock, data)
     return sent
 end
 
+local function sock_sendfile(sock, fd, count, offset)
+    if sock:closed() then
+        return nil, 'closed'
+    end
+
+    local mt = getmetatable(sock)
+    local iow = mt.iow
+    local sfd = mt.fd
+    local sent = 0
+
+    while count > 0 do
+        iow:wait()
+        local ret, offset_ret = file.sendfile(sfd, fd, offset, count)
+        if not ret then
+            return nil, offset_ret, sent
+        end
+
+        sent = sent + ret
+        count = count - ret
+
+        if offset_ret then
+            offset = offset_ret
+        end
+    end
+end
+
 local function sock_recvfrom(sock, n, timeout)
     if sock:closed() then
         return nil, 'closed'
@@ -179,6 +205,7 @@ local client_methods = {
     getfd = sock_getfd,
     recv = sock_recv,
     send = sock_send,
+    sendfile = sock_sendfile,
     getsockname = sock_getsockname,
     getpeername = sock_getpeername,
     setoption = sock_setoption,

@@ -176,11 +176,14 @@ static int eco_file_sendfile(lua_State *L)
 {
     int out_fd = luaL_checkinteger(L, 1);
     int in_fd = luaL_checkinteger(L, 2);
-    off_t offset = luaL_optinteger(L, 3, 0);
+    off_t offset = luaL_optinteger(L, 3, -1);
     size_t count = luaL_checkinteger(L, 4);
     ssize_t ret;
 
-    ret = sendfile(out_fd, in_fd, &offset, count);
+    if (offset < 0)
+        ret = sendfile(out_fd, in_fd, NULL, count);
+    else
+        ret = sendfile(out_fd, in_fd, &offset, count);
     if (ret < 0) {
         lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
@@ -188,7 +191,12 @@ static int eco_file_sendfile(lua_State *L)
     }
 
     lua_pushinteger(L, ret);
-    lua_pushinteger(L, offset);
+
+    if (offset > -1)
+        lua_pushinteger(L, offset);
+    else
+        lua_pushnil(L);
+
     return 2;
 }
 
@@ -271,6 +279,9 @@ static int __eco_file_stat(lua_State *L, const char *path)
 
     lua_pushuint(L, st.st_size);
     lua_setfield(L, -2, "size");
+
+    lua_pushuint(L, st.st_ino);
+    lua_setfield(L, -2, "ino");
 
     return 0;
 }

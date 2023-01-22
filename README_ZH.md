@@ -63,7 +63,6 @@ end, 'eco2')
 
 ## TODO
 
-- [ ] http/https server
 - [ ] websocket
 
 ## 贡献代码

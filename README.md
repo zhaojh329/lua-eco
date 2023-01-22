@@ -62,7 +62,6 @@ end, 'eco2')
 
 ## TODO
 
-- [ ] http/https server
 - [ ] websocket
 
 ## Contributing

@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local socket = require 'eco.socket'
+local http = require 'eco.http'
 local sys = require 'eco.sys'
 
 sys.signal(sys.SIGPIPE, function()end)
@@ -10,36 +10,12 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = socket.listen_tcp(nil, 8080)
-if not s then
-    error(err)
+local function handler(con)
+    con:send('Hello')
 end
 
-print('listen...')
-
-while true do
-    local c, peer = s:accept()
-    if not c then
-        print(peer)
-        break
-    end
-
-    print('new connection:', peer.ipaddr, peer.port)
-
-    eco.run(function(c)
-        while true do
-            while true do
-                local data, err = c:recv('*l')
-                if not data then
-                    print(err)
-                    c:close()
-                    return
-                end
-                if data == '' then
-                    break
-                end
-            end
-            c:send('HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello')
-        end
-    end, c)
+local srv, err = http.listen(nil, 8080, nil, handler)
+if not srv then
+    print(err)
+    return
 end

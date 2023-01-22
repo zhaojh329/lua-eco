@@ -54,6 +54,10 @@ local client_methods = {
     close = ssl_close
 }
 
+function client_methods:closed()
+    return getmetatable(self).closed
+end
+
 function client_methods:send(data)
     local mt = getmetatable(self)
 
