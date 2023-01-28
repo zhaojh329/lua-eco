@@ -26,7 +26,6 @@ local socket = require 'eco.socket'
 local file = require 'eco.file'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
-local url = require 'eco.url'
 
 local M = {
     HTTP_STATUS_CONTINUE = 100,
@@ -405,29 +404,74 @@ local function do_http_request(s, method, path, headers, body)
     return resp
 end
 
-local function parse_url(u)
-    local info, err = url.parse(u)
-    if not info then
-        return nil, err
+-- <scheme>://<user>:<password>@<host>:<port>/<path>;<params>?<query>#<frag>
+local function parse_url(url)
+    if not url then
+        return nil, 'invalid url'
     end
 
-    local scheme = info.scheme
+    local parsed = {}
 
-    if scheme ~= 'http' and scheme ~= 'https' then
-        return nil, 'unsupported scheme: ' .. scheme
+    url = string.gsub(url, '^%a%w*://', function(s)
+        parsed.scheme = s:match('%a%w*')
+        return ''
+    end)
+
+    if not parsed.scheme then
+        return nil, 'invalid url'
     end
 
-    local port = info.port
+    url = string.gsub(url, '^[^:@]+:[^:@]+@', function(s)
+        parsed.user, parsed.password = s:match('([^:]+):([^@]+)')
+        return ''
+    end)
 
-    if not port then
-        if scheme == 'http' then
-            port = 80
-        elseif scheme == 'https' then
-            port = 443
-        end
+    url = string.gsub(url, '^([^@]+)@', function(s)
+        parsed.user = s
+        return ''
+    end)
+
+    url = string.gsub(url, '^[^:/?#]+', function(s)
+        parsed.host = s
+        return ''
+    end)
+
+    if not parsed.host then
+        return nil, 'invalid url'
     end
 
-    return scheme, info.host, port, info.raw_path
+    url = string.gsub(url, '^:(%d+)', function(s)
+        parsed.port = tonumber(s)
+        return ''
+    end)
+
+    if url:sub(1, 1) ~= '/' then
+        url = '/' .. url
+    end
+
+    parsed.raw_path = url
+
+    url = string.gsub(url, '^/[^;?#]*', function(s)
+        parsed.path = s
+        return ''
+    end)
+
+    url = string.gsub(url, ';([^;?#]*)', function(s)
+        parsed.params = s
+        return ''
+    end)
+
+    url = string.gsub(url, '?([^;?#]*)', function(s)
+        parsed.query = s
+        return ''
+    end)
+
+    url = string.gsub(url, '#([^;?#]*)$', function(s)
+        parsed.frag = s
+        return ''
+    end)
+
+    return parsed
 end
 
 local function http_connect_host(host, port, connect)
@@ -477,9 +521,23 @@ function M.request(req, body)
         req = { url = req }
     end
 
-    local scheme, host, port, path = parse_url(req.url)
-    if not scheme then
-        return nil, host
+    local url, err = parse_url(req.url)
+    if not url then
+        return nil, err
+    end
+
+    local scheme, host, port, path = url.scheme, url.host, url.port, url.raw_path
+
+    if scheme ~= 'http' and scheme ~= 'https' then
+        return nil, 'unsupported scheme: ' .. scheme
+    end
+
+    if not port then
+        if scheme == 'http' then
+            port = 80
+        elseif scheme == 'https' then
+            port = 443
+        end
     end
 
     local method = req.method and req.method:upper() or 'GET'
