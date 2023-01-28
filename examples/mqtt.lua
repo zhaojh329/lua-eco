@@ -18,8 +18,6 @@ local MOSQ_MAX_WRITE     = 100 -- packets
 
 local done = false
 
-mosq.init()
-
 local mqtt = mosq.new(MOSQ_ID, MOSQ_CLEAN_SESSION)
 
 mqtt.ON_CONNECT = function(success, rc, str)
