@@ -54,10 +54,31 @@ static void __lua_log(lua_State *L, int priority)
     n = lua_gettop(L);
 
     for (i = 1; i <= n && room > 0; i++) {
+        int t = lua_type(L, i);
         const char *s;
         size_t len;
 
-        s = lua_tolstring(L, i, &len);
+        switch (t) {
+        case LUA_TSTRING:
+        case LUA_TNUMBER:
+            s = lua_tolstring(L, i, &len);
+            break;
+        case LUA_TBOOLEAN:
+            if (lua_toboolean(L, i)) {
+                s = "true";
+                len = 4;
+            } else {
+                s = "false";
+                len = 5;
+            }
+            break;
+        case LUA_TNIL:
+            s = "nil";
+            len = 3;
+            break;
+        default:
+            continue;
+        }
 
         if (len > room)
             len = room;
