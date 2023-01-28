@@ -5,7 +5,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=d9ffd0b6ebb2d449c1e36f77819bd2c8a71f9d35
+PKG_SOURCE_VERSION:=d6755aadda68c8234d5be9383462dddd2fa8a7f9
 PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
@@ -55,6 +55,7 @@ Package/lua-eco-ssl=$(call Package/lua-eco/Module,SSL,\
   LUA_ECO_OPENSSL:libopenssl LUA_ECO_WOLFSSL:libwolfssl \
   LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
 Package/lua-eco-ubus=$(call Package/lua-eco/Module,Ubus,+libubus)
+Package/lua-eco-termios=$(call Package/lua-eco/Module,Termios)
 
 define Package/lua-eco-ssl/config
 	config LUA_ECO_DEFAULT_WOLFSSL
@@ -113,6 +114,8 @@ define Package/lua-eco/Module/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
 	[ -f $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/$2.so ] && \
 		$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/$2.so $(1)/usr/lib/lua/eco/core || true
+	[ -f $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.so ] && \
+		$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.so $(1)/usr/lib/lua/eco || true
 	[ -f $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.lua ] && \
 		$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.lua $(1)/usr/lib/lua/eco || true
 endef
@@ -131,6 +134,7 @@ Package/lua-eco-socket/install=$(call Package/lua-eco/Module/install,$1,socket)
 Package/lua-eco-ssl/install=$(call Package/lua-eco/Module/install,$1,ssl)
 Package/lua-eco-file/install=$(call Package/lua-eco/Module/install,$1,file)
 Package/lua-eco-ubus/install=$(call Package/lua-eco/Module/install,$1,ubus)
+Package/lua-eco-termios/install=$(call Package/lua-eco/Module/install,$1,termios)
 
 $(eval $(call BuildPackage,lua-eco))
 $(eval $(call BuildPackage,lua-eco-log))
@@ -140,3 +144,4 @@ $(eval $(call BuildPackage,lua-eco-socket))
 $(eval $(call BuildPackage,lua-eco-ssl))
 $(eval $(call BuildPackage,lua-eco-file))
 $(eval $(call BuildPackage,lua-eco-ubus))
+$(eval $(call BuildPackage,lua-eco-termios))
