@@ -106,12 +106,7 @@ install(
 )
 
 install(
-    TARGETS log
-    DESTINATION ${LUA_INSTALL_PREFIX}/eco
-)
-
-install(
-    TARGETS termios
+    TARGETS log termios
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
