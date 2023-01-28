@@ -287,7 +287,7 @@ local function recv_http_status_line(s)
         return nil, 'invalid http status line'
     end
 
-    return code, status
+    return tonumber(code), status
 end
 
 local function recv_http_headers(s)
