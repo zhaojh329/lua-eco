@@ -239,18 +239,18 @@ function server_methods:accept()
 end
 
 function M.listen(ipaddr, port, options)
-    assert(type(options) == 'table' and options.crt and options.key)
+    assert(type(options) == 'table' and options.cert and options.key)
 
     local ctx = ssl.context(true)
 
     if options.ca then
-        if not ctx:load_ca_crt_file(options.ca) then
-            return nil, 'load ca crt file fail'
+        if not ctx:load_ca_cert_file(options.ca) then
+            return nil, 'load ca cert file fail'
         end
     end
 
-    if not ctx:load_crt_file(options.crt) then
-        return nil, 'load crt file fail'
+    if not ctx:load_cert_file(options.cert) then
+        return nil, 'load cert file fail'
     end
 
     if not ctx:load_key_file(options.key) then

@@ -1053,7 +1053,7 @@ function M.listen(ipaddr, port, options, handler, logger)
 
     if options.cert and options.key then
         options.ssl = true
-        sock, err = ssl.listen(ipaddr, port, { crt = options.cert, key = options.key })
+        sock, err = ssl.listen(ipaddr, port, { cert = options.cert, key = options.key })
     else
         sock, err = socket.listen_tcp(ipaddr, port)
     end

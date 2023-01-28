@@ -10,7 +10,7 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = ssl.listen(nil, 8080, { crt = 'cert.pem', key = 'key.pem' })
+local s, err = ssl.listen(nil, 8080, { cert = 'cert.pem', key = 'key.pem' })
 if not s then
     error(err)
 end

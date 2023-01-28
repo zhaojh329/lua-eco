@@ -258,21 +258,21 @@ static int eco_ssl_session_new(lua_State *L)
     return 1;
 }
 
-static int eco_ssl_load_ca_crt_file(lua_State *L)
+static int eco_ssl_load_ca_cert_file(lua_State *L)
 {
     struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     const char *file = luaL_checkstring(L, 2);
 
-    lua_pushboolean(L, !!!ssl_load_ca_crt_file(ctx->ctx, file));
+    lua_pushboolean(L, !!!ssl_load_ca_cert_file(ctx->ctx, file));
     return 1;
 }
 
-static int eco_ssl_load_crt_file(lua_State *L)
+static int eco_ssl_load_cert_file(lua_State *L)
 {
     struct eco_ssl_context *ctx = luaL_checkudata(L, 1, ECO_SSL_CTX_MT);
     const char *file = luaL_checkstring(L, 2);
 
-    lua_pushboolean(L, !!!ssl_load_crt_file(ctx->ctx, file));
+    lua_pushboolean(L, !!!ssl_load_cert_file(ctx->ctx, file));
     return 1;
 }
 
@@ -311,7 +311,7 @@ static void load_default_ca_cert(struct ssl_context *ctx)
 	glob("/etc/ssl/certs/*.crt", 0, NULL, &gl);
 
 	for (i = 0; i < gl.gl_pathc; i++)
-		ssl_load_ca_crt_file(ctx, gl.gl_pathv[i]);
+		ssl_load_ca_cert_file(ctx, gl.gl_pathv[i]);
 
 	globfree(&gl);
 }
@@ -337,8 +337,8 @@ static int eco_ssl_context_new(lua_State *L)
 static const struct luaL_Reg ssl_ctx_methods[] =  {
     {"__gc", eco_ssl_context_gc},
     {"free", eco_ssl_context_free},
-    {"load_ca_crt_file", eco_ssl_load_ca_crt_file},
-    {"load_crt_file", eco_ssl_load_crt_file},
+    {"load_ca_cert_file", eco_ssl_load_ca_cert_file},
+    {"load_cert_file", eco_ssl_load_cert_file},
     {"load_key_file", eco_ssl_load_key_file},
     {"set_ciphers", eco_ssl_set_ciphers},
     {"require_validation", eco_ssl_set_require_validation},
