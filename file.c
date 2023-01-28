@@ -38,7 +38,7 @@
 static int eco_file_open(lua_State *L)
 {
     const char *pathname = luaL_checkstring(L, 1);
-    int flags = luaL_checkinteger(L, 2);
+    int flags = luaL_optinteger(L, 2, 0);
     int mode = luaL_optinteger(L, 3, 0);
     int fd;
 

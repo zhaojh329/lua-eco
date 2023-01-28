@@ -699,7 +699,7 @@ function con_methods:send_file(path, count, offset)
         return false, 'forbidden'
     end
 
-    local fd, err = file.open(path, file.O_RDONLY)
+    local fd, err = file.open(path)
     if not fd then
         return false, err
     end
@@ -869,7 +869,7 @@ function con_methods:serve_file(req, options)
         return true
     end
 
-    local fd, err = file.open(phy_path, file.O_RDONLY)
+    local fd, err = file.open(phy_path)
     if not fd then
         return self:send_error(M.HTTP_STATUS_INTERNAL_SERVER_ERROR, nil, string.format('open "%s" fail: %s', phy_path, err))
     end

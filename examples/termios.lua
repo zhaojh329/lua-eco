@@ -11,7 +11,7 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local fd = file.open('/dev/tty', file.O_RDWR)
+local fd = file.open('/dev/tty')
 
 local attr, err = termios.tcgetattr(fd)
 if not attr then
