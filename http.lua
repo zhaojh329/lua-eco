@@ -282,9 +282,9 @@ local function recv_http_status_line(s)
         return nil, err
     end
 
-    local code, status = data:match('^HTTP/1.1 (%d+) ([^\r]+)')
+    local code, status = data:match('^HTTP/1.1%s*(%d+)%s*(.*)')
     if not code or not status then
-        return nil, 'invalid http response'
+        return nil, 'invalid http status line'
     end
 
     return code, status
@@ -303,7 +303,7 @@ local function recv_http_headers(s)
 
         local name, value = data:match('([^%s:]+)%s*:%s*([^\r]+)')
         if not name or not value then
-            return nil, 'invalid http response'
+            return nil, 'invalid http header'
         end
 
         headers[name:lower()] = value
@@ -332,7 +332,7 @@ local function recv_http_body(s, content_length, chunked)
             end
 
             if not data:match('^%x+$') then
-                return nil, 'not a vaild http response'
+                return nil, 'not a vaild http chunked body'
             end
 
             local size = tonumber(data, 16)
@@ -354,7 +354,7 @@ local function recv_http_body(s, content_length, chunked)
             end
 
             if data ~= '' then
-                return nil, 'not a vaild http response'
+                return nil, 'not a vaild http chunked body'
             end
 
             body[#body + 1] = table.concat(chunk)
@@ -616,7 +616,15 @@ local function send_http_head(resp)
     local code = resp.code
     local status = resp.status
 
-    data[#data + 1] = string.format('HTTP/1.1 %d %s\r\n', code, status or status_map[code] or '')
+    status = status or status_map[code]
+
+    data[#data + 1] = string.format('HTTP/1.1 %d', code)
+
+    if status then
+        data[#data + 1] = ' ' .. status
+    end
+
+    data[#data + 1] = '\r\n'
 
     build_http_headers(data, resp.headers)
 
