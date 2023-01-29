@@ -9,9 +9,9 @@ log.err('eco')
 -- default is log.INFO
 log.level(log.DEBUG)
 
-log.debug('eco')
+log.debug('eco', 1, 2, 3)
 log.info('eco')
-log.err('eco')
+log.err('eco', eco.VERSION)
 
 log.log(log.LOG_WARNING, 'eco')
 

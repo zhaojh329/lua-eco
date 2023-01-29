@@ -53,7 +53,7 @@ static void __lua_log(lua_State *L, int priority)
 
     n = lua_gettop(L);
 
-    for (i = 1; i <= n && room > 0; i++) {
+    for (i = 1; i <= n && room > 1; i++) {
         int t = lua_type(L, i);
         const char *s;
         size_t len;
@@ -79,6 +79,9 @@ static void __lua_log(lua_State *L, int priority)
         default:
             continue;
         }
+
+        *pos++ = '\t';
+        room--;
 
         if (len > room)
             len = room;
