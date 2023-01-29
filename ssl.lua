@@ -238,7 +238,7 @@ function server_methods:accept()
     return ssock, addr
 end
 
-function M.listen(ipaddr, port, options)
+function M.listen(ipaddr, port, options, ipv6)
     assert(type(options) == 'table' and options.cert and options.key)
 
     local ctx = ssl.context(true)
@@ -257,7 +257,13 @@ function M.listen(ipaddr, port, options)
         return nil, 'load key file fail'
     end
 
-    local sock, err = socket.listen_tcp(ipaddr, port)
+    local listen = socket.listen_tcp
+
+    if ipv6 then
+        listen = socket.listen_tcp6
+    end
+
+    local sock, err = listen(ipaddr, port)
     if not sock then
         return nil, err
     end
@@ -265,8 +271,18 @@ function M.listen(ipaddr, port, options)
     return ssl_setmetatable(ctx, sock, server_methods, SSL_MT_SERVER)
 end
 
-function M.connect(ipaddr, port)
-    local sock, err = socket.connect_tcp(ipaddr, port)
+function M.listen6(ipaddr, port, options)
+    return M.listen(ipaddr, port, options, true)
+end
+
+function M.connect(ipaddr, port, ipv6)
+    local connect = socket.connect_tcp
+
+    if ipv6 then
+        connect = socket.connect_tcp6
+    end
+
+    local sock, err = connect(ipaddr, port)
     if not sock then
         return nil, err
     end
@@ -274,6 +290,10 @@ function M.connect(ipaddr, port)
     local ctx = ssl.context(false)
 
     return ssl_setmetatable(ctx, sock, client_methods, SSL_MT_CLIENT)
+end
+
+function M.connect6(ipaddr, port)
+    return M.connect(ipaddr, port, true)
 end
 
 return M
