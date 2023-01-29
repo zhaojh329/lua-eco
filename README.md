@@ -38,6 +38,7 @@ Lua-eco also provides some modules:
 * dns
 * termios
 * ubus
+* base64
 * ...
 
 Would you like to try it? Kinda interesting.

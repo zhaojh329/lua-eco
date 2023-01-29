@@ -39,6 +39,7 @@ Lua-eco 还提供了一些有用的模块:
 * dns
 * termios
 * ubus
+* base64
 * ...
 
 想试试吗？很有趣的!

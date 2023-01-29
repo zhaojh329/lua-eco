@@ -58,6 +58,9 @@ set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
 add_library(log MODULE log.c log/log.c)
 set_target_properties(log PROPERTIES OUTPUT_NAME log PREFIX "")
 
+add_library(base64 MODULE base64.c)
+set_target_properties(base64 PROPERTIES OUTPUT_NAME base64 PREFIX "")
+
 if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
@@ -106,7 +109,7 @@ install(
 )
 
 install(
-    TARGETS log termios
+    TARGETS log termios base64
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
