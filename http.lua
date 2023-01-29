@@ -474,7 +474,7 @@ local function parse_url(url)
     return parsed
 end
 
-local function http_connect_host(host, port, connect)
+local function http_connect_host(host, port, https)
     local answers, err = dns.query(host)
     if not answers then
         return nil, 'resolve "' .. host .. '" fail: ' .. err
@@ -482,7 +482,19 @@ local function http_connect_host(host, port, connect)
 
     local s, err
     for _, a in ipairs(answers) do
-        if a.type == dns.TYPE_A then
+        if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
+            local connect = socket.connect_tcp
+            if https then
+                connect = ssl.connect
+            end
+
+            if a.type == dns.TYPE_AAAA then
+                connect = socket.connect_tcp6
+                if https then
+                    connect = ssl.connect6
+                end
+            end
+
             s, err = connect(a.address, port)
             if s then
                 return s
@@ -566,8 +578,7 @@ function M.request(req, body)
         headers[k] = v
     end
 
-    local connect = scheme == 'https' and ssl.connect or socket.connect_tcp
-    local s, err = http_connect_host(host, port, connect)
+    local s, err = http_connect_host(host, port, scheme == 'https')
     if not s then
         return nil, 'connect fail: ' .. err
     end
@@ -1119,9 +1130,17 @@ function M.listen(ipaddr, port, options, handler, logger)
 
     if options.cert and options.key then
         options.ssl = true
-        sock, err = ssl.listen(ipaddr, port, { cert = options.cert, key = options.key })
+        if options.ipv6 then
+            sock, err = ssl.listen6(ipaddr, port, { cert = options.cert, key = options.key })
+        else
+            sock, err = ssl.listen(ipaddr, port, { cert = options.cert, key = options.key })
+        end
     else
-        sock, err = socket.listen_tcp(ipaddr, port)
+        if options.ipv6 then
+            sock, err = socket.listen_tcp6(ipaddr, port)
+        else
+            sock, err = socket.listen_tcp(ipaddr, port)
+        end
     end
     if not sock then
         return nil, err

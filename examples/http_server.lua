@@ -39,7 +39,8 @@ local function logger(msg)
 end
 
 local options = {
-    http_keepalive = 30 -- default is 30, set to 0 will disable persistent HTTP connections.
+    http_keepalive = 30, -- default is 30, set to 0 will disable persistent HTTP connections.
+    ipv6 = false
 }
 
 -- https
