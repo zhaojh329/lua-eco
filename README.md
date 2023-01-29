@@ -19,6 +19,7 @@
 
 [lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
+[lua-mosquitto]: https://github.com/flukso/lua-mosquitto
 
 Lua-eco is a [Lua] interpreter with a built-in [libev] event loop. It makes
 all [Lua] code running in `Lua coroutines` so code that does I/O can be
@@ -34,7 +35,8 @@ Lua-eco also provides some modules:
 * signal
 * socket
 * ssl
-* http/https server and client
+* http/https - Including server and client
+* mqtt client - Using [lua-mosquitto]
 * dns
 * termios
 * ubus
