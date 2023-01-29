@@ -5,7 +5,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=d6755aadda68c8234d5be9383462dddd2fa8a7f9
+PKG_SOURCE_VERSION:=fc77a98d76c6c85045387d2cb449384c5c4a0942
 PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
@@ -45,17 +45,19 @@ define Package/lua-eco/Module
   DEPENDS:=+lua-eco $2
 endef
 
-Package/lua-eco-log=$(call Package/lua-eco/Module,Log utils)
-Package/lua-eco-sys=$(call Package/lua-eco/Module,System utils)
-Package/lua-eco-file=$(call Package/lua-eco/Module,File utils)
-Package/lua-eco-socket=$(call Package/lua-eco/Module,Socket,+lua-eco-file +lua-eco-sys)
-Package/lua-eco-dns=$(call Package/lua-eco/Module,DNS,+lua-eco-socket)
-Package/lua-eco-ssl=$(call Package/lua-eco/Module,SSL,\
+Package/lua-eco-log=$(call Package/lua-eco/Module,log utils)
+Package/lua-eco-sys=$(call Package/lua-eco/Module,system utils)
+Package/lua-eco-file=$(call Package/lua-eco/Module,file utils)
+Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
+Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket)
+Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
   @(PACKAGE_libopenssl||PACKAGE_libwolfssl||PACKAGE_libmbedtls) \
   LUA_ECO_OPENSSL:libopenssl LUA_ECO_WOLFSSL:libwolfssl \
   LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
-Package/lua-eco-ubus=$(call Package/lua-eco/Module,Ubus,+libubus)
-Package/lua-eco-termios=$(call Package/lua-eco/Module,Termios)
+Package/lua-eco-ubus=$(call Package/lua-eco/Module,ubus,+libubus)
+Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
+Package/lua-eco-http=$(call Package/lua-eco/Module,http/https client/server,+lua-eco-dns +lua-eco-ssl)
+Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
 
 define Package/lua-eco-ssl/config
 	config LUA_ECO_DEFAULT_WOLFSSL
@@ -135,6 +137,8 @@ Package/lua-eco-ssl/install=$(call Package/lua-eco/Module/install,$1,ssl)
 Package/lua-eco-file/install=$(call Package/lua-eco/Module/install,$1,file)
 Package/lua-eco-ubus/install=$(call Package/lua-eco/Module/install,$1,ubus)
 Package/lua-eco-termios/install=$(call Package/lua-eco/Module/install,$1,termios)
+Package/lua-eco-http/install=$(call Package/lua-eco/Module/install,$1,http)
+Package/lua-eco-base64/install=$(call Package/lua-eco/Module/install,$1,base64)
 
 $(eval $(call BuildPackage,lua-eco))
 $(eval $(call BuildPackage,lua-eco-log))
@@ -145,3 +149,5 @@ $(eval $(call BuildPackage,lua-eco-ssl))
 $(eval $(call BuildPackage,lua-eco-file))
 $(eval $(call BuildPackage,lua-eco-ubus))
 $(eval $(call BuildPackage,lua-eco-termios))
+$(eval $(call BuildPackage,lua-eco-http))
+$(eval $(call BuildPackage,lua-eco-base64))
