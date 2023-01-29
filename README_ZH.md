@@ -23,6 +23,7 @@
 [lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
 [lua-mosquitto]: https://github.com/flukso/lua-mosquitto
+[ubus]: https://openwrt.org/docs/techref/ubus
 
 Lua-eco 是一个内置了 [libev] 事件循环的 [Lua] 解释器。它使所有的 [Lua] 代码在 `Lua协程` 中运行，它
 可以挂起执行 `I/O` 操作的代码，直到数据准备好。这允许您编写代码就好像您在使用阻塞 `I/O` 一样，同时在
@@ -40,7 +41,7 @@ Lua-eco 还提供了一些有用的模块:
 * mqtt client - Using [lua-mosquitto]
 * dns
 * termios
-* ubus
+* ubus - A lua binding for [ubus]
 * base64
 * ...
 

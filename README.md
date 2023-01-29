@@ -20,6 +20,7 @@
 [lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
 [lua-mosquitto]: https://github.com/flukso/lua-mosquitto
+[ubus]: https://openwrt.org/docs/techref/ubus
 
 Lua-eco is a [Lua] interpreter with a built-in [libev] event loop. It makes
 all [Lua] code running in `Lua coroutines` so code that does I/O can be
@@ -39,7 +40,7 @@ Lua-eco also provides some modules:
 * mqtt client - Using [lua-mosquitto]
 * dns
 * termios
-* ubus
+* ubus - A lua binding for [ubus]
 * base64
 * ...
 
