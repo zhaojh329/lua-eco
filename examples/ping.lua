@@ -22,9 +22,9 @@ local timeout = 5.0
 local function build_icmp_req()
     local data = {
         string.char(ICMP_ECHO), -- type
-        string.char(0),         -- code
-        string.char(0, 0),      -- checksum
-        string.char(0, 0),      -- id: the kernel will assign it with local port
+        '\0',         -- code
+        '\0\0',      -- checksum
+        '\0\0',      -- id: the kernel will assign it with local port
         string.char(bit.rshift(local_seq, 8), bit.band(local_seq, 0xff)),   -- sequence
         local_data
     }
