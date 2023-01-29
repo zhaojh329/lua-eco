@@ -155,7 +155,7 @@ static int eco_sys_exec(lua_State *L)
 
     if (!cmd || which(cmd)) {
         lua_pushnil(L);
-        lua_pushstring(L, "command not found");
+        lua_pushliteral(L, "command not found");
         return 2;
     }
 

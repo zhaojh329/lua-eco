@@ -182,7 +182,7 @@ static int eco_ssl_read_buffer(lua_State *L)
 
     if (n == 0) {
         lua_pushnil(L);
-        lua_pushstring(L, "buffer is full");
+        lua_pushliteral(L, "buffer is full");
         return 2;
     }
 

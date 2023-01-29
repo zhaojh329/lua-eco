@@ -111,7 +111,7 @@ static int eco_file_read_to_buffer(lua_State *L)
 
     if (n == 0) {
         lua_pushnil(L);
-        lua_pushstring(L, "buffer is full");
+        lua_pushliteral(L, "buffer is full");
         return 2;
     }
 
@@ -248,14 +248,14 @@ static int __eco_file_stat(lua_State *L, const char *path)
     lua_newtable(L);
 
     switch (st.st_mode & S_IFMT) {
-    case S_IFBLK: lua_pushstring(L, "BLK");  break;
-    case S_IFCHR: lua_pushstring(L, "CHR");  break;
-    case S_IFDIR: lua_pushstring(L, "DIR");  break;
-    case S_IFIFO: lua_pushstring(L, "FIFO"); break;
-    case S_IFLNK: lua_pushstring(L, "LNK");  break;
-    case S_IFREG: lua_pushstring(L, "REG");  break;
-    case S_IFSOCK:lua_pushstring(L, "SOCK"); break;
-    default:      lua_pushstring(L, "");     break;
+    case S_IFBLK: lua_pushliteral(L, "BLK");  break;
+    case S_IFCHR: lua_pushliteral(L, "CHR");  break;
+    case S_IFDIR: lua_pushliteral(L, "DIR");  break;
+    case S_IFIFO: lua_pushliteral(L, "FIFO"); break;
+    case S_IFLNK: lua_pushliteral(L, "LNK");  break;
+    case S_IFREG: lua_pushliteral(L, "REG");  break;
+    case S_IFSOCK:lua_pushliteral(L, "SOCK"); break;
+    default:      lua_pushliteral(L, "");     break;
     }
     lua_setfield(L, -2, "type");
 
