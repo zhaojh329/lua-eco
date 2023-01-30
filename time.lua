@@ -26,17 +26,35 @@ local time = require 'eco.core.time'
 
 local M = {}
 
+local timers = {}
+
+local function new_timer()
+    for _, w in ipairs(timers) do
+        if not w:active() then
+            return w
+        end
+    end
+
+    local w = eco.watcher(eco.TIMER)
+
+    if #timers < 10 then
+        timers[#timers + 1] = w
+    end
+
+    return w
+end
+
 function M.now()
     return time.now(eco.context())
 end
 
 function M.sleep(delay)
-    local w = eco.watcher(eco.TIMER)
-    w:wait(delay)
+    local w = new_timer()
+    return w:wait(delay)
 end
 
 function M.at(delay, cb, ...)
-    local w = eco.watcher(eco.TIMER)
+    local w = new_timer()
 
     eco.run(function(...)
         if w:wait(delay) then

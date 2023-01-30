@@ -329,6 +329,13 @@ static int eco_watcher(lua_State *L)
     return 1;
 }
 
+static int eco_watcher_active(lua_State *L)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
+    lua_pushboolean(L, !!w->co);
+    return 1;
+}
+
 static int eco_watcher_wait(lua_State *L)
 {
     struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
@@ -412,6 +419,7 @@ static int eco_watcher_cancel(lua_State *L)
 }
 
 static const struct luaL_Reg eco_watcher_methods[] =  {
+    {"active", eco_watcher_active},
     {"wait", eco_watcher_wait},
     {"cancel", eco_watcher_cancel},
     {NULL, NULL}
