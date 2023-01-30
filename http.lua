@@ -578,9 +578,16 @@ function M.request(req, body)
         headers[k] = v
     end
 
-    local s, err = http_connect_host(host, port, scheme == 'https')
-    if not s then
-        return nil, 'connect fail: ' .. err
+    local s, err
+
+    if req.proxy then
+        s, err = socket.connect_tcp(req.proxy.ipaddr, req.proxy.port)
+        path = req.url
+    else
+        s, err = http_connect_host(host, port, scheme == 'https')
+        if not s then
+            return nil, 'connect fail: ' .. err
+        end
     end
 
     local resp, err = do_http_request(s, method, path, headers, body)
