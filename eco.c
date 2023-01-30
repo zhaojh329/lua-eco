@@ -484,6 +484,8 @@ int main(int argc, char const *argv[])
     if (!script)
         return 0;
 
+    signal(SIGPIPE, SIG_IGN);
+
     L = luaL_newstate();
 
     luaL_openlibs(L);

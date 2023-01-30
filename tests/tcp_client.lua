@@ -4,8 +4,6 @@ local socket = require 'eco.socket'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
 
-sys.signal(sys.SIGPIPE, function()end)
-
 sys.signal(sys.SIGINT, function()
     print('\nGot SIGINT, now quit')
     eco.unloop()
