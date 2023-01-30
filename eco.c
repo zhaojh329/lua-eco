@@ -186,16 +186,11 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
 
     watcher->co = NULL;
 
-    if (watcher->type == ECO_WATCHER_TIMER) {
-        lua_pushboolean(co, true);
-        eco_resume(watcher->ctx->L, co, 1);
-        return;
-    }
-
     switch (watcher->type)
     {
     case ECO_WATCHER_TIMER:
-        eco_resume(watcher->ctx->L, co, 0);
+        lua_pushboolean(co, true);
+        eco_resume(watcher->ctx->L, co, 1);
         return;
 
     case ECO_WATCHER_IO:
