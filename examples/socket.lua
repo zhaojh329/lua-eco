@@ -1,7 +1,6 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
-local file = require 'eco.file'
 local sys = require 'eco.sys'
 
 sys.signal(sys.SIGINT, function()
