@@ -80,8 +80,10 @@ static void __lua_log(lua_State *L, int priority)
             continue;
         }
 
-        *pos++ = '\t';
-        room--;
+        if (i > 1) {
+            *pos++ = '\t';
+            room--;
+        }
 
         if (len > room)
             len = room;
