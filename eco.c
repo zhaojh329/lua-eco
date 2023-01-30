@@ -186,8 +186,7 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
 
     watcher->co = NULL;
 
-    switch (watcher->type)
-    {
+    switch (watcher->type) {
     case ECO_WATCHER_TIMER:
         lua_pushboolean(co, true);
         eco_resume(watcher->ctx->L, co, 1);
@@ -352,8 +351,7 @@ static int eco_watcher_wait(lua_State *L)
         ev_timer_start(loop, &w->tmr);
     }
 
-    switch (w->type)
-    {
+    switch (w->type) {
     case ECO_WATCHER_IO:
         ev_io_start(loop, &w->w.io);
         break;
