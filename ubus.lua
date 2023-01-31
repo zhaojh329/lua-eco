@@ -37,28 +37,36 @@ local function process_msg(con, w, done)
     end
 end
 
-local mt = {}
+local methods = {}
 
-function mt:closed()
-    return self.__done.v
+function methods:closed()
+    local mt = getmetatable(self)
+    return mt.done.v
 end
 
-function mt:close()
-    if self:closed() then
+function methods:close()
+    local mt = getmetatable(self)
+    local done = mt.done
+    local con = mt.con
+
+    if done.v then
         return
     end
-    self.__done.v = true
-    self.__con_w:cancel()
-    self.__con:close()
-    connections[self.__con] = nil
+
+    done.v = true
+    mt.w:cancel()
+    con:close()
+    connections[con] = nil
 end
 
-function mt:call(object, method, params)
-    if self:closed() then
+function methods:call(object, method, params)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
         return nil, 'closed'
     end
 
-    local req, err = self.__con:call(object, method, params)
+    local req, err = mt.con:call(object, method, params)
     if not req then
         return nil, err
     end
@@ -76,16 +84,20 @@ function mt:call(object, method, params)
     return res, err
 end
 
-function mt:reply(req, msg)
-    if self:closed() then
+function methods:reply(req, msg)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
         return nil, 'closed'
     end
 
-    return self.__con:reply(req, msg)
+    return mt.con:reply(req, msg)
 end
 
-function mt:add(object, methods)
-    if self:closed() then
+function methods:add(object, methods)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
         return nil, 'closed'
     end
 
@@ -105,7 +117,7 @@ function mt:add(object, methods)
         end
     end
 
-    local o, err = self.__con:add(object, __methods)
+    local o, err = mt.con:add(object, __methods)
     if not o then
         return false, err
     end
@@ -113,12 +125,14 @@ function mt:add(object, methods)
     return true
 end
 
-function mt:listen(event, cb)
-    if self:closed() then
+function methods:listen(event, cb)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
         return nil, 'closed'
     end
 
-    local e, err = self.__con:listen(event, function(con, ev, msg)
+    local e, err = mt.con:listen(event, function(con, ev, msg)
         con = connections[con]
         if con then
             cb(con, ev, msg)
@@ -131,12 +145,14 @@ function mt:listen(event, cb)
     return true
 end
 
-function mt:send(event, msg)
-    if self:closed() then
+function methods:send(event, msg)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
         return nil, 'closed'
     end
 
-    return self.__con:send(event, msg)
+    return mt.con:send(event, msg)
 end
 
 function M.connect(path)
@@ -146,25 +162,27 @@ function M.connect(path)
         return nil, err
     end
 
-    local con = {
-        __con = __con,
-        __done = { v = false }
-    }
+    local con = {}
 
     connections[__con] = con
 
-    con.__con_w = eco.watcher(eco.IO, __con:getfd())
-    eco.run(process_msg, __con, con.__con_w, con.__done)
+    local w = eco.watcher(eco.IO, __con:getfd())
+    local done = { v = false }
+
+    eco.run(process_msg, __con, w, done)
 
     if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
         local __prox = newproxy(true)
-        getmetatable(__prox).__gc = function() mt.close(con) end
+        getmetatable(__prox).__gc = function() methods.close(con) end
         con[__prox] = true
     end
 
     return setmetatable(con, {
-        __index = mt,
-        __gc = function() mt.close(con) end
+        w = w,
+        done = done,
+        con = __con,
+        __index = methods,
+        __gc = function() methods.close(con) end
     })
 end
 
@@ -191,4 +209,4 @@ function M.send(event, params)
     return true
 end
 
-return setmetatable(M, { __index = ubus })
+return M
