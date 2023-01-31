@@ -2,8 +2,10 @@
 
 -- https://github.com/flukso/lua-mosquitto
 
+local socket = require 'eco.socket'
 local mosq  = require 'mosquitto'
 local time = require 'eco.time'
+local sys = require 'eco.sys'
 
 local MOSQ_ERR_NO_CONN = 4
 local MOSQ_ERR_CONN_LOST = 7
@@ -46,10 +48,30 @@ end
 -- mqtt.ON_UNSUBSCRIBE = function(...) print('UNSUBSCRIBE', ...) end
 -- mqtt.ON_LOG = function(...) print('LOG', ...) end
 
+local function wait_mqtt_connected(fd)
+    local w = eco.watcher(eco.IO, fd, eco.WRITE)
+    if not w:wait(3.0) then
+        return false, 'timeout'
+    end
+
+    local err = socket.getoption(fd, 'error')
+    if err ~= 0 then
+        return false, sys.strerror(err)
+    end
+
+    return true
+end
+
 local function connect_mqtt()
     local ok, code, err = mqtt:connect_async(MOSQ_HOST, MOSQ_PORT, MOSQ_KEEPALIVE)
     if not ok then
         print('connect fail:', code, err)
+        os.exit(1)
+    end
+
+    local ok, err = wait_mqtt_connected(mqtt:socket())
+    if not ok then
+        print('connect fail:', err)
         os.exit(1)
     end
 end
