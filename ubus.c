@@ -125,8 +125,7 @@ static int __blob_to_lua_table(lua_State *L, struct blob_attr *attr, bool is_arr
     data = blobmsg_data(attr);
     len = blobmsg_data_len(attr);
 
-    switch (blob_id(attr))
-    {
+    switch (blob_id(attr)) {
     case BLOBMSG_TYPE_BOOL:
         lua_pushboolean(L, *(uint8_t *)data);
         break;

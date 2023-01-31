@@ -402,8 +402,7 @@ static int eco_watcher_cancel(lua_State *L)
     if (!co)
         return 0;
 
-    switch (w->type)
-    {
+    switch (w->type) {
     case ECO_WATCHER_IO:
         ev_io_stop(loop, &w->w.io);
         break;
