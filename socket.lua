@@ -537,4 +537,4 @@ function M.connect_tcp6(ipaddr, port)
     return connect_tcp_common(M.tcp6, ipaddr, port)
 end
 
-return M
+return setmetatable(M, { __index = socket })
