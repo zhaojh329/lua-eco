@@ -222,4 +222,4 @@ function M.send(event, params)
     return true
 end
 
-return M
+return setmetatable(M, { __index = ubus })
