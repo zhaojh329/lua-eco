@@ -57,7 +57,10 @@ function M.writefile(path, data, append)
 end
 
 function M.read(fd, n, timeout)
-    local w = eco.watcher(eco.IO, fd)
+    local w, err = eco.watcher(eco.IO, fd)
+    if not w then
+        return nil, err
+    end
 
     if not w:wait(timeout) then
         return nil, 'timeout'
@@ -67,7 +70,10 @@ function M.read(fd, n, timeout)
 end
 
 function M.write(fd, data)
-    local w = eco.watcher(eco.IO, fd, eco.WRITE)
+    local w, err = eco.watcher(eco.IO, fd, eco.WRITE)
+    if not w then
+        return nil, err
+    end
 
     w:wait()
 

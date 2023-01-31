@@ -70,10 +70,14 @@ function client_methods:send(data)
 
     local total = #data
     local sent = 0
-    local n, err
+    local ok, n, err
 
     while sent < total do
-        w:wait()
+        ok, err = w:wait()
+        if not ok then
+            return nil, err, sent
+        end
+
         n, err = ssl:write(data:sub(sent + 1))
         if not n then
             if err then

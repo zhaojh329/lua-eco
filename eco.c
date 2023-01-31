@@ -24,6 +24,8 @@
 
 #include <stdlib.h>
 #include <lualib.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "config.h"
 #include "list.h"
@@ -288,6 +290,12 @@ static int eco_watcher(lua_State *L)
             int fd = luaL_checkinteger(L, 2);
             int ev = luaL_optinteger(L, 3, EV_READ);
 
+            if (fcntl(fd, F_GETFL) < 0) {
+                lua_pushnil(L);
+                lua_pushstring(L, strerror(errno));
+                return 2;
+            }
+
             if (ev != EV_READ && ev != EV_WRITE)
                 luaL_argerror(L, 3, "must be eco.READ or eco.WRITE");
 
@@ -353,13 +361,13 @@ static int eco_watcher_wait(lua_State *L)
         return 1;
     }
 
-    if (timeout > 0) {
-        ev_timer_set(&w->tmr, timeout, 0);
-        ev_timer_start(loop, &w->tmr);
-    }
-
     switch (w->type) {
     case ECO_WATCHER_IO:
+        if (fcntl(w->w.io.fd, F_GETFL) < 0) {
+            lua_pushboolean(L, false);
+            lua_pushstring(L, strerror(errno));
+            return 2;
+        }
         ev_io_start(loop, &w->w.io);
         break;
 
@@ -376,6 +384,11 @@ static int eco_watcher_wait(lua_State *L)
     }
 
     w->co = L;
+
+    if (timeout > 0) {
+        ev_timer_set(&w->tmr, timeout, 0);
+        ev_timer_start(loop, &w->tmr);
+    }
 
     return lua_yield(L, 0);
 }

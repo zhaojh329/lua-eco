@@ -124,10 +124,14 @@ local function sock_send(sock, data)
     local mt = getmetatable(sock)
     local total = #data
     local sent = 0
-    local n, err
+    local ok, n, err
 
     while sent < total do
-        mt.iow:wait()
+        ok, err = mt.iow:wait()
+        if not ok then
+            return nil, err, sent
+        end
+
         n, err = file.write(mt.fd, data:sub(sent + 1))
         if not n then
             return nil, err, sent
@@ -149,7 +153,11 @@ local function sock_sendfile(sock, fd, count, offset)
     local sent = 0
 
     while count > 0 do
-        iow:wait()
+        local ok, err = iow:wait()
+        if not ok then
+            return nil, err, sent
+        end
+
         local ret, offset_ret = file.sendfile(sfd, fd, offset, count)
         if not ret then
             return nil, offset_ret, sent
