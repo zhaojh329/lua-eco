@@ -26,7 +26,11 @@ local ubus = require 'eco.core.ubus'
 
 local M = {}
 
+-- low level ubus condition
 local connections = setmetatable({}, { __mode = 'v' })
+
+-- high level condition
+local connections_cache = {}
 
 local function process_msg(con, w, done)
     while not done.v do
@@ -57,6 +61,7 @@ function methods:close()
     mt.w:cancel()
     con:close()
     connections[con] = nil
+    connections_cache[self] = nil
 end
 
 function methods:call(object, method, params)
@@ -122,6 +127,10 @@ function methods:add(object, methods)
         return false, err
     end
 
+    if not connections_cache[self] then
+        connections_cache[self] = true
+    end
+
     return true
 end
 
@@ -140,6 +149,10 @@ function methods:listen(event, cb)
     end)
     if not e then
         return false, err
+    end
+
+    if not connections_cache[self] then
+        connections_cache[self] = true
     end
 
     return true
