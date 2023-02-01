@@ -24,6 +24,7 @@
 
 local socket = require 'eco.socket'
 local file = require 'eco.file'
+local time = require 'eco.time'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 
@@ -276,8 +277,8 @@ local function send_http_request(s, method, path, headers, body)
     return true
 end
 
-local function recv_http_status_line(s)
-    local data, err = s:recv('*l', 3.0)
+local function recv_http_status_line(s, deadtime)
+    local data, err = s:recv('*l', deadtime - time.now())
     if not data then
         return nil, err
     end
@@ -290,11 +291,11 @@ local function recv_http_status_line(s)
     return tonumber(code), status
 end
 
-local function recv_http_headers(s)
+local function recv_http_headers(s, deadtime)
     local headers = {}
 
     while true do
-        local data, err = s:recv('*l', 3.0)
+        local data, err = s:recv('*l', deadtime - time.now())
         if not data then
             return nil, err
         end
@@ -312,12 +313,12 @@ local function recv_http_headers(s)
     return headers
 end
 
-local function recv_http_body(s, content_length, chunked)
+local function recv_http_body(s, content_length, chunked, deadtime)
     local body = {}
 
     if content_length > 0 then
         while content_length > 0 do
-            local data, err = s:recv(content_length, 3.0)
+            local data, err = s:recv(content_length, deadtime - time.now())
             if not data then
                 return nil, err
             end
@@ -326,7 +327,7 @@ local function recv_http_body(s, content_length, chunked)
         end
     elseif chunked then
         while true do
-            local data, err = s:recv('*l', 3.0)
+            local data, err = s:recv('*l', deadtime - time.now())
             if not data then
                 return nil, err
             end
@@ -340,7 +341,7 @@ local function recv_http_body(s, content_length, chunked)
             local chunk = {}
 
             while remain > 0 do
-                data, err = s:recv(remain, 3.0)
+                data, err = s:recv(remain, deadtime - time.now())
                 if not data then
                     return nil, err
                 end
@@ -348,7 +349,7 @@ local function recv_http_body(s, content_length, chunked)
                 chunk[#chunk + 1] = data
             end
 
-            data, err = s:recv('*l', 3.0)
+            data, err = s:recv('*l', deadtime - time.now())
             if err then
                 return nil, err
             end
@@ -366,18 +367,24 @@ local function recv_http_body(s, content_length, chunked)
     return table.concat(body)
 end
 
-local function do_http_request(s, method, path, headers, body)
+local function do_http_request(s, method, path, headers, body, timeout)
     local ok, err = send_http_request(s, method, path, headers, body)
     if not ok then
         return nil, err
     end
 
-    local code, status = recv_http_status_line(s)
+    if not timeout or timeout <= 0 then
+        timeout = 30
+    end
+
+    local deadtime = time.now() + timeout
+
+    local code, status = recv_http_status_line(s, deadtime)
     if not code then
         return nil, status
     end
 
-    headers, err = recv_http_headers(s)
+    headers, err = recv_http_headers(s, deadtime)
     if not headers then
         return nil, err
     end
@@ -395,7 +402,7 @@ local function do_http_request(s, method, path, headers, body)
 
     local content_length = tonumber(headers['content-length'] or 0)
     local chunked = headers['transfer-encoding'] == 'chunked'
-    body, err = recv_http_body(s, content_length, chunked)
+    body, err = recv_http_body(s, content_length, chunked, deadtime)
     if not body then
         return nil, err
     end
@@ -590,7 +597,7 @@ function M.request(req, body)
         end
     end
 
-    local resp, err = do_http_request(s, method, path, headers, body)
+    local resp, err = do_http_request(s, method, path, headers, body, req.timeout)
     if not resp then
         s:close()
         return nil, err
