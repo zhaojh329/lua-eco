@@ -5,8 +5,8 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=12178e2900827c53b5c7d40001e59a123894f290
-PKG_MIRROR_HASH:=ebc04c19c54fb30b3440ee04efeb5956ef1660f7a2abb4c43f3a396393517d2f
+PKG_SOURCE_VERSION:=792617a5ed84efc0c5d1dfb12cfb0782044c4dc5
+PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -58,6 +58,7 @@ Package/lua-eco-ubus=$(call Package/lua-eco/Module,ubus,+libubus)
 Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
 Package/lua-eco-http=$(call Package/lua-eco/Module,http/https client/server,+lua-eco-dns +lua-eco-ssl)
 Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
+Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco-dns +lua-mosquitto)
 
 define Package/lua-eco-ssl/config
 	config LUA_ECO_DEFAULT_WOLFSSL
@@ -139,6 +140,7 @@ Package/lua-eco-ubus/install=$(call Package/lua-eco/Module/install,$1,ubus)
 Package/lua-eco-termios/install=$(call Package/lua-eco/Module/install,$1,termios)
 Package/lua-eco-http/install=$(call Package/lua-eco/Module/install,$1,http)
 Package/lua-eco-base64/install=$(call Package/lua-eco/Module/install,$1,base64)
+Package/lua-eco-mqtt/install=$(call Package/lua-eco/Module/install,$1,mqtt)
 
 $(eval $(call BuildPackage,lua-eco))
 $(eval $(call BuildPackage,lua-eco-log))
@@ -151,3 +153,4 @@ $(eval $(call BuildPackage,lua-eco-ubus))
 $(eval $(call BuildPackage,lua-eco-termios))
 $(eval $(call BuildPackage,lua-eco-http))
 $(eval $(call BuildPackage,lua-eco-base64))
+$(eval $(call BuildPackage,lua-eco-mqtt))
