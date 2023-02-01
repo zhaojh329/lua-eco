@@ -109,7 +109,18 @@ static void eco_resume(lua_State *L, lua_State *co, int narg)
 
     default:
         lua_xmove(co, L, 1);
-        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+
+        lua_getglobal(L, "eco");
+        lua_getfield(L, -1, "panic_hook");
+        lua_remove(L, -2);
+
+        if (lua_isfunction(L, -1)) {
+            lua_pushvalue(L, -2);
+            lua_call(L, 1, 0);
+        } else {
+            fprintf(stderr, "%s\n", lua_tostring(L, -2));
+        }
+
         exit(1);
         break;
     }
