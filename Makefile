@@ -49,7 +49,7 @@ Package/lua-eco-log=$(call Package/lua-eco/Module,log utils)
 Package/lua-eco-sys=$(call Package/lua-eco/Module,system utils)
 Package/lua-eco-file=$(call Package/lua-eco/Module,file utils)
 Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
-Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket)
+Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket +luabitop)
 Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
   @(PACKAGE_libopenssl||PACKAGE_libwolfssl||PACKAGE_libmbedtls) \
   LUA_ECO_OPENSSL:libopenssl LUA_ECO_WOLFSSL:libwolfssl \
