@@ -67,13 +67,16 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
 
     for (lua_pushnil(L); lua_next(L, index); lua_pop(L, 2)) {
         const char *key;
+        int type;
 
         lua_pushvalue(L, -2);
         lua_insert(L, -2);
 
         key = is_array ? NULL : lua_tostring(L, -2);
 
-        switch (lua_type(L, -1)) {
+        type = lua_type(L, -1);
+
+        switch (type) {
         case LUA_TBOOLEAN:
             blobmsg_add_u8(b, key, (uint8_t)lua_toboolean(L, -1));
             break;
@@ -90,7 +93,13 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
         case LUA_TSTRING:
         case LUA_TUSERDATA:
         case LUA_TLIGHTUSERDATA:
-            blobmsg_add_string(b, key, lua_tostring(L, -1));
+            if (type == LUA_TSTRING) {
+                blobmsg_add_string(b, key, lua_tostring(L, -1));
+            } else {
+                const char *val = lua_tostring(L, -1);
+                if (val)
+                    blobmsg_add_string(b, key, val);
+            }
             break;
 
         case LUA_TTABLE:
