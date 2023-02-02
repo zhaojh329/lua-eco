@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local ubus = require 'eco.ubus'
+local time = require 'eco.time'
 local sys = require 'eco.sys'
 local cjson = require 'cjson'
 
@@ -26,13 +27,27 @@ con:listen('*', function(ev, msg)
 end)
 
 con:add('eco', {
-    test = {
+    echo = {
         function(req, msg)
-            print(cjson.encode(msg))
-            con:reply(req, { name = 'I am eco' })
+            con:reply(req, msg)
         end,
         {
             a = ubus.INT8
         }
+    },
+    defer = {
+        function(req)
+            con:reply(req, { message = 'wait for it 2s...' })
+
+            local def_req = con:defer_request(req)
+
+            time.at(2, function()
+                con:reply(def_req, { message = 'done' })
+                con:complete_deferred_request(def_req, 0)
+                print('Deferred request complete')
+            end)
+
+            print("Call to function 'deferred'")
+        end
     }
 })

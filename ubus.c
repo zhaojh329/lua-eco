@@ -597,6 +597,28 @@ static int eco_ubus_reply(lua_State *L)
     return 0;
 }
 
+static int eco_ubus_defer_request(lua_State *L)
+{
+    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+    struct ubus_request_data *req = lua_touserdata(L, 2);
+	struct ubus_request_data *new_req = lua_newuserdata(L, sizeof(struct ubus_request_data));
+
+	ubus_defer_request(&ctx->ctx, req, new_req);
+
+	return 1;
+}
+
+static int eco_ubus_complete_deferred_request(lua_State *L)
+{
+    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+	struct ubus_request_data *req = lua_touserdata(L, 2);
+	int ret = luaL_checkinteger(L, 3);
+
+	ubus_complete_deferred_request(&ctx->ctx, req, ret);
+
+	return 0;
+}
+
 static int eco_ubus_connect(lua_State *L)
 {
     struct eco_context *eco = luaL_checkudata(L, 1, ECO_CTX_MT);
@@ -656,6 +678,8 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"listen", eco_ubus_listen},
     {"add", eco_ubus_add},
     {"reply", eco_ubus_reply},
+    { "defer_request", eco_ubus_defer_request },
+    { "complete_deferred_request", eco_ubus_complete_deferred_request },
     {"close", eco_ubus_close},
     {"getfd", eco_ubus_getfd},
     {"process_msg", eco_ubus_process_msg},

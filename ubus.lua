@@ -94,6 +94,26 @@ function methods:reply(req, msg)
     return mt.con:reply(req, msg)
 end
 
+function methods:defer_request(req)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
+        return nil, 'closed'
+    end
+
+    return mt.con:defer_request(req)
+end
+
+function methods:complete_deferred_request(req, code)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
+        return nil, 'closed'
+    end
+
+    return mt.con:complete_deferred_request(req, code)
+end
+
 function methods:add(object, methods)
     local mt = getmetatable(self)
 
