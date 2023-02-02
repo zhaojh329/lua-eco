@@ -26,8 +26,6 @@ local ubus = require 'eco.core.ubus'
 
 local M = {}
 
-local connections = {}
-
 local function process_msg(con, w, done)
     while not done.v do
         if not w:wait() then
@@ -56,7 +54,6 @@ function methods:close()
     done.v = true
     mt.w:cancel()
     con:close()
-    connections[self] = nil
 end
 
 function methods:call(object, method, params)
@@ -126,10 +123,6 @@ function methods:add(object, methods)
         return false, err
     end
 
-    if not connections[self] then
-        connections[self] = true
-    end
-
     return true
 end
 
@@ -143,10 +136,6 @@ function methods:listen(event, cb)
     local e, err = mt.con:listen(event, cb)
     if not e then
         return false, err
-    end
-
-    if not connections[self] then
-        connections[self] = true
     end
 
     return true

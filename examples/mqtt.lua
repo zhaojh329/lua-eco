@@ -60,3 +60,7 @@ con:set_callback('ON_LOG', function(level, str)
 end)
 
 reconnect(con)
+
+while true do
+    time.sleep(1)
+end

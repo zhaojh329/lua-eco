@@ -51,3 +51,7 @@ con:add('eco', {
         end
     }
 })
+
+while true do
+    time.sleep(1)
+end
