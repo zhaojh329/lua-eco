@@ -37,11 +37,18 @@ con:add('eco', {
     },
     defer = {
         function(req)
-            time.sleep(1)
             con:reply(req, { message = 'deferred reply' })
+            time.sleep(1)
+            con:reply(req, { message = 'deferred done' })
         end
     }
 })
+
+time.at(1, function()
+    local res1, res2 = ubus.call('eco', 'defer')
+    print(cjson.encode(res1))
+    print(cjson.encode(res2))
+end)
 
 while true do
     time.sleep(1)

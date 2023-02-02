@@ -23,6 +23,7 @@
 --]]
 
 local ubus = require 'eco.core.ubus'
+local unpack = unpack or table.unpack
 
 local M = {}
 
@@ -63,22 +64,24 @@ function methods:call(object, method, params)
         return nil, 'closed'
     end
 
-    local req, err = mt.con:call(object, method, params)
+    local msgs = {}
+
+    local req, err = mt.con:call(object, method, params, function(msg)
+        msgs[#msgs + 1] = msg
+    end)
     if not req then
         return nil, err
     end
 
-    local res, err
-
-    if eco.watcher(eco.IO, req:wait_fd()):wait(30) then
-        res = req:parse()
-    else
-        err = 'timeout'
+    local ok = eco.watcher(eco.IO, req:wait_fd()):wait(30)
+    if not ok then
+        req:abort()
+        return nil, 'timeout'
     end
 
     req:close()
 
-    return res, err
+    return unpack(msgs)
 end
 
 function methods:reply(req, msg)
