@@ -26,11 +26,7 @@ local ubus = require 'eco.core.ubus'
 
 local M = {}
 
--- low level ubus condition
-local connections = setmetatable({}, { __mode = 'v' })
-
--- high level condition
-local connections_cache = {}
+local connections = {}
 
 local function process_msg(con, w, done)
     while not done.v do
@@ -60,8 +56,7 @@ function methods:close()
     done.v = true
     mt.w:cancel()
     con:close()
-    connections[con] = nil
-    connections_cache[self] = nil
+    connections[self] = nil
 end
 
 function methods:call(object, method, params)
@@ -106,29 +101,13 @@ function methods:add(object, methods)
         return nil, 'closed'
     end
 
-    local __methods = {}
-
-    for name, method in pairs(methods) do
-        if type(method) == 'table' and #method > 0 and type(method[1]) == 'function' then
-            __methods[name] = {
-                function(con, req, msg)
-                    con = connections[con]
-                    if con then
-                        method[1](con, req, msg)
-                    end
-                end,
-                method[2]
-            }
-        end
-    end
-
-    local o, err = mt.con:add(object, __methods)
+    local o, err = mt.con:add(object, methods)
     if not o then
         return false, err
     end
 
-    if not connections_cache[self] then
-        connections_cache[self] = true
+    if not connections[self] then
+        connections[self] = true
     end
 
     return true
@@ -141,18 +120,13 @@ function methods:listen(event, cb)
         return nil, 'closed'
     end
 
-    local e, err = mt.con:listen(event, function(con, ev, msg)
-        con = connections[con]
-        if con then
-            cb(con, ev, msg)
-        end
-    end)
+    local e, err = mt.con:listen(event, cb)
     if not e then
         return false, err
     end
 
-    if not connections_cache[self] then
-        connections_cache[self] = true
+    if not connections[self] then
+        connections[self] = true
     end
 
     return true
@@ -176,8 +150,6 @@ function M.connect(path)
     end
 
     local con = {}
-
-    connections[__con] = con
 
     local w = eco.watcher(eco.IO, __con:getfd())
     local done = { v = false }

@@ -365,13 +365,13 @@ static void eco_ubus_event_handler(struct ubus_context *ctx, struct ubus_event_h
 
     lua_replace(L, -6);
 
-    lua_settop(L, -4);
+    lua_settop(L, -5);
 
     lua_pushstring(L, type);
 
     blob_to_lua_table(L, blob_data(msg), blob_len(msg), false);
 
-    lua_call(L, 3, 0);
+    lua_call(L, 2, 0);
 }
 
 static int eco_ubus_listen(lua_State *L)
@@ -433,13 +433,13 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     lua_getfield(L, -1, method);
 
     lua_replace(L, -6);
-    lua_settop(L, -4);
+    lua_settop(L, -5);
 
     lua_pushlightuserdata(L, req);
 
     blob_to_lua_table(L, blob_data(msg), blob_len(msg), false);
 
-    lua_call(L, 3, 1);
+    lua_call(L, 2, 1);
 
     if (lua_isnumber(L, -1))
 		rv = lua_tonumber(L, -1);

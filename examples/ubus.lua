@@ -21,13 +21,13 @@ if not con then
     error(err)
 end
 
-con:listen('*', function(con, ev, msg)
+con:listen('*', function(ev, msg)
     print(ev, cjson.encode(msg))
 end)
 
 con:add('eco', {
     test = {
-        function(con, req, msg)
+        function(req, msg)
             print(cjson.encode(msg))
             con:reply(req, { name = 'I am eco' })
         end,
