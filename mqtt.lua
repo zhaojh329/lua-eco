@@ -174,8 +174,6 @@ local function wait_connected(mt, con)
         return false, sys.strerror(err)
     end
 
-    mt.connected = true
-
     mt.ior = eco.watcher(eco.IO, fd)
     mt.iow = w
     mt.done = { v = false }
