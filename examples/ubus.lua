@@ -37,17 +37,8 @@ con:add('eco', {
     },
     defer = {
         function(req)
-            con:reply(req, { message = 'wait for it 2s...' })
-
-            local def_req = con:defer_request(req)
-
-            time.at(2, function()
-                con:reply(def_req, { message = 'done' })
-                con:complete_deferred_request(def_req, 0)
-                print('Deferred request complete')
-            end)
-
-            print("Call to function 'deferred'")
+            time.sleep(1)
+            con:reply(req, { message = 'deferred reply' })
         end
     }
 })

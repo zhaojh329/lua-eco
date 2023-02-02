@@ -418,6 +418,7 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
 {
     struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
     struct eco_ubus_object *o = container_of(obj, struct eco_ubus_object, object);
+    struct ubus_request_data *new_req;
     lua_State *L = c->L;
     int rv = 0;
 
@@ -435,7 +436,8 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     lua_replace(L, -6);
     lua_settop(L, -5);
 
-    lua_pushlightuserdata(L, req);
+    new_req = lua_newuserdata(L, sizeof(struct ubus_request_data));
+    ubus_defer_request(ctx, req, new_req);
 
     blob_to_lua_table(L, blob_data(msg), blob_len(msg), false);
 
@@ -597,17 +599,6 @@ static int eco_ubus_reply(lua_State *L)
     return 0;
 }
 
-static int eco_ubus_defer_request(lua_State *L)
-{
-    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
-    struct ubus_request_data *req = lua_touserdata(L, 2);
-	struct ubus_request_data *new_req = lua_newuserdata(L, sizeof(struct ubus_request_data));
-
-	ubus_defer_request(&ctx->ctx, req, new_req);
-
-	return 1;
-}
-
 static int eco_ubus_complete_deferred_request(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
@@ -678,7 +669,6 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"listen", eco_ubus_listen},
     {"add", eco_ubus_add},
     {"reply", eco_ubus_reply},
-    { "defer_request", eco_ubus_defer_request },
     { "complete_deferred_request", eco_ubus_complete_deferred_request },
     {"close", eco_ubus_close},
     {"getfd", eco_ubus_getfd},

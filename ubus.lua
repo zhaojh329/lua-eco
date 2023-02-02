@@ -91,34 +91,25 @@ function methods:reply(req, msg)
     return mt.con:reply(req, msg)
 end
 
-function methods:defer_request(req)
-    local mt = getmetatable(self)
-
-    if mt.done.v then
-        return nil, 'closed'
-    end
-
-    return mt.con:defer_request(req)
-end
-
-function methods:complete_deferred_request(req, code)
-    local mt = getmetatable(self)
-
-    if mt.done.v then
-        return nil, 'closed'
-    end
-
-    return mt.con:complete_deferred_request(req, code)
-end
-
 function methods:add(object, methods)
     local mt = getmetatable(self)
+    local con = mt.con
 
     if mt.done.v then
         return nil, 'closed'
     end
 
-    local o, err = mt.con:add(object, methods)
+    for _, m in pairs(methods) do
+        local cb = m[1]
+        m[1] = function(req, msg)
+            eco.run(function()
+                cb(req, msg)
+                con:complete_deferred_request(req, 0)
+            end)
+        end
+    end
+
+    local o, err = con:add(object, methods)
     if not o then
         return false, err
     end
@@ -133,7 +124,9 @@ function methods:listen(event, cb)
         return nil, 'closed'
     end
 
-    local e, err = mt.con:listen(event, cb)
+    local e, err = mt.con:listen(event, function(...)
+        eco.run(cb, ...)
+    end)
     if not e then
         return false, err
     end
