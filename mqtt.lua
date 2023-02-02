@@ -159,7 +159,9 @@ end
 
 function methods:set_callback(typ, func)
     local mt = getmetatable(self)
-    return mt.con:callback_set(typ, func)
+    return mt.con:callback_set(typ, function(...)
+        eco.run(func, ...)
+    end)
 end
 
 local function wait_connected(mt, con)
