@@ -87,8 +87,15 @@ local methods = {}
 function methods:destroy()
     local mt = getmetatable(self)
     mt.done.v = true
-    mt.ior:cancel()
-    mt.iow:cancel()
+
+    if mt.ior then
+        mt.ior:cancel()
+    end
+
+    if mt.iow then
+        mt.iow:cancel()
+    end
+
     return mt.con:destroy()
 end
 
@@ -176,9 +183,10 @@ local function wait_connected(mt, con)
         return false, sys.strerror(err)
     end
 
+    mt.done.v = false
+
     mt.ior = eco.watcher(eco.IO, fd)
     mt.iow = w
-    mt.done = { v = false }
 
     eco.run(read_loop, mt)
     eco.run(write_loop, mt)
@@ -228,9 +236,19 @@ end
 function M.new(id, clean_session)
     local con = mosq.new(id, clean_session)
 
-    return setmetatable({}, {
+    local o = {}
+
+    if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
+        local __prox = newproxy(true)
+        getmetatable(__prox).__gc = function() o:destroy() end
+        o[__prox] = true
+    end
+
+    return setmetatable(o, {
         __index = methods,
-        con = con
+        __gc = o.destroy,
+        con = con,
+        done = { v = true }
     })
 end
 
