@@ -172,7 +172,7 @@ function M.connect(path)
         done = done,
         con = __con,
         __index = methods,
-        __gc = function() methods.close(con) end
+        __gc = methods.close
     })
 end
 

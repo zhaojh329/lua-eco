@@ -169,7 +169,7 @@ local function ssl_setmetatable(ctx, sock, methods, name)
         sock = sock,
         ior = eco.watcher(eco.IO, fd),
         __index = methods,
-        __gc = function() ssl_close(ssock) end
+        __gc = methods.close
     }
 
     setmetatable(ssock, mt)

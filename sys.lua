@@ -85,7 +85,7 @@ function M.exec(...)
 
     return setmetatable(p, {
         __index = exec_mt,
-        __gc = function() p:release() end
+        __gc = exec_mt.release
     })
 end
 

@@ -279,7 +279,7 @@ local function sock_setmetatable(fd, family, type, methods, name)
         ior = eco.watcher(eco.IO, fd),
         iow = eco.watcher(eco.IO, fd, eco.WRITE),
         __index = methods,
-        __gc = function() sock_close(sock) end
+        __gc = methods.close
     }
 
     if type == socket.SOCK_DGRAM or name == SOCK_MT_ESTAB then
