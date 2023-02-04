@@ -61,6 +61,9 @@ set_target_properties(log PROPERTIES OUTPUT_NAME log PREFIX "")
 add_library(base64 MODULE base64.c)
 set_target_properties(base64 PROPERTIES OUTPUT_NAME base64 PREFIX "")
 
+add_library(sha1 MODULE sha1.c)
+set_target_properties(sha1 PROPERTIES OUTPUT_NAME sha1 PREFIX "")
+
 if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
@@ -119,6 +122,11 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua buffer.lua dns.lua socket.lua http.lua mqtt.lua
+    TARGETS sha1
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/crypto
+)
+
+install(
+    FILES time.lua sys.lua file.lua buffer.lua dns.lua socket.lua http.lua mqtt.lua hex.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
