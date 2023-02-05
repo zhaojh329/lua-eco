@@ -23,6 +23,7 @@
  */
 
 #include <lauxlib.h>
+#include <stdint.h>
 #include <ctype.h>
 
 static const char *Base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
@@ -55,11 +56,10 @@ static const unsigned char base64_suffix_map[256] = {
 static int lua_b64_encode(lua_State *L)
 {
     size_t srclen;
-    const char *input = luaL_checklstring(L, 1, &srclen);
+    const uint8_t *input = (const uint8_t *)luaL_checklstring(L, 1, &srclen);
     luaL_Buffer b;
 
     luaL_buffinit(L, &b);
-    luaL_prepbuffer(&b);
 
     while (srclen > 0) {
         int skip = 1;
