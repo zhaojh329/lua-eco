@@ -26,7 +26,7 @@ local M = {}
 
 function M.encode(bin)
     local s = bin:gsub('.', function(c)
-        return string.format('%x', c:byte(1))
+        return string.format('%02x', c:byte(1))
     end)
 
     return s
