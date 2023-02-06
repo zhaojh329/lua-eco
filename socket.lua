@@ -257,7 +257,13 @@ local function sock_update_mt(sock, methods, name)
             if not mt.ior:wait(timeout) then
                 return nil, 'timeout'
             end
-            return file.read_buffer(mt.fd, b)
+
+            local n, err = file.read_buffer(mt.fd, b)
+            if n == 0 then
+                return nil, 'closed'
+            end
+
+            return n, err
         end)
     end
 end
@@ -289,7 +295,7 @@ local function sock_setmetatable(fd, family, type, methods, name)
             end
 
             local n, err = file.read_buffer(mt.fd, b)
-            if n == 0 then
+            if name == SOCK_MT_ESTAB and n == 0 then
                 return nil, 'closed'
             end
 
