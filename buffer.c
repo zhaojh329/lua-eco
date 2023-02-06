@@ -55,11 +55,19 @@ static int eco_buffer_length(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
 
-    lua_pushinteger(L, buffer_length(b));
+    lua_pushinteger(L, buffer_length(b) + b->slen);
     return 1;
 }
 
-static int eco_buffer_read(lua_State *L)
+static int eco_buffer_init_stage(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    luaL_buffinit(L, &b->sb);
+    b->slen = 0;
+    return 0;
+}
+
+static int eco_buffer_read_stage(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
     size_t blen = buffer_length(b);
@@ -68,8 +76,87 @@ static int eco_buffer_read(lua_State *L)
     if (len > blen)
         len = blen;
 
-    lua_pushlstring(L, buffer_data(b), len);
+    luaL_addlstring(&b->sb, buffer_data(b), len);
+    b->slen += len;
+
     buffer_skip(b, len);
+
+    lua_pushinteger(L, len);
+    return 1;
+}
+
+static int eco_buffer_readline_stage_trim(lua_State *L, struct eco_buffer *b)
+{
+    const char *data = buffer_data(b);
+    size_t blen = buffer_length(b);
+    int c = 0, i = 0;
+
+    while (i < blen) {
+        c = data[i++];
+
+        if (c == '\n')
+            break;
+
+        if (c != '\r') {
+            luaL_addchar(&b->sb, c);
+            b->slen++;
+        }
+    }
+
+    buffer_skip(b, i);
+
+    lua_pushboolean(L, c == '\n');
+    lua_pushinteger(L, b->slen);
+
+    return 2;
+}
+
+static int eco_buffer_readline_stage(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    bool trim = lua_toboolean(L, 2);
+    const char *data = buffer_data(b);
+    size_t blen = buffer_length(b);
+    int c = 0, i = 0;
+
+    if (trim)
+        return eco_buffer_readline_stage_trim(L, b);
+
+    while (i < blen) {
+        c = data[i++];
+
+        luaL_addchar(&b->sb, c);
+        b->slen++;
+
+        if (c == '\n')
+            break;
+    }
+
+    buffer_skip(b, i);
+
+    lua_pushboolean(L, c == '\n');
+    lua_pushinteger(L, b->slen);
+
+    return 2;
+}
+
+static int eco_buffer_read(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    size_t total = buffer_length(b) + b->slen;
+    size_t len = luaL_optinteger(L, 2, total);
+
+    if (len > total)
+        len = total;
+
+    if (b->slen > 0) {
+        luaL_addlstring(&b->sb, buffer_data(b), len - b->slen);
+        buffer_skip(b, len - b->slen);
+        luaL_pushresult(&b->sb);
+    } else {
+        lua_pushlstring(L, buffer_data(b), len);
+        buffer_skip(b, len);
+    }
 
     return 1;
 }
@@ -105,33 +192,15 @@ static int eco_buffer_append(lua_State *L)
     return 1;
 }
 
-static int eco_buffer_index(lua_State *L)
-{
-    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
-    const char *c = luaL_checkstring(L, 2);
-    int offset = luaL_optinteger(L, 3, 0);
-    const char *data = buffer_data(b);
-    int pos = -1;
-    int i;
-
-    for (i = offset; i < buffer_length(b); i++) {
-        if (data[i] == *c) {
-            pos = i;
-            break;
-        }
-    }
-
-    lua_pushinteger(L, pos);
-    return 1;
-}
-
 static const struct luaL_Reg buffer_methods[] =  {
     {"size", eco_buffer_size},
     {"length", eco_buffer_length},
+    {"init_stage", eco_buffer_init_stage},
+    {"read_stage", eco_buffer_read_stage},
+    {"readline_stage", eco_buffer_readline_stage},
     {"read", eco_buffer_read},
     {"skip", eco_buffer_skip},
     {"append", eco_buffer_append},
-    {"index", eco_buffer_index},
     {NULL, NULL}
 };
 

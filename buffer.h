@@ -27,6 +27,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <lauxlib.h>
 
 #define ECO_BUFFER_MT "eco{buffer}"
 
@@ -34,6 +35,8 @@ struct eco_buffer {
     size_t size;
     size_t first;
     size_t last;
+    luaL_Buffer sb;
+    size_t slen;
     char data[0];
 };
 

@@ -30,21 +30,19 @@ local M = {}
 local methods = {}
 
 function methods:read(n, timeout)
+    local deadtime = timeout and (time.now() + timeout)
     local mt = getmetatable(self)
     local b = mt.b
-    local blen = b:length()
 
-    if blen == 0 then
-        local _, err = mt.reader(b, timeout)
+    b:init_stage()
+
+    while b:length() < n do
+        b:read_stage()
+
+        local _, err = mt.reader(b, deadtime and (deadtime - time.now()))
         if err then
-            return nil, err
+            return nil, err, b:read()
         end
-    end
-
-    blen = b:length()
-
-    if n > blen then
-        n = blen
     end
 
     return b:read(n)
@@ -55,27 +53,14 @@ function methods:readline(timeout, trim)
     local mt = getmetatable(self)
     local reader = mt.reader
     local b = mt.b
-    local offset = 0
+
+    b:init_stage()
 
     while true do
-        local pos = b:index('\n', offset)
-        if pos > -1 then
-            local data = b:read(pos + 1)
-
-            if trim then
-                local len = pos
-
-                if data:sub(len, len) == '\r' then
-                    len = len - 1
-                end
-
-                data = data:sub(1, len)
-            end
-
-            return data
+        local ok, len = b:readline_stage(trim)
+        if ok then
+            return b:read(len)
         end
-
-        offset = b:length()
 
         local _, err = reader(b, deadtime and (deadtime - time.now()))
         if err then
