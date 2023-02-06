@@ -112,7 +112,7 @@ install(
 )
 
 install(
-    TARGETS log termios base64
+    TARGETS log termios
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
@@ -122,11 +122,21 @@ install(
 )
 
 install(
+    TARGETS base64
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/encoding
+)
+
+install(
+    FILES hex.lua
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/encoding
+)
+
+install(
     TARGETS sha1
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/crypto
 )
 
 install(
-    FILES time.lua sys.lua file.lua buffer.lua dns.lua socket.lua http.lua mqtt.lua hex.lua
+    FILES time.lua sys.lua file.lua buffer.lua dns.lua socket.lua http.lua mqtt.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )

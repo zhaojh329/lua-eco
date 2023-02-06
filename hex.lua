@@ -24,6 +24,7 @@
 
 local M = {}
 
+-- returns the hexadecimal encoding of src
 function M.encode(bin)
     local s = bin:gsub('.', function(c)
         return string.format('%02x', c:byte(1))
@@ -32,10 +33,16 @@ function M.encode(bin)
     return s
 end
 
+-- returns the bytes represented by the hexadecimal string s
 function M.decode(s)
-    local bin = s:gsub('..', function(c)
+
+    local bin, n = s:gsub('%x%x', function(c)
         return string.char(tonumber(c, 16))
     end)
+
+    if #s ~= n * 2 then
+        return nil, 'input is malformed'
+    end
 
     return bin
 end

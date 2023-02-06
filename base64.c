@@ -101,7 +101,7 @@ static int lua_b64_decode(lua_State *L)
 
     if (srclen == 0 || srclen % 4 != 0) {
         lua_pushnil(L);
-        lua_pushliteral(L, "not a valid base64 encoded string");
+        lua_pushliteral(L, "input is malformed");
         return 2;
     }
 
@@ -118,7 +118,7 @@ static int lua_b64_decode(lua_State *L)
 
         if (c == 255) {
             luaL_pushresult(&b);
-            lua_pushliteral(L, "not a valid base64 encoded string");
+            lua_pushliteral(L, "input is malformed");
             lua_pushnil(L);
             lua_replace(L, -3);
             return 2;
@@ -148,7 +148,7 @@ static int lua_b64_decode(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_base64(lua_State *L)
+int luaopen_eco_encoding_base64(lua_State *L)
 {
     lua_newtable(L);
 
