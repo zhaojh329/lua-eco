@@ -47,4 +47,40 @@ function M.decode(s)
     return bin
 end
 
+-- Dump returns a string that contains a hex dump of the given data.
+-- The format of the hex dump matches the output of `hexdump -C` on the command line.
+function M.dump(data)
+    local lines = {}
+
+    for i = 1, #data, 16 do
+        local nums = { data:byte(i, i + 15) }
+        local line = {}
+
+        local address = string.format('%08x ', i - 1)
+
+        for j, n in ipairs(nums) do
+            line[#line + 1] = string.format('%02x ', n)
+            if j == 8 then
+                line[#line + 1] = ' '
+            end
+        end
+
+        for j = #nums + 1, 16 do
+            if j == 8 then
+                line[#line + 1] = ' '
+            end
+            line[#line + 1] = '   '
+        end
+
+        line[#line + 1] = ' |'
+
+        line[#line + 1] = data:sub(i, i + 15):gsub('[%c%z]', '.')
+        line[#line + 1] = '\n'
+        lines[#lines + 1] = address
+        lines[#lines + 1] = table.concat(line)
+    end
+
+    return table.concat(lines)
+end
+
 return M
