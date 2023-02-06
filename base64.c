@@ -24,37 +24,14 @@
 
 #include <lauxlib.h>
 #include <stdint.h>
-#include <ctype.h>
 
-static const char *Base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-static const unsigned char base64_suffix_map[256] = {
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 253, 255,
-    255, 253, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 253, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255,  62, 255, 255, 255,  63,
-    52,  53,  54,  55,  56,  57,  58,  59,  60,  61, 255, 255,
-    255, 254, 255, 255, 255,   0,   1,   2,   3,   4,   5,   6,
-    7,   8,   9,  10,  11,  12,  13,  14,  15,  16,  17,  18,
-    19,  20,  21,  22,  23,  24,  25, 255, 255, 255, 255, 255,
-    255,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,
-    37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,
-    49,  50,  51, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255
-};
+#define BASE64_PAD '='
+#define BASE64DE_FIRST '+'
+#define BASE64DE_LAST 'z'
 
 static int lua_b64_encode(lua_State *L)
 {
+    static const char *Base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     size_t srclen;
     const uint8_t *input = (const uint8_t *)luaL_checklstring(L, 1, &srclen);
     luaL_Buffer b;
@@ -95,52 +72,96 @@ static int lua_b64_encode(lua_State *L)
 
 static int lua_b64_decode(lua_State *L)
 {
-    size_t srclen;
-    const char *input = luaL_checklstring(L, 1, &srclen);
-    luaL_Buffer b;
+    static const uint8_t Base64[] = {
+     /* nul, soh, stx, etx, eot, enq, ack, bel, */
+        255, 255, 255, 255, 255, 255, 255, 255,
+     /*  bs,  ht,  nl,  vt,  np,  cr,  so,  si, */
+        255, 255, 255, 255, 255, 255, 255, 255,
+     /* dle, dc1, dc2, dc3, dc4, nak, syn, etb, */
+        255, 255, 255, 255, 255, 255, 255, 255,
+     /* can,  em, sub, esc,  fs,  gs,  rs,  us, */
+        255, 255, 255, 255, 255, 255, 255, 255,
+     /*  sp, '!', '"', '#', '$', '%', '&', ''', */
+        255, 255, 255, 255, 255, 255, 255, 255,
+     /* '(', ')', '*', '+', ',', '-', '.', '/', */
+        255, 255, 255,  62, 255, 255, 255,  63,
+     /* '0', '1', '2', '3', '4', '5', '6', '7', */
+        52,  53,  54,  55,  56,  57,  58,  59,
+     /* '8', '9', ':', ';', '<', '=', '>', '?', */
+        60,  61, 255, 255, 255, 255, 255, 255,
+     /* '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', */
+        255,   0,   1,  2,   3,   4,   5,    6,
+     /* 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', */
+        7,   8,   9,  10,  11,  12,  13,  14,
+     /* 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', */
+        15,  16,  17,  18,  19,  20,  21,  22,
+     /* 'X', 'Y', 'Z', '[', '\', ']', '^', '_', */
+        23,  24,  25, 255, 255, 255, 255, 255,
+     /* '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', */
+        255,  26,  27,  28,  29,  30,  31,  32,
+     /* 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', */
+        33,  34,  35,  36,  37,  38,  39,  40,
+     /* 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', */
+        41,  42,  43,  44,  45,  46,  47,  48,
+     /* 'x', 'y', 'z', '{', '|', '}', '~', del, */
+        49,  50,  51, 255, 255, 255, 255, 255
+    };
 
-    if (srclen == 0 || srclen % 4 != 0) {
+    size_t inlen;
+    const char *in = luaL_checklstring(L, 1, &inlen);
+    uint8_t out[3] = {};
+    int outlen = 0;
+    luaL_Buffer b;
+    int i, j, c;
+
+    luaL_buffinit(L, &b);
+
+    if (inlen & 0x3) {
         lua_pushnil(L);
         lua_pushliteral(L, "input is malformed");
         return 2;
     }
 
-    luaL_buffinit(L, &b);
-    luaL_prepbuffer(&b);
+    for (i = j = 0; i < inlen; i++) {
+        if (in[i] == '=') {
+            luaL_addlstring (&b, (const char *)out, outlen);
+            break;
+        }
 
-    int t = 0, y = 0;
-    int c = 0;
-    int g = 3;
-
-    while (srclen-- > 0) {
-        int pos = *input++;
-        c = base64_suffix_map[pos];
-
-        if (c == 255) {
-            luaL_pushresult(&b);
-            lua_pushliteral(L, "input is malformed");
+        if (in[i] < BASE64DE_FIRST || in[i] > BASE64DE_LAST) {
             lua_pushnil(L);
-            lua_replace(L, -3);
+            lua_pushliteral(L, "input is malformed");
             return 2;
         }
 
-        if (c == 253)
-            continue;
-
-        if (c == 254) {
-            c = 0;
-            g--;
+        c = Base64[(int)in[i]];
+        if (c == 255) {
+            lua_pushnil(L);
+            lua_pushliteral(L, "input is malformed");
+            return 2;
         }
 
-        t = (t << 6) | c;
+        switch (i & 0x3) {
+        case 0:
+            out[0] = (c << 2) & 0xFF;
+            outlen++;
+            break;
+        case 1:
+            out[0] |= (c >> 4) & 0x3;
+            out[1] = (c & 0xF) << 4;
+            outlen++;
+            break;
+        case 2:
+            out[1] |= (c >> 2) & 0xF;
+            out[2] = (c & 0x3) << 6;
+            outlen++;
+            break;
+        case 3:
+            out[2] |= c;
+            outlen = 0;
 
-        if (++y == 4) {
-            luaL_addchar(&b, (t >> 16) & 0xff);
-            if (g > 1)
-                luaL_addchar(&b, (t >> 8) & 0xff);
-            if (g > 2)
-                luaL_addchar(&b, t & 0xff);
-            y = t = 0;
+            luaL_addlstring(&b, (const char *)out, 3);
+            break;
         }
     }
 
