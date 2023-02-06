@@ -30,14 +30,13 @@ otherwise wait for I/O. It's kind of like `Goroutines`.
 
 Lua-eco also provides some modules:
 
-* timer
-* file
-* exec
-* signal
-* socket
+* time - show current time; sleep; timer
+* file - open/close/read/write; access; readlink; stat; statvfs; chown; traverse directory
+* sys - exec; signal
+* socket - tcp/tcp6; udp/udp6; unix
 * ssl
 * http/https - Including server and client
-* mqtt client - Using [lua-mosquitto]
+* mqtt - client, Using [lua-mosquitto]
 * dns
 * termios
 * ubus - A lua binding for [ubus]

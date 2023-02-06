@@ -31,17 +31,16 @@ Lua-eco 是一个内置了 [libev] 事件循环的 [Lua] 解释器。它使所�
 
 Lua-eco 还提供了一些有用的模块:
 
-* timer
-* file
-* exec
-* signal
-* socket
-* ssl
-* http/https - Including server and client
-* mqtt client - Using [lua-mosquitto]
+* time - 显示当前时间; 睡眠; 定时器
+* file - open/close/read/write; access; readlink; stat; statvfs; chown; 遍历目录
+* sys - exec; signal
+* socket - tcp/tcp6; udp/udp6; unix
+* ssl - 包括客户端和服务器
+* http/https - 包括客户端和服务器
+* mqtt - 客户端，使用 [lua-mosquitto]
 * dns
 * termios
-* ubus - A lua binding for [ubus]
+* ubus - 对 [ubus] 的 Lua 绑定
 * base64
 * ...
 
