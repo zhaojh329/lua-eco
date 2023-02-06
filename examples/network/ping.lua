@@ -57,6 +57,8 @@ if not s then
     return
 end
 
+-- s:setoption('bindtodevice', 'eth0')
+
 s:bind(nil, local_id)
 
 print(string.format('PING %s, %d bytes of data.', dest_ip, #local_data))

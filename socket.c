@@ -25,6 +25,7 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <linux/if.h>
 #include <stdlib.h>
 #include <sys/un.h>
 #include <string.h>
@@ -491,8 +492,22 @@ static int opt_set_reuseaddr(lua_State *L, int fd)
     return opt_setboolean(L, fd, SOL_SOCKET, SO_REUSEADDR);
 }
 
+static int opt_set_bindtodevice(lua_State *L, int fd)
+{
+    const char *ifname = luaL_checkstring(L, 3);
+    struct ifreq ifr = {};
+
+    if (strlen(ifname) >= IFNAMSIZ)
+        luaL_argerror(L, 3, "ifname too long");
+
+    strcpy(ifr.ifr_name, ifname);
+
+    return opt_set(L, fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
+}
+
 static struct sock_opt optset[] = {
     {"reuseaddr", opt_set_reuseaddr},
+    {"bindtodevice", opt_set_bindtodevice},
     {NULL, NULL}
 };
 
