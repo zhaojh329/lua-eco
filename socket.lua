@@ -89,7 +89,7 @@ end
     '*l': reads a line of text from the socket. The line is terminated by a LF character (ASCII 10).
           The LF characters are not included in the returned line.
     '*L': Works exactly as the '*l' pattern but the LF characters are included in the returned line.
-    number: read at most number of bytes from the socket
+    number: read a specified number of bytes from the socket.
 
     If successful, the method returns the received pattern. In case of error, the method returns nil
     followed by an error message, followed by a (possibly empty) string containing the partial that
