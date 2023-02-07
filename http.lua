@@ -598,12 +598,8 @@ function M.request(req, body)
     end
 
     local resp, err = do_http_request(s, method, path, headers, body, req.timeout)
-    if not resp then
-        s:close()
-        return nil, err
-    end
-
-    return resp
+    s:close()
+    return resp, err
 end
 
 local con_methods = {}
