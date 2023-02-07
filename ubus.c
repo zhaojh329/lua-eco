@@ -709,6 +709,21 @@ int luaopen_eco_core_ubus(lua_State *L)
 
     lua_newtable(L);
 
+    lua_add_constant(L, "STATUS_OK", UBUS_STATUS_OK);
+    lua_add_constant(L, "STATUS_INVALID_COMMAND", UBUS_STATUS_INVALID_COMMAND);
+    lua_add_constant(L, "STATUS_INVALID_ARGUMENT", UBUS_STATUS_INVALID_ARGUMENT);
+    lua_add_constant(L, "STATUS_METHOD_NOT_FOUND", UBUS_STATUS_METHOD_NOT_FOUND);
+    lua_add_constant(L, "STATUS_NOT_FOUND", UBUS_STATUS_NOT_FOUND);
+    lua_add_constant(L, "STATUS_NO_DATA", UBUS_STATUS_NO_DATA);
+    lua_add_constant(L, "STATUS_PERMISSION_DENIED", UBUS_STATUS_PERMISSION_DENIED);
+    lua_add_constant(L, "STATUS_TIMEOUT", UBUS_STATUS_TIMEOUT);
+    lua_add_constant(L, "STATUS_NOT_SUPPORTED", UBUS_STATUS_NOT_SUPPORTED);
+    lua_add_constant(L, "STATUS_UNKNOWN_ERROR", UBUS_STATUS_UNKNOWN_ERROR);
+    lua_add_constant(L, "STATUS_CONNECTION_FAILED", UBUS_STATUS_CONNECTION_FAILED);
+    lua_add_constant(L, "STATUS_NO_MEMORY", UBUS_STATUS_NO_MEMORY);
+    lua_add_constant(L, "STATUS_PARSE_ERROR", UBUS_STATUS_PARSE_ERROR);
+    lua_add_constant(L, "STATUS_SYSTEM_ERROR", UBUS_STATUS_SYSTEM_ERROR);
+
     lua_add_constant(L, "ARRAY", BLOBMSG_TYPE_ARRAY);
     lua_add_constant(L, "TABLE", BLOBMSG_TYPE_TABLE);
     lua_add_constant(L, "STRING", BLOBMSG_TYPE_STRING);

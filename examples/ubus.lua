@@ -29,11 +29,11 @@ end)
 con:add('eco', {
     echo = {
         function(req, msg)
+            if type(msg.text) ~= 'string' then
+                return ubus.STATUS_INVALID_ARGUMENT
+            end
             con:reply(req, msg)
-        end,
-        {
-            a = ubus.INT8
-        }
+        end, { text = ubus.STRING }
     },
     defer = {
         function(req)

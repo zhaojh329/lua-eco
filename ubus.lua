@@ -106,8 +106,9 @@ function methods:add(object, methods)
         local cb = m[1]
         m[1] = function(req, msg)
             eco.run(function()
-                cb(req, msg)
-                con:complete_deferred_request(req, 0)
+                local rc = cb(req, msg)
+                if type(rc) ~= 'number' then rc = 0 end
+                con:complete_deferred_request(req, rc)
             end)
         end
     end
