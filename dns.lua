@@ -90,6 +90,9 @@ local M = {
     SECTION_AR  = SECTION_AR
 }
 
+local IPv4 = 0
+local IPv6 = 1
+
 local resolver_errstrs = {
     'format error',     -- 1
     'server failure',   -- 2
@@ -153,7 +156,15 @@ local function is_ipv6_addr(ip)
 end
 
 local function is_ip_addr(ip)
-    return is_ipv4_addr(ip) or is_ipv6_addr(ip)
+    if is_ipv4_addr(ip) then
+        return IPv4
+    end
+
+    if is_ipv6_addr(ip) then
+        return IPv6
+    end
+
+    return false
 end
 
 local function parse_resolvconf()
@@ -168,8 +179,11 @@ local function parse_resolvconf()
             end
         elseif line:match('nameserver') then
             local nameserver = line:match('nameserver%s+(.+)')
-            if nameserver and is_ip_addr(nameserver) then
-                nameservers[#nameservers + 1] = nameserver
+            if nameserver then
+                local family = is_ip_addr(nameserver)
+                if family then
+                    nameservers[#nameservers + 1] = { nameserver, 53, family == IPv6}
+                end
             end
         end
     end
@@ -604,7 +618,7 @@ local function query(s, id, req, nameserver)
         return nil, string.format('sendto "%s:%d" fail: %s', host, port, err)
     end
 
-    local data, err = s:recv(512, 3.0)
+    local data, err = s:recvfrom(512, 3.0)
     if not data then
         return nil, string.format('recv from "%s:%d" fail: %s', host, port, err)
     end
@@ -653,17 +667,19 @@ function M.query(qname, opts)
             error('invalid nameservers')
         end
 
-        if not is_ip_addr(host) then
+        local family = is_ip_addr(host)
+
+        if not family then
             error('invalid nameserver: ' .. nameserver)
         end
 
-        nameservers[#nameservers + 1] = { host, port }
+        nameservers[#nameservers + 1] = { host, port, family == IPv6 }
     end
 
     local resolvconf = parse_resolvconf()
 
     for _, nameserver in ipairs(resolvconf.nameservers) do
-        nameservers[#nameservers + 1] = { nameserver, 53 }
+        nameservers[#nameservers + 1] = nameserver
     end
 
     if #nameservers < 1 then
@@ -686,7 +702,12 @@ function M.query(qname, opts)
         end
 
         local s
-        s, err = socket.udp()
+
+        if nameserver[3] then
+            s, err = socket.udp6()
+        else
+            s, err = socket.udp()
+        end
         if not s then
             return err
         end
