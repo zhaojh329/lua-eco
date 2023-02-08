@@ -31,12 +31,16 @@
 
 #define ECO_BUFFER_MT "eco{buffer}"
 
+#define SB_SIZE 4096
+
 struct eco_buffer {
     size_t size;
     size_t first;
     size_t last;
-    luaL_Buffer sb;
-    size_t slen;
+    struct {
+        char data[SB_SIZE];
+        size_t len;
+    } sb;
     char data[0];
 };
 
@@ -48,9 +52,10 @@ struct eco_buffer {
     } while(0)
 
 #define buffer_length(b) (b->last - b->first)
-
 #define buffer_data(b) (b->data + b->first)
-
 #define buffer_room(b) (b->size - b->last)
+
+#define buffer_sb_data(b) (b->sb.data + b->sb.len)
+#define buffer_sb_room(b) (SB_SIZE - b->sb.len)
 
 #endif

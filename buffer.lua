@@ -25,27 +25,52 @@
 local buffer = require 'eco.core.buffer'
 local time = require 'eco.time'
 
+local SB_SIZE = buffer.SB_SIZE
+
 local M = {}
 
 local methods = {}
 
-function methods:read(n, timeout)
-    local deadtime = timeout and (time.now() + timeout)
-    local mt = getmetatable(self)
-    local b = mt.b
+local function read_chunk(b, n, reader, deadtime)
+    if n > SB_SIZE then n = SB_SIZE end
 
     b:init_stage()
 
     while b:length() < n do
         b:read_stage()
 
-        local _, err = mt.reader(b, deadtime and (deadtime - time.now()))
+        local _, err = reader(b, deadtime and (deadtime - time.now()))
         if err then
             return nil, err, b:read()
         end
     end
 
     return b:read(n)
+end
+
+function methods:read(n, timeout)
+    local deadtime = timeout and (time.now() + timeout)
+    local mt = getmetatable(self)
+    local reader = mt.reader
+    local b = mt.b
+
+    if n <= SB_SIZE then
+        return read_chunk(b, n, reader, deadtime)
+    end
+
+    local data = {}
+
+    while n > 0 do
+        local chunk, err, part = read_chunk(b, n, reader, deadtime)
+        if not data then
+            return nil, err, part
+        end
+
+        n = n - #chunk
+        data[#data + 1] = chunk
+    end
+
+    return table.concat(data)
 end
 
 function methods:readline(timeout, trim)
@@ -62,9 +87,13 @@ function methods:readline(timeout, trim)
             return b:read(len)
         end
 
+        if ok == nil then
+            return nil, 'buffer full', b:read(len)
+        end
+
         local _, err = reader(b, deadtime and (deadtime - time.now()))
         if err then
-            return nil, err, b:read()
+            return nil, err, b:read(len)
         end
     end
 end

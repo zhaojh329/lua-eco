@@ -55,15 +55,14 @@ static int eco_buffer_length(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
 
-    lua_pushinteger(L, buffer_length(b) + b->slen);
+    lua_pushinteger(L, buffer_length(b) + b->sb.len);
     return 1;
 }
 
 static int eco_buffer_init_stage(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
-    luaL_buffinit(L, &b->sb);
-    b->slen = 0;
+    b->sb.len = 0;
     return 0;
 }
 
@@ -71,13 +70,17 @@ static int eco_buffer_read_stage(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
     size_t blen = buffer_length(b);
+    size_t sb_room = buffer_sb_room(b);
     size_t len = luaL_optinteger(L, 2, blen);
 
     if (len > blen)
         len = blen;
 
-    luaL_addlstring(&b->sb, buffer_data(b), len);
-    b->slen += len;
+    if (len > sb_room)
+        len = sb_room;
+
+    memcpy(buffer_sb_data(b), buffer_data(b), len);
+    b->sb.len += len;
 
     buffer_skip(b, len);
 
@@ -89,25 +92,32 @@ static int eco_buffer_readline_stage_trim(lua_State *L, struct eco_buffer *b)
 {
     const char *data = buffer_data(b);
     size_t blen = buffer_length(b);
+    bool sb_full = false;
     int c = 0, i = 0;
 
     while (i < blen) {
+        if (buffer_sb_room(b) == 0) {
+            sb_full = true;
+            break;
+        }
+
         c = data[i++];
 
         if (c == '\n')
             break;
 
-        if (c != '\r') {
-            luaL_addchar(&b->sb, c);
-            b->slen++;
-        }
+        if (c != '\r')
+            b->sb.data[b->sb.len++] = c;
     }
 
     buffer_skip(b, i);
 
-    lua_pushboolean(L, c == '\n');
-    lua_pushinteger(L, b->slen);
+    if (sb_full)
+        lua_pushnil(L);
+    else
+        lua_pushboolean(L, c == '\n');
 
+    lua_pushinteger(L, b->sb.len);
     return 2;
 }
 
@@ -117,16 +127,21 @@ static int eco_buffer_readline_stage(lua_State *L)
     bool trim = lua_toboolean(L, 2);
     const char *data = buffer_data(b);
     size_t blen = buffer_length(b);
+    bool sb_full = false;
     int c = 0, i = 0;
 
     if (trim)
         return eco_buffer_readline_stage_trim(L, b);
 
     while (i < blen) {
+        if (buffer_sb_room(b) == 0) {
+            sb_full = true;
+            break;
+        }
+
         c = data[i++];
 
-        luaL_addchar(&b->sb, c);
-        b->slen++;
+        b->sb.data[b->sb.len++] = c;
 
         if (c == '\n')
             break;
@@ -134,8 +149,12 @@ static int eco_buffer_readline_stage(lua_State *L)
 
     buffer_skip(b, i);
 
-    lua_pushboolean(L, c == '\n');
-    lua_pushinteger(L, b->slen);
+    if (sb_full)
+        lua_pushnil(L);
+    else
+        lua_pushboolean(L, c == '\n');
+
+    lua_pushinteger(L, b->sb.len);
 
     return 2;
 }
@@ -143,16 +162,16 @@ static int eco_buffer_readline_stage(lua_State *L)
 static int eco_buffer_read(lua_State *L)
 {
     struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
-    size_t total = buffer_length(b) + b->slen;
+    size_t total = buffer_length(b) + b->sb.len;
     size_t len = luaL_optinteger(L, 2, total);
 
     if (len > total)
         len = total;
 
-    if (b->slen > 0) {
-        luaL_addlstring(&b->sb, buffer_data(b), len - b->slen);
-        buffer_skip(b, len - b->slen);
-        luaL_pushresult(&b->sb);
+    if (b->sb.len > 0) {
+        memcpy(b->sb.data + b->sb.len, buffer_data(b), len - b->sb.len);
+        buffer_skip(b, len - b->sb.len);
+        lua_pushlstring(L, b->sb.data, len);
     } else {
         lua_pushlstring(L, buffer_data(b), len);
         buffer_skip(b, len);
@@ -207,6 +226,8 @@ static const struct luaL_Reg buffer_methods[] =  {
 int luaopen_eco_core_buffer(lua_State *L)
 {
     lua_newtable(L);
+
+    lua_add_constant(L, "SB_SIZE", SB_SIZE);
 
     eco_new_metatable(L, ECO_BUFFER_MT, buffer_methods);
     lua_pushcclosure(L, eco_buffer_new, 1);
