@@ -33,6 +33,7 @@
 
 enum {
     ECO_WATCHER_IO,
+    ECO_WATCHER_ASYNC,
     ECO_WATCHER_TIMER,
     ECO_WATCHER_CHILD,
     ECO_WATCHER_SIGNAL
@@ -42,6 +43,7 @@ struct eco_watcher {
     struct ev_timer tmr;
     union {
         struct ev_io io;
+        struct ev_async async;
         struct ev_child child;
         struct ev_signal signal;
     } w;
@@ -209,6 +211,10 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
         ev_io_stop(loop, &watcher->w.io);
         break;
 
+    case ECO_WATCHER_ASYNC:
+        ev_async_stop(loop, &watcher->w.async);
+        break;
+
     case ECO_WATCHER_CHILD:
         ev_child_stop(loop, &watcher->w.child);
         break;
@@ -238,6 +244,21 @@ static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
 
     lua_pushboolean(co, true);
     eco_resume(watcher->ctx->L, co, 1);
+}
+
+static void eco_watcher_async_cb(struct ev_loop *loop, struct ev_async *w, int revents)
+{
+    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.async);
+    lua_State *co = watcher->co;
+
+    watcher->co = NULL;
+
+    ev_async_stop(loop, w);
+    ev_timer_stop(loop, &watcher->tmr);
+
+    lua_pushboolean(co, true);
+    eco_resume(watcher->ctx->L, co, 1);
+    return;
 }
 
 static void eco_watcher_child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
@@ -315,6 +336,11 @@ static int eco_watcher(lua_State *L)
         }
         break;
 
+    case ECO_WATCHER_ASYNC:
+        w = lua_newuserdata(L, sizeof(struct eco_watcher));
+        ev_async_init(&w->w.async, eco_watcher_async_cb);
+        break;
+
     case ECO_WATCHER_CHILD: {
             int pid = luaL_checkinteger(L, 2);
 
@@ -382,6 +408,10 @@ static int eco_watcher_wait(lua_State *L)
         ev_io_start(loop, &w->w.io);
         break;
 
+    case ECO_WATCHER_ASYNC:
+        ev_async_start(loop, &w->w.async);
+        break;
+
     case ECO_WATCHER_CHILD:
         ev_child_start(loop, &w->w.child);
         break;
@@ -404,6 +434,19 @@ static int eco_watcher_wait(lua_State *L)
     return lua_yield(L, 0);
 }
 
+static int eco_watcher_send(lua_State *L)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
+    struct ev_loop *loop = w->ctx->loop;
+
+    if (w->type != ECO_WATCHER_ASYNC)
+        luaL_error(L, "only async watcher support send");
+
+    ev_async_send(loop, &w->w.async);
+
+    return 0;
+}
+
 static int eco_watcher_cancel(lua_State *L)
 {
     struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
@@ -416,6 +459,10 @@ static int eco_watcher_cancel(lua_State *L)
     switch (w->type) {
     case ECO_WATCHER_IO:
         ev_io_stop(loop, &w->w.io);
+        break;
+
+    case ECO_WATCHER_ASYNC:
+        ev_async_stop(loop, &w->w.async);
         break;
 
     case ECO_WATCHER_CHILD:
@@ -444,6 +491,7 @@ static int eco_watcher_cancel(lua_State *L)
 static const struct luaL_Reg eco_watcher_methods[] =  {
     {"active", eco_watcher_active},
     {"wait", eco_watcher_wait},
+    {"send", eco_watcher_send},
     {"cancel", eco_watcher_cancel},
     {NULL, NULL}
 };
@@ -483,6 +531,7 @@ static int luaopen_eco(lua_State *L)
     lua_setfield(L, -2, "context");
 
     lua_add_constant(L, "IO", ECO_WATCHER_IO);
+    lua_add_constant(L, "ASYNC", ECO_WATCHER_ASYNC);
     lua_add_constant(L, "TIMER", ECO_WATCHER_TIMER);
     lua_add_constant(L, "CHILD", ECO_WATCHER_CHILD);
     lua_add_constant(L, "SIGNAL", ECO_WATCHER_SIGNAL);
