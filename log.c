@@ -22,10 +22,10 @@
  * SOFTWARE.
  */
 
-#include <lauxlib.h>
 #include <stdio.h>
 
 #include "log/log.h"
+#include "eco.h"
 
 static int lua_log_level(lua_State *L)
 {
@@ -152,29 +152,14 @@ int luaopen_eco_log(lua_State *L)
 {
     lua_newtable(L);
 
-    lua_pushinteger(L, LOG_EMERG);
-    lua_setfield(L, -2, "EMERG");
-
-    lua_pushinteger(L, LOG_ALERT);
-    lua_setfield(L, -2, "ALERT");
-
-    lua_pushinteger(L, LOG_CRIT);
-    lua_setfield(L, -2, "CRIT");
-
-    lua_pushinteger(L, LOG_ERR);
-    lua_setfield(L, -2, "ERR");
-
-    lua_pushinteger(L, LOG_WARNING);
-    lua_setfield(L, -2, "WARNING");
-
-    lua_pushinteger(L, LOG_NOTICE);
-    lua_setfield(L, -2, "NOTICE");
-
-    lua_pushinteger(L, LOG_INFO);
-    lua_setfield(L, -2, "INFO");
-
-    lua_pushinteger(L, LOG_DEBUG);
-    lua_setfield(L, -2, "DEBUG");
+    lua_add_constant(L, "EMERG", LOG_EMERG);
+    lua_add_constant(L, "ALERT", LOG_ALERT);
+    lua_add_constant(L, "CRIT", LOG_CRIT);
+    lua_add_constant(L, "ERR", LOG_ERR);
+    lua_add_constant(L, "WARNING", LOG_WARNING);
+    lua_add_constant(L, "NOTICE", LOG_NOTICE);
+    lua_add_constant(L, "INFO", LOG_INFO);
+    lua_add_constant(L, "DEBUG", LOG_DEBUG);
 
     lua_pushcfunction(L, lua_log_level);
     lua_setfield(L, -2, "level");
