@@ -77,9 +77,5 @@ end, 'eco2')
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
 
-## TODO
-
-- [ ] websocket
-
 ## 贡献代码
 如果您想帮助 lua-eco 变得更好，请参考 [CONTRIBUTING_ZH.md](/CONTRIBUTING_ZH.md)。
