@@ -22,17 +22,14 @@ local page =
         ws = new WebSocket('ws://' + location.host + '/ws')
 
         ws.onopen = function(evt) {
-            console.log('onopen:')
             console.log(evt)
         }
 
         ws.onmessage = function(evt) {
-            console.log('onmessage:')
             console.log(evt)
         }
 
         ws.onclose = function(evt) {
-            console.log('Connection closed:')
             console.log(evt)
             ws = null
         }
@@ -47,10 +44,8 @@ local page =
     }
 
     function disconnect() {
-        if (ws) {
-            ws.close()
-            ws = null
-        }
+        if (ws)
+            ws.close(1000, 'byte!')
     }
 </script>
 </head>
@@ -69,21 +64,42 @@ local function handler(con, req)
         con:add_header('content-type', 'text/html')
         con:send(page)
     elseif path == '/ws' then
-        local ws, err = websocket.upgrade(con, req)
+        local opts = {
+            max_payload_len = 65535
+        }
+        local ws, err = websocket.upgrade(con, req, opts)
         if not ws then
             print(err)
             return
         end
 
         while true do
-            local msg, typ, err = ws:recv_frame()
-            if not msg then
-                print(err)
+            local data, typ, err = ws:recv_frame()
+            if not data then
+                print('err:', err)
                 return
             end
-            print(typ, msg)
 
-            ws:send_text('I am eco')
+            if typ == 'close' then
+                -- for typ 'close', err contains the status code
+                local code = err
+
+                -- send a close frame back:
+                ws:send_close(1000, "enough, enough!")
+                print('closing with status code ' .. code .. ' and message "' .. data .. '"')
+                return
+            end
+
+            if typ == 'ping' then
+                ws:send_pong(data)
+            elseif typ == 'pong' then
+                -- just discard the incoming pong frame
+            else
+                print('received a frame of type "' .. typ .. '" and payload "' .. data .. '"')
+            end
+
+            ws:send_text('Hello world')
+            ws:send_binary('blah blah blah...')
         end
     end
 end

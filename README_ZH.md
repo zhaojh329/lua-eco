@@ -37,6 +37,7 @@ Lua-eco 还提供了一些有用的模块:
 * socket - tcp/tcp6; udp/udp6; unix
 * ssl - 包括客户端和服务器
 * http/https - 包括客户端和服务器
+* websocket - 服务器
 * mqtt - 客户端，使用 [lua-mosquitto]
 * dns
 * termios

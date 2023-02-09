@@ -28,6 +28,8 @@ local time = require 'eco.time'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 
+local str_lower = string.lower
+
 local M = {
     HTTP_STATUS_CONTINUE = 100,
     HTTP_STATUS_SWITCHING_PROTOCOLS = 101,
@@ -1112,7 +1114,12 @@ local function handle_connection(con, peer, handler, first)
         return false, http_con_log_info(peer, 'flush data: ' .. err)
     end
 
-    if http_keepalive < 1 or req.headers['connection'] == 'close' or resp.headers['connection'] == 'close' then
+    local req_connection = str_lower(req.headers['connection'] or '')
+    local resp_connection = str_lower(resp.headers['connection'] or '')
+
+    if http_keepalive < 1 or req_connection == 'close'
+        or req_connection == 'upgrade'
+        or resp_connection == 'close' then
         sock:close()
     else
         ok, err = con:discard_body()

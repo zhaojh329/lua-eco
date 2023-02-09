@@ -36,6 +36,7 @@ Lua-eco also provides some modules:
 * socket - tcp/tcp6; udp/udp6; unix
 * ssl
 * http/https - Including server and client
+* websocket - Server
 * mqtt - client, Using [lua-mosquitto]
 * dns
 * termios
