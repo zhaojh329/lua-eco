@@ -28,7 +28,9 @@ local time = require 'eco.time'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 
+local str_format = string.format
 local str_lower = string.lower
+local tonumber = tonumber
 
 local M = {
     HTTP_STATUS_CONTINUE = 100,
@@ -993,7 +995,7 @@ local function http_con_log_info(addr, msg)
     local str = os.date() .. ' ' .. s.short_src .. ':' .. s.currentline
 
     if addr then
-        str = str .. string.format(' %s:%d', addr.ipaddr, addr.port)
+        str = str .. str_format(' %s:%d', addr.ipaddr, addr.port)
     end
 
     return  str .. ' ' .. msg
@@ -1052,10 +1054,10 @@ local function handle_connection(con, peer, handler, first)
             return false, http_con_log_info(peer, 'not a vaild http header')
         end
 
-        headers[name:lower()] = value
+        headers[str_lower(name)] = value
     end
 
-    if headers['transfer-encoding'] == 'chunked' then
+    if str_lower(headers['transfer-encoding'] or '') == 'chunked' then
         return false, http_con_log_info(peer, 'not support chunked http request')
     end
 

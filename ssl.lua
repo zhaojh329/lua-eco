@@ -27,6 +27,9 @@ local buffer = require 'eco.buffer'
 local ssl = require 'eco.core.ssl'
 local time = require 'eco.time'
 
+local str_sub = string.sub
+local type = type
+
 local SSL_MT_SERVER = 0
 local SSL_MT_CLIENT = 1
 local SSL_MT_ESTAB  = 2
@@ -78,7 +81,7 @@ function client_methods:send(data)
             return nil, err, sent
         end
 
-        n, err = ssl:write(data:sub(sent + 1))
+        n, err = ssl:write(str_sub(data, sent + 1))
         if not n then
             if err then
                 return nil, err, sent
@@ -184,14 +187,16 @@ local function ssl_setmetatable(ctx, sock, methods, name)
                 return nil, 'timeout'
             end
 
+            local ss = mt.ssl
+
             while true do
-                local n, err = mt.ssl:read_buffer(b)
+                local n, err = ss:read_buffer(b)
                 if not n then
                     if err then
                         return nil, err
                     end
 
-                    local state = mt.ssl:state()
+                    local state = ss:state()
                     local ok
 
                     if state == -2 then

@@ -27,6 +27,13 @@ local file = require 'eco.core.file'
 local buffer = require 'eco.buffer'
 local sys = require 'eco.core.sys'
 
+local read_buffer = file.read_buffer
+local sendfile = file.sendfile
+local write = file.write
+
+local str_sub = string.sub
+local type = type
+
 local SOCK_MT_STREAM = 0
 local SOCK_MT_DGRAM  = 1
 local SOCK_MT_SERVER = 2
@@ -122,17 +129,19 @@ local function sock_send(sock, data)
     end
 
     local mt = getmetatable(sock)
+    local iow = mt.iow
+    local fd = mt.fd
     local total = #data
     local sent = 0
     local ok, n, err
 
     while sent < total do
-        ok, err = mt.iow:wait()
+        ok, err = iow:wait()
         if not ok then
             return nil, err, sent
         end
 
-        n, err = file.write(mt.fd, data:sub(sent + 1))
+        n, err = write(fd, str_sub(data, sent + 1))
         if not n then
             return nil, err, sent
         end
@@ -158,7 +167,7 @@ local function sock_sendfile(sock, fd, count, offset)
             return nil, err, sent
         end
 
-        local ret, offset_ret = file.sendfile(sfd, fd, offset, count)
+        local ret, offset_ret = sendfile(sfd, fd, offset, count)
         if not ret then
             return nil, offset_ret, sent
         end
@@ -258,7 +267,7 @@ local function sock_update_mt(sock, methods, name)
                 return nil, 'timeout'
             end
 
-            local n, err = file.read_buffer(mt.fd, b)
+            local n, err = read_buffer(mt.fd, b)
             if n == 0 then
                 return nil, 'closed'
             end
@@ -294,7 +303,7 @@ local function sock_setmetatable(fd, family, type, methods, name)
                 return nil, 'timeout'
             end
 
-            local n, err = file.read_buffer(mt.fd, b)
+            local n, err = read_buffer(mt.fd, b)
             if name == SOCK_MT_ESTAB and n == 0 then
                 return nil, 'closed'
             end
