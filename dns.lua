@@ -25,36 +25,11 @@
 --]]
 
 local socket = require 'eco.socket'
+local bit = require 'eco.bit'
 
-local rshift
-local lshift
-local band
-
-if tonumber(_VERSION:match('%d%.%d')) < 5.3 then
-    local bit = require 'bit'
-    rshift = bit.rshift
-    lshift = bit.lshift
-    band = bit.band
-else
-    local bit = load([[
-        local M = {}
-        function M.rshift(x, n)
-            return x >> n
-        end
-
-        function M.lshift(x, n)
-            return x << n
-        end
-
-        function M.band(a, b)
-            return a & b
-        end
-        return M
-    ]])()
-    rshift = bit.rshift
-    lshift = bit.lshift
-    band = bit.band
-end
+local rshift = bit.rshift
+local lshift = bit.lshift
+local band = bit.band
 
 local TYPE_A      = 1
 local TYPE_NS     = 2

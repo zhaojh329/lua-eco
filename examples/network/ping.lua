@@ -7,7 +7,11 @@
 
 local socket = require 'eco.socket'
 local time = require 'eco.time'
-local bit = require 'bit'
+local bit = require 'eco.bit'
+
+local rshift = bit.rshift
+local lshift = bit.lshift
+local band = bit.band
 
 local ICMP_HEADER_LEN = 8
 local ICMP_ECHO = 8
@@ -25,7 +29,7 @@ local function build_icmp_req()
         '\0',         -- code
         '\0\0',      -- checksum
         '\0\0',      -- id: the kernel will assign it with local port
-        string.char(bit.rshift(local_seq, 8), bit.band(local_seq, 0xff)),   -- sequence
+        string.char(rshift(local_seq, 8), band(local_seq, 0xff)),   -- sequence
         local_data
     }
 
@@ -42,11 +46,11 @@ local function parse_icmp_resp(data)
     local icmp_type = data:byte(1)
     local id_hi = data:byte(5)
     local id_lo = data:byte(6)
-    local id = bit.lshift(id_hi, 8) + id_lo
+    local id = lshift(id_hi, 8) + id_lo
 
     local seq_hi = data:byte(7)
     local seq_lo = data:byte(8)
-    local seq = bit.lshift(seq_hi, 8) + seq_lo
+    local seq = lshift(seq_hi, 8) + seq_lo
 
     return icmp_type, id, seq, #data - ICMP_HEADER_LEN
 end

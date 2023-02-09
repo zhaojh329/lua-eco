@@ -27,6 +27,7 @@
 local base64 = require 'eco.encoding.base64'
 local sha1 = require 'eco.crypto.sha1'
 local http = require 'eco.http'
+local bit = require 'eco.bit'
 
 local tostring = tostring
 local concat = table.concat
@@ -37,49 +38,11 @@ local str_lower = string.lower
 local str_sub = string.sub
 local type = type
 
-local rshift
-local lshift
-local band
-local bor
-local bxor
-
-if tonumber(_VERSION:match('%d%.%d')) < 5.3 then
-    local bit = require 'bit'
-    rshift = bit.rshift
-    lshift = bit.lshift
-    band = bit.band
-    bor = bit.bor
-    bxor = bit.bxor
-else
-    local bit = load([[
-        local M = {}
-        function M.rshift(x, n)
-            return x >> n
-        end
-
-        function M.lshift(x, n)
-            return x << n
-        end
-
-        function M.band(a, b)
-            return a & b
-        end
-
-        function M.bor(a, b)
-            return a | b
-        end
-
-        function M.bxor(a, b)
-            return a ~ b
-        end
-        return M
-    ]])()
-    rshift = bit.rshift
-    lshift = bit.lshift
-    band = bit.band
-    bor = bit.bor
-    bxor = bit.bxor
-end
+local rshift = bit.rshift
+local lshift = bit.lshift
+local band = bit.band
+local bor = bit.bor
+local bxor = bit.bxor
 
 local M = {}
 
