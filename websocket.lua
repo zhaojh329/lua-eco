@@ -374,7 +374,7 @@ function M.upgrade(con, req, opts)
 
     local protocol = headers['sec-websocket-protocol']
 
-    con:set_status(http.HTTP_STATUS_SWITCHING_PROTOCOLS)
+    con:set_status(http.STATUS_SWITCHING_PROTOCOLS)
     con:add_header('upgrade', 'websocket')
     con:add_header('connection', 'upgrade')
 

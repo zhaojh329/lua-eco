@@ -33,137 +33,137 @@ local str_lower = string.lower
 local tonumber = tonumber
 
 local M = {
-    HTTP_STATUS_CONTINUE = 100,
-    HTTP_STATUS_SWITCHING_PROTOCOLS = 101,
-    HTTP_STATUS_PROCESSING = 102,
-    HTTP_STATUS_OK = 200,
-    HTTP_STATUS_CREATED = 201,
-    HTTP_STATUS_ACCEPTED = 202,
-    HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION = 203,
-    HTTP_STATUS_NO_CONTENT = 204,
-    HTTP_STATUS_RESET_CONTENT = 205,
-    HTTP_STATUS_PARTIAL_CONTENT = 206,
-    HTTP_STATUS_MULTI_STATUS = 207,
-    HTTP_STATUS_ALREADY_REPORTED = 208,
-    HTTP_STATUS_IM_USED = 226,
-    HTTP_STATUS_MULTIPLE_CHOICES = 300,
-    HTTP_STATUS_MOVED_PERMANENTLY = 301,
-    HTTP_STATUS_FOUND = 302,
-    HTTP_STATUS_SEE_OTHER = 303,
-    HTTP_STATUS_NOT_MODIFIED = 304,
-    HTTP_STATUS_USE_PROXY = 305,
-    HTTP_STATUS_TEMPORARY_REDIRECT = 307,
-    HTTP_STATUS_PERMANENT_REDIRECT = 308,
-    HTTP_STATUS_BAD_REQUEST = 400,
-    HTTP_STATUS_UNAUTHORIZED = 401,
-    HTTP_STATUS_PAYMENT_REQUIRED = 402,
-    HTTP_STATUS_FORBIDDEN = 403,
-    HTTP_STATUS_NOT_FOUND = 404,
-    HTTP_STATUS_METHOD_NOT_ALLOWED = 405,
-    HTTP_STATUS_NOT_ACCEPTABLE = 406,
-    HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED = 407,
-    HTTP_STATUS_REQUEST_TIMEOUT = 408,
-    HTTP_STATUS_CONFLICT = 409,
-    HTTP_STATUS_GONE = 410,
-    HTTP_STATUS_LENGTH_REQUIRED = 411,
-    HTTP_STATUS_PRECONDITION_FAILED = 412,
-    HTTP_STATUS_PAYLOAD_TOO_LARGE = 413,
-    HTTP_STATUS_URI_TOO_LONG = 414,
-    HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE = 415,
-    HTTP_STATUS_RANGE_NOT_SATISFIABLE = 416,
-    HTTP_STATUS_EXPECTATION_FAILED = 417,
-    HTTP_STATUS_MISDIRECTED_REQUEST = 421,
-    HTTP_STATUS_UNPROCESSABLE_ENTITY = 422,
-    HTTP_STATUS_LOCKED = 423,
-    HTTP_STATUS_FAILED_DEPENDENCY = 424,
-    HTTP_STATUS_UPGRADE_REQUIRED = 426,
-    HTTP_STATUS_PRECONDITION_REQUIRED = 428,
-    HTTP_STATUS_TOO_MANY_REQUESTS = 429,
-    HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
-    HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
-    HTTP_STATUS_INTERNAL_SERVER_ERROR = 500,
-    HTTP_STATUS_NOT_IMPLEMENTED = 501,
-    HTTP_STATUS_BAD_GATEWAY = 502,
-    HTTP_STATUS_SERVICE_UNAVAILABLE = 503,
-    HTTP_STATUS_GATEWAY_TIMEOUT = 504,
-    HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED = 505,
-    HTTP_STATUS_VARIANT_ALSO_NEGOTIATES = 506,
-    HTTP_STATUS_INSUFFICIENT_STORAGE = 507,
-    HTTP_STATUS_LOOP_DETECTED = 508,
-    HTTP_STATUS_NOT_EXTENDED = 510,
-    HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED = 511,
+    STATUS_CONTINUE = 100,
+    STATUS_SWITCHING_PROTOCOLS = 101,
+    STATUS_PROCESSING = 102,
+    STATUS_OK = 200,
+    STATUS_CREATED = 201,
+    STATUS_ACCEPTED = 202,
+    STATUS_NON_AUTHORITATIVE_INFORMATION = 203,
+    STATUS_NO_CONTENT = 204,
+    STATUS_RESET_CONTENT = 205,
+    STATUS_PARTIAL_CONTENT = 206,
+    STATUS_MULTI_STATUS = 207,
+    STATUS_ALREADY_REPORTED = 208,
+    STATUS_IM_USED = 226,
+    STATUS_MULTIPLE_CHOICES = 300,
+    STATUS_MOVED_PERMANENTLY = 301,
+    STATUS_FOUND = 302,
+    STATUS_SEE_OTHER = 303,
+    STATUS_NOT_MODIFIED = 304,
+    STATUS_USE_PROXY = 305,
+    STATUS_TEMPORARY_REDIRECT = 307,
+    STATUS_PERMANENT_REDIRECT = 308,
+    STATUS_BAD_REQUEST = 400,
+    STATUS_UNAUTHORIZED = 401,
+    STATUS_PAYMENT_REQUIRED = 402,
+    STATUS_FORBIDDEN = 403,
+    STATUS_NOT_FOUND = 404,
+    STATUS_METHOD_NOT_ALLOWED = 405,
+    STATUS_NOT_ACCEPTABLE = 406,
+    STATUS_PROXY_AUTHENTICATION_REQUIRED = 407,
+    STATUS_REQUEST_TIMEOUT = 408,
+    STATUS_CONFLICT = 409,
+    STATUS_GONE = 410,
+    STATUS_LENGTH_REQUIRED = 411,
+    STATUS_PRECONDITION_FAILED = 412,
+    STATUS_PAYLOAD_TOO_LARGE = 413,
+    STATUS_URI_TOO_LONG = 414,
+    STATUS_UNSUPPORTED_MEDIA_TYPE = 415,
+    STATUS_RANGE_NOT_SATISFIABLE = 416,
+    STATUS_EXPECTATION_FAILED = 417,
+    STATUS_MISDIRECTED_REQUEST = 421,
+    STATUS_UNPROCESSABLE_ENTITY = 422,
+    STATUS_LOCKED = 423,
+    STATUS_FAILED_DEPENDENCY = 424,
+    STATUS_UPGRADE_REQUIRED = 426,
+    STATUS_PRECONDITION_REQUIRED = 428,
+    STATUS_TOO_MANY_REQUESTS = 429,
+    STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
+    STATUS_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
+    STATUS_INTERNAL_SERVER_ERROR = 500,
+    STATUS_NOT_IMPLEMENTED = 501,
+    STATUS_BAD_GATEWAY = 502,
+    STATUS_SERVICE_UNAVAILABLE = 503,
+    STATUS_GATEWAY_TIMEOUT = 504,
+    STATUS_HTTP_VERSION_NOT_SUPPORTED = 505,
+    STATUS_VARIANT_ALSO_NEGOTIATES = 506,
+    STATUS_INSUFFICIENT_STORAGE = 507,
+    STATUS_LOOP_DETECTED = 508,
+    STATUS_NOT_EXTENDED = 510,
+    STATUS_NETWORK_AUTHENTICATION_REQUIRED = 511,
 
-    HTTP_METHOD_GET = 0,
-    HTTP_METHOD_POST = 1,
-    HTTP_METHOD_PUT = 2,
-    HTTP_METHOD_HEAD = 3,
-    HTTP_METHOD_DELETE = 4,
-    HTTP_METHOD_CONNECT = 5,
-    HTTP_METHOD_OPTIONS = 6,
-    HTTP_METHOD_TRACE = 7,
-    HTTP_METHOD_PATCH = 8
+    METHOD_GET = 0,
+    METHOD_POST = 1,
+    METHOD_PUT = 2,
+    METHOD_HEAD = 3,
+    METHOD_DELETE = 4,
+    METHOD_CONNECT = 5,
+    METHOD_OPTIONS = 6,
+    METHOD_TRACE = 7,
+    METHOD_PATCH = 8
 }
 
 local status_map = {
-    [M.HTTP_STATUS_CONTINUE] = 'Continue',
-    [M.HTTP_STATUS_SWITCHING_PROTOCOLS] = 'Switching Protocols',
-    [M.HTTP_STATUS_PROCESSING] = 'Processing',
-    [M.HTTP_STATUS_OK] = 'OK',
-    [M.HTTP_STATUS_CREATED] = 'Created',
-    [M.HTTP_STATUS_ACCEPTED] = 'Accepted',
-    [M.HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION] = 'Non-Authoritative Information',
-    [M.HTTP_STATUS_NO_CONTENT] = 'No Content',
-    [M.HTTP_STATUS_RESET_CONTENT] = 'Reset Content',
-    [M.HTTP_STATUS_PARTIAL_CONTENT] = 'Partial Content',
-    [M.HTTP_STATUS_MULTI_STATUS] = 'Multi-Status',
-    [M.HTTP_STATUS_ALREADY_REPORTED] = 'Already Reported',
-    [M.HTTP_STATUS_IM_USED] = 'IM Used',
-    [M.HTTP_STATUS_MULTIPLE_CHOICES] = 'Multiple Choices',
-    [M.HTTP_STATUS_MOVED_PERMANENTLY] = 'Moved Permanently',
-    [M.HTTP_STATUS_FOUND] = 'Found',
-    [M.HTTP_STATUS_SEE_OTHER] = 'See Other',
-    [M.HTTP_STATUS_NOT_MODIFIED] = 'Not Modified',
-    [M.HTTP_STATUS_USE_PROXY] = 'Use Proxy',
-    [M.HTTP_STATUS_TEMPORARY_REDIRECT] = 'Temporary Redirect',
-    [M.HTTP_STATUS_PERMANENT_REDIRECT] = 'Permanent Redirect',
-    [M.HTTP_STATUS_BAD_REQUEST] = 'Bad Request',
-    [M.HTTP_STATUS_UNAUTHORIZED] = 'Unauthorized',
-    [M.HTTP_STATUS_PAYMENT_REQUIRED] = 'Payment Required',
-    [M.HTTP_STATUS_FORBIDDEN] = 'Forbidden',
-    [M.HTTP_STATUS_NOT_FOUND] = 'Not Found',
-    [M.HTTP_STATUS_METHOD_NOT_ALLOWED] = 'Method Not Allowed',
-    [M.HTTP_STATUS_NOT_ACCEPTABLE] = 'Not Acceptable',
-    [M.HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED] = 'Proxy Authentication Required',
-    [M.HTTP_STATUS_REQUEST_TIMEOUT] = 'Request Timeout',
-    [M.HTTP_STATUS_CONFLICT] = 'Conflict',
-    [M.HTTP_STATUS_GONE] = 'Gone',
-    [M.HTTP_STATUS_LENGTH_REQUIRED] = 'Length Required',
-    [M.HTTP_STATUS_PRECONDITION_FAILED] = 'Precondition Failed',
-    [M.HTTP_STATUS_PAYLOAD_TOO_LARGE] = 'Payload Too Large',
-    [M.HTTP_STATUS_URI_TOO_LONG] = 'URI Too Long',
-    [M.HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE] = 'Unsupported Media Type',
-    [M.HTTP_STATUS_RANGE_NOT_SATISFIABLE] = 'Range Not Satisfiable',
-    [M.HTTP_STATUS_EXPECTATION_FAILED] = 'Expectation Failed',
-    [M.HTTP_STATUS_MISDIRECTED_REQUEST] = 'Misdirected Request',
-    [M.HTTP_STATUS_UNPROCESSABLE_ENTITY] = 'Unprocessable Entity',
-    [M.HTTP_STATUS_LOCKED] = 'Locked',
-    [M.HTTP_STATUS_FAILED_DEPENDENCY] = 'Failed Dependency',
-    [M.HTTP_STATUS_UPGRADE_REQUIRED] = 'Upgrade Required',
-    [M.HTTP_STATUS_PRECONDITION_REQUIRED] = 'Precondition Required',
-    [M.HTTP_STATUS_TOO_MANY_REQUESTS] = 'Too Many Requests',
-    [M.HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE] = 'Request Header Fields Too Large',
-    [M.HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS] = 'Unavailable For Legal Reasons',
-    [M.HTTP_STATUS_INTERNAL_SERVER_ERROR] = 'Internal Server Error',
-    [M.HTTP_STATUS_NOT_IMPLEMENTED] = 'Not Implemented',
-    [M.HTTP_STATUS_BAD_GATEWAY] = 'Bad Gateway',
-    [M.HTTP_STATUS_SERVICE_UNAVAILABLE] = 'Service Unavailable',
-    [M.HTTP_STATUS_GATEWAY_TIMEOUT] = 'Gateway Timeout',
-    [M.HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED] = 'HTTP Version Not Supported',
-    [M.HTTP_STATUS_VARIANT_ALSO_NEGOTIATES] = 'Variant Also Negotiates',
-    [M.HTTP_STATUS_INSUFFICIENT_STORAGE] = 'Insufficient Storage',
-    [M.HTTP_STATUS_LOOP_DETECTED] = 'Loop Detected',
-    [M.HTTP_STATUS_NOT_EXTENDED] = 'Not Extended',
-    [M.HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED] = 'Network Authentication Required'
+    [M.STATUS_CONTINUE] = 'Continue',
+    [M.STATUS_SWITCHING_PROTOCOLS] = 'Switching Protocols',
+    [M.STATUS_PROCESSING] = 'Processing',
+    [M.STATUS_OK] = 'OK',
+    [M.STATUS_CREATED] = 'Created',
+    [M.STATUS_ACCEPTED] = 'Accepted',
+    [M.STATUS_NON_AUTHORITATIVE_INFORMATION] = 'Non-Authoritative Information',
+    [M.STATUS_NO_CONTENT] = 'No Content',
+    [M.STATUS_RESET_CONTENT] = 'Reset Content',
+    [M.STATUS_PARTIAL_CONTENT] = 'Partial Content',
+    [M.STATUS_MULTI_STATUS] = 'Multi-Status',
+    [M.STATUS_ALREADY_REPORTED] = 'Already Reported',
+    [M.STATUS_IM_USED] = 'IM Used',
+    [M.STATUS_MULTIPLE_CHOICES] = 'Multiple Choices',
+    [M.STATUS_MOVED_PERMANENTLY] = 'Moved Permanently',
+    [M.STATUS_FOUND] = 'Found',
+    [M.STATUS_SEE_OTHER] = 'See Other',
+    [M.STATUS_NOT_MODIFIED] = 'Not Modified',
+    [M.STATUS_USE_PROXY] = 'Use Proxy',
+    [M.STATUS_TEMPORARY_REDIRECT] = 'Temporary Redirect',
+    [M.STATUS_PERMANENT_REDIRECT] = 'Permanent Redirect',
+    [M.STATUS_BAD_REQUEST] = 'Bad Request',
+    [M.STATUS_UNAUTHORIZED] = 'Unauthorized',
+    [M.STATUS_PAYMENT_REQUIRED] = 'Payment Required',
+    [M.STATUS_FORBIDDEN] = 'Forbidden',
+    [M.STATUS_NOT_FOUND] = 'Not Found',
+    [M.STATUS_METHOD_NOT_ALLOWED] = 'Method Not Allowed',
+    [M.STATUS_NOT_ACCEPTABLE] = 'Not Acceptable',
+    [M.STATUS_PROXY_AUTHENTICATION_REQUIRED] = 'Proxy Authentication Required',
+    [M.STATUS_REQUEST_TIMEOUT] = 'Request Timeout',
+    [M.STATUS_CONFLICT] = 'Conflict',
+    [M.STATUS_GONE] = 'Gone',
+    [M.STATUS_LENGTH_REQUIRED] = 'Length Required',
+    [M.STATUS_PRECONDITION_FAILED] = 'Precondition Failed',
+    [M.STATUS_PAYLOAD_TOO_LARGE] = 'Payload Too Large',
+    [M.STATUS_URI_TOO_LONG] = 'URI Too Long',
+    [M.STATUS_UNSUPPORTED_MEDIA_TYPE] = 'Unsupported Media Type',
+    [M.STATUS_RANGE_NOT_SATISFIABLE] = 'Range Not Satisfiable',
+    [M.STATUS_EXPECTATION_FAILED] = 'Expectation Failed',
+    [M.STATUS_MISDIRECTED_REQUEST] = 'Misdirected Request',
+    [M.STATUS_UNPROCESSABLE_ENTITY] = 'Unprocessable Entity',
+    [M.STATUS_LOCKED] = 'Locked',
+    [M.STATUS_FAILED_DEPENDENCY] = 'Failed Dependency',
+    [M.STATUS_UPGRADE_REQUIRED] = 'Upgrade Required',
+    [M.STATUS_PRECONDITION_REQUIRED] = 'Precondition Required',
+    [M.STATUS_TOO_MANY_REQUESTS] = 'Too Many Requests',
+    [M.STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE] = 'Request Header Fields Too Large',
+    [M.STATUS_UNAVAILABLE_FOR_LEGAL_REASONS] = 'Unavailable For Legal Reasons',
+    [M.STATUS_INTERNAL_SERVER_ERROR] = 'Internal Server Error',
+    [M.STATUS_NOT_IMPLEMENTED] = 'Not Implemented',
+    [M.STATUS_BAD_GATEWAY] = 'Bad Gateway',
+    [M.STATUS_SERVICE_UNAVAILABLE] = 'Service Unavailable',
+    [M.STATUS_GATEWAY_TIMEOUT] = 'Gateway Timeout',
+    [M.STATUS_HTTP_VERSION_NOT_SUPPORTED] = 'HTTP Version Not Supported',
+    [M.STATUS_VARIANT_ALSO_NEGOTIATES] = 'Variant Also Negotiates',
+    [M.STATUS_INSUFFICIENT_STORAGE] = 'Insufficient Storage',
+    [M.STATUS_LOOP_DETECTED] = 'Loop Detected',
+    [M.STATUS_NOT_EXTENDED] = 'Not Extended',
+    [M.STATUS_NETWORK_AUTHENTICATION_REQUIRED] = 'Network Authentication Required'
 }
 
 local mime_map = {
@@ -281,7 +281,7 @@ local function send_http_request(s, method, path, headers, body)
     return true
 end
 
-local function recv_http_status_line(s, deadtime)
+local function recv_STATUS_line(s, deadtime)
     local data, err = s:recv('*l', deadtime - time.now())
     if not data then
         return nil, err
@@ -383,7 +383,7 @@ local function do_http_request(s, method, path, headers, body, timeout)
 
     local deadtime = time.now() + timeout
 
-    local code, status = recv_http_status_line(s, deadtime)
+    local code, status = recv_STATUS_line(s, deadtime)
     if not code then
         return nil, status
     end
@@ -903,25 +903,25 @@ function con_methods:serve_file(req, options)
 
     if not gzip then
         if not file.access(phy_path) then
-            return self:send_error(M.HTTP_STATUS_NOT_FOUND)
+            return self:send_error(M.STATUS_NOT_FOUND)
         end
 
         if not file.access(phy_path, 'r') then
-            return self:send_error(M.HTTP_STATUS_FORBIDDEN)
+            return self:send_error(M.STATUS_FORBIDDEN)
         end
     end
 
     local st, err = file.stat(phy_path)
     if not st then
-        return self:send_error(M.HTTP_STATUS_INTERNAL_SERVER_ERROR, nil, string.format('stat "%s" fail: %s', phy_path, err))
+        return self:send_error(M.STATUS_INTERNAL_SERVER_ERROR, nil, string.format('stat "%s" fail: %s', phy_path, err))
     end
 
     if st.type ~= 'REG' then
-        return self:send_error(M.HTTP_STATUS_FORBIDDEN)
+        return self:send_error(M.STATUS_FORBIDDEN)
     end
 
-    if req.method ~= M.HTTP_METHOD_GET and req.method ~= M.HTTP_METHOD_HEAD then
-        return self:send_error(M.HTTP_STATUS_METHOD_NOT_ALLOWED)
+    if req.method ~= M.METHOD_GET and req.method ~= M.METHOD_HEAD then
+        return self:send_error(M.STATUS_METHOD_NOT_ALLOWED)
     end
 
     local etag = string.format('%x-%x', st.ino, st.size)
@@ -929,7 +929,7 @@ function con_methods:serve_file(req, options)
     self:add_header('last-modified', os.date('%a, %d %b %Y %H:%M:%S GMT', st.mtime))
 
     if req.headers['if-none-match'] == etag then
-        return self:set_status(M.HTTP_STATUS_NOT_MODIFIED)
+        return self:set_status(M.STATUS_NOT_MODIFIED)
     end
 
     if req.headers['if-modified-since'] then
@@ -945,7 +945,7 @@ function con_methods:serve_file(req, options)
             })
 
             if t >= st.mtime then
-                return self:set_status(M.HTTP_STATUS_NOT_MODIFIED)
+                return self:set_status(M.STATUS_NOT_MODIFIED)
             end
         end
     end
@@ -956,13 +956,13 @@ function con_methods:serve_file(req, options)
         self:add_header('content-encoding', 'gzip')
     end
 
-    if req.method == M.HTTP_METHOD_HEAD then
+    if req.method == M.METHOD_HEAD then
         return true
     end
 
     local fd, err = file.open(phy_path)
     if not fd then
-        return self:send_error(M.HTTP_STATUS_INTERNAL_SERVER_ERROR, nil, string.format('open "%s" fail: %s', phy_path, err))
+        return self:send_error(M.STATUS_INTERNAL_SERVER_ERROR, nil, string.format('open "%s" fail: %s', phy_path, err))
     end
 
     local ok, err, data
@@ -1022,7 +1022,7 @@ local function handle_connection(con, peer, handler, first)
                 return false,  http_con_log_info(peer, 'not a vaild http request start line')
             end
 
-            method = M['HTTP_METHOD_' .. method_str]
+            method = M['METHOD_' .. method_str]
             if not method then
                 return false, http_con_log_info(peer, 'not supported http method "' .. method_str .. '"')
             end
@@ -1233,15 +1233,15 @@ end
 
 function M.method_string(method)
     local methods = {
-        [M.HTTP_METHOD_GET] = 'GET',
-        [M.HTTP_METHOD_POST] = 'POST',
-        [M.HTTP_METHOD_PUT] = 'PUT',
-        [M.HTTP_METHOD_HEAD] = 'HEAD',
-        [M.HTTP_METHOD_DELETE] = 'DELETE',
-        [M.HTTP_METHOD_CONNECT] = 'CONNECT',
-        [M.HTTP_METHOD_OPTIONS] = 'OPTIONS',
-        [M.HTTP_METHOD_TRACE] = 'TRACE',
-        [M.HTTP_METHOD_PATCH] = 'PATCH'
+        [M.METHOD_GET] = 'GET',
+        [M.METHOD_POST] = 'POST',
+        [M.METHOD_PUT] = 'PUT',
+        [M.METHOD_HEAD] = 'HEAD',
+        [M.METHOD_DELETE] = 'DELETE',
+        [M.METHOD_CONNECT] = 'CONNECT',
+        [M.METHOD_OPTIONS] = 'OPTIONS',
+        [M.METHOD_TRACE] = 'TRACE',
+        [M.METHOD_PATCH] = 'PATCH'
     }
 
     return methods[method] or ''
