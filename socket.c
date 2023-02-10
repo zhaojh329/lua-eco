@@ -484,7 +484,7 @@ static int opt_setboolean(lua_State *L, int fd, int level, int name)
 
     val = lua_toboolean(L, 3);
 
-    return opt_set(L, fd, level, name, (char *) &val, sizeof(val));
+    return opt_set(L, fd, level, name, &val, sizeof(val));
 }
 
 static int opt_set_reuseaddr(lua_State *L, int fd)
