@@ -26,6 +26,7 @@
 #include <lualib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
 
 #include "config.h"
 #include "list.h"
@@ -558,6 +559,8 @@ int main(int argc, char const *argv[])
         return 0;
 
     signal(SIGPIPE, SIG_IGN);
+
+    srand(time(NULL));
 
     L = luaL_newstate();
 
