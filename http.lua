@@ -1133,36 +1133,9 @@ local function handle_connection(con, peer, handler, first)
     return true
 end
 
-function M.listen(ipaddr, port, options, handler, logger)
-    options = options or {}
-
-    options.docroot = options.docroot or '.'
-
-    if options.docroot ~= '/' then
-        options.docroot = options.docroot:gsub('/$', '')
-    end
-
-    options.index = options.index or 'index.html'
-    options.http_keepalive = options.http_keepalive or 30
-
-    local sock, err
-
-    if options.cert and options.key then
-        options.ssl = true
-        if options.ipv6 then
-            sock, err = ssl.listen6(ipaddr, port, { cert = options.cert, key = options.key })
-        else
-            sock, err = ssl.listen(ipaddr, port, { cert = options.cert, key = options.key })
-        end
-    else
-        if options.ipv6 then
-            sock, err = socket.listen_tcp6(ipaddr, port)
-        else
-            sock, err = socket.listen_tcp(ipaddr, port)
-        end
-    end
-    if not sock then
-        return nil, err
+local function set_socket_options(sock, options)
+    if options.ssl then
+        sock = sock:socket()
     end
 
     if options.tcp_nodelay then
@@ -1181,6 +1154,41 @@ function M.listen(ipaddr, port, options, handler, logger)
     if options.ipv6 then
         sock:setoption('ipv6_v6only', true)
     end
+end
+
+function M.listen(ipaddr, port, options, handler, logger)
+    options = options or {}
+
+    options.docroot = options.docroot or '.'
+
+    if options.docroot ~= '/' then
+        options.docroot = options.docroot:gsub('/$', '')
+    end
+
+    options.index = options.index or 'index.html'
+    options.http_keepalive = options.http_keepalive or 30
+
+    local sock, err
+
+    if options.cert and options.key then
+        options.ssl = true
+        if options.ipv6 then
+            sock, err = ssl.listen6(ipaddr, port, options)
+        else
+            sock, err = ssl.listen(ipaddr, port, options)
+        end
+    else
+        if options.ipv6 then
+            sock, err = socket.listen_tcp6(ipaddr, port)
+        else
+            sock, err = socket.listen_tcp(ipaddr, port)
+        end
+    end
+    if not sock then
+        return nil, err
+    end
+
+    set_socket_options(sock, options)
 
     while true do
         local c, peer = sock:accept()

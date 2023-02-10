@@ -53,8 +53,13 @@ local function ssl_close(ssock)
     mt.closed = true
 end
 
+local function ssl_socket(ssock)
+    return getmetatable(ssock).sock
+end
+
 local client_methods = {
-    close = ssl_close
+    close = ssl_close,
+    socket = ssl_socket
 }
 
 function client_methods:closed()
@@ -228,7 +233,8 @@ local function ssl_setmetatable(ctx, sock, methods, name)
 end
 
 local server_methods = {
-    close = ssl_close
+    close = ssl_close,
+    socket = ssl_socket
 }
 
 function server_methods:accept()
