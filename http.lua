@@ -1165,6 +1165,23 @@ function M.listen(ipaddr, port, options, handler, logger)
         return nil, err
     end
 
+    if options.tcp_nodelay then
+        sock:setoption('tcp_nodelay', true)
+    end
+
+    local tcp_keepalive = options.tcp_keepalive or 0
+    if tcp_keepalive > 0 then
+        sock:setoption('keepalive', true)
+        sock:setoption('tcp_keepidle', 1)
+        sock:setoption('tcp_keepcnt', 3)
+        sock:setoption('tcp_keepintvl', tcp_keepalive)
+        sock:setoption('tcp_fastopen', 5)
+    end
+
+    if options.ipv6 then
+        sock:setoption('ipv6_v6only', true)
+    end
+
     while true do
         local c, peer = sock:accept()
         if c then

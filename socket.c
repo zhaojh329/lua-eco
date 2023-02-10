@@ -487,9 +487,55 @@ static int opt_setboolean(lua_State *L, int fd, int level, int name)
     return opt_set(L, fd, level, name, &val, sizeof(val));
 }
 
+static int opt_setint(lua_State *L, int fd, int level, int name)
+{
+    int val = luaL_checkinteger(L, 3);
+    return opt_set(L, fd, level, name, &val, sizeof(val));
+}
+
 static int opt_set_reuseaddr(lua_State *L, int fd)
 {
     return opt_setboolean(L, fd, SOL_SOCKET, SO_REUSEADDR);
+}
+
+static int opt_set_reuseport(lua_State *L, int fd)
+{
+    return opt_setboolean(L, fd, SOL_SOCKET, SO_REUSEPORT);
+}
+
+static int opt_set_keepalive(lua_State *L, int fd)
+{
+    return opt_setboolean(L, fd, SOL_SOCKET, SO_KEEPALIVE);
+}
+
+static int opt_set_tcp_keepidle(lua_State *L, int fd)
+{
+    return opt_setint(L, fd, SOL_TCP, TCP_KEEPIDLE);
+}
+
+static int opt_set_tcp_keepintvl(lua_State *L, int fd)
+{
+    return opt_setint(L, fd, SOL_TCP, TCP_KEEPINTVL);
+}
+
+static int opt_set_tcp_keepcnt(lua_State *L, int fd)
+{
+    return opt_setint(L, fd, SOL_TCP, TCP_KEEPCNT);
+}
+
+static int opt_set_tcp_fastopen(lua_State *L, int fd)
+{
+    return opt_setint(L, fd, SOL_TCP, TCP_FASTOPEN);
+}
+
+static int opt_set_tcp_nodelay(lua_State *L, int fd)
+{
+    return opt_setboolean(L, fd, IPPROTO_TCP, TCP_NODELAY);
+}
+
+static int opt_set_ipv6_v6only(lua_State *L, int fd)
+{
+    return opt_setboolean(L, fd, IPPROTO_IPV6, IPV6_V6ONLY);
 }
 
 static int opt_set_bindtodevice(lua_State *L, int fd)
@@ -507,6 +553,14 @@ static int opt_set_bindtodevice(lua_State *L, int fd)
 
 static struct sock_opt optset[] = {
     {"reuseaddr", opt_set_reuseaddr},
+    {"reuseport", opt_set_reuseport},
+    {"keepalive", opt_set_keepalive},
+    {"tcp_keepidle", opt_set_tcp_keepidle},
+    {"tcp_keepintvl", opt_set_tcp_keepintvl},
+    {"tcp_keepcnt", opt_set_tcp_keepcnt},
+    {"tcp_fastopen", opt_set_tcp_fastopen},
+    {"tcp_nodelay", opt_set_tcp_nodelay},
+    {"ipv6_v6only", opt_set_ipv6_v6only},
     {"bindtodevice", opt_set_bindtodevice},
     {NULL, NULL}
 };
