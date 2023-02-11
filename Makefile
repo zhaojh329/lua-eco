@@ -51,9 +51,8 @@ Package/lua-eco-file=$(call Package/lua-eco/Module,file utils)
 Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
 Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket +luabitop)
 Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
-  @(PACKAGE_libopenssl||PACKAGE_libwolfssl||PACKAGE_libmbedtls) \
-  LUA_ECO_OPENSSL:libopenssl LUA_ECO_WOLFSSL:libwolfssl \
-  LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
+  +LUA_ECO_OPENSSL:libopenssl +LUA_ECO_WOLFSSL:libwolfssl \
+  +LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
 Package/lua-eco-ubus=$(call Package/lua-eco/Module,ubus,+libubus)
 Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
 Package/lua-eco-http=$(call Package/lua-eco/Module,http/https client/server,+lua-eco-dns +lua-eco-ssl)
@@ -61,40 +60,18 @@ Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
 Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco-dns +lua-mosquitto)
 
 define Package/lua-eco-ssl/config
-	config LUA_ECO_DEFAULT_WOLFSSL
-		bool
-		default y if PACKAGE_libopenssl != y && \
-			(PACKAGE_libwolfssl >= PACKAGE_libopenssl || \
-			PACKAGE_libwolfsslcpu-crypto >= PACKAGE_libopenssl) && \
-			(PACKAGE_libwolfssl >= PACKAGE_libmbedtls || \
-			PACKAGE_libwolfsslcpu-crypto >= PACKAGE_libmbedtls)
-
-	config LUA_ECO_DEFAULT_OPENSSL
-		bool
-		default y if !LUA_ECO_DEFAULT_WOLFSSL && \
-			PACKAGE_libopenssl >= PACKAGE_libmbedtls
-
-	config LUA_ECO_DEFAULT_MBEDTLS
-		bool
-		default y if !LUA_ECO_DEFAULT_WOLFSSL && !LUA_ECO_DEFAULT_OPENSSL
-
 	choice
 		prompt "SSL Library"
-		default LUA_ECO_OPENSSL if LUA_ECO_DEFAULT_OPENSSL
-		default LUA_ECO_WOLFSSL if LUA_ECO_DEFAULT_WOLFSSL
-		default LUA_ECO_MBEDTLS if LUA_ECO_DEFAULT_MBEDTLS
+		default LUA_ECO_WOLFSSL
 
 		config LUA_ECO_OPENSSL
 			bool "OpenSSL"
-			depends on PACKAGE_libopenssl
 
 		config LUA_ECO_WOLFSSL
 			bool "wolfSSL"
-			depends on PACKAGE_libwolfssl || PACKAGE_libwolfsslcpu-crypto
 
 		config LUA_ECO_MBEDTLS
 			bool "mbedTLS"
-			depends on PACKAGE_libmbedtls
 	endchoice
 endef
 
