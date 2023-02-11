@@ -1088,6 +1088,11 @@ local function handle_connection(con, peer, handler, first)
         },
         data = {}
     }
+
+    if http_keepalive > 0 then
+        resp.headers['keep-alive'] = string.format('timeout=%d', http_keepalive)
+    end
+
     mt.resp = resp
 
     local req = {
