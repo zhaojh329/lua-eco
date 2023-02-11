@@ -671,6 +671,7 @@ function con_methods:send_error(code, status, content)
     if content then
         self:send(content)
     else
+        self:add_header('content-length', 0)
         send_http_head(mt.resp)
     end
 
