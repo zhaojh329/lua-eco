@@ -223,7 +223,7 @@ static int lua_tcflow(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_core_termios(lua_State *L)
+int luaopen_eco_termios(lua_State *L)
 {
     lua_newtable(L);
 
