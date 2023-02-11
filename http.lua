@@ -1007,11 +1007,12 @@ local function handle_connection(con, peer, handler, first)
     local sock = mt.sock
 
     local http_keepalive = mt.options.http_keepalive
+    local read_timeout = 3.0
 
     local method, path, ver
 
     while true do
-        local data, err = sock:recv('*l', first and 3.0 or http_keepalive)
+        local data, err = sock:recv('*l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
             return false, http_con_log_info(peer, 'before request received: ' .. err)
         end
@@ -1041,7 +1042,7 @@ local function handle_connection(con, peer, handler, first)
     local headers = {}
 
     while true do
-        local data, err = sock:recv('*l', 3.0)
+        local data, err = sock:recv('*l', read_timeout)
         if not data then
             return false, http_con_log_info(peer, 'not a complete http request: ' .. err)
         end
