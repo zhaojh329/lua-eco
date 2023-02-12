@@ -5,8 +5,8 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=792617a5ed84efc0c5d1dfb12cfb0782044c4dc5
-PKG_MIRROR_HASH:=skip
+PKG_SOURCE_VERSION:=b8002e2b7903fcc655766305e04a6a00e40ea145
+PKG_MIRROR_HASH:=f59051a71722986a57f8d6d864b2651676efd8d6cbbc88500b50fe2236dc06ca
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -48,6 +48,8 @@ endef
 Package/lua-eco-log=$(call Package/lua-eco/Module,log utils)
 Package/lua-eco-sys=$(call Package/lua-eco/Module,system utils)
 Package/lua-eco-file=$(call Package/lua-eco/Module,file utils)
+Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
+Package/lua-eco-sha1=$(call Package/lua-eco/Module,sha1)
 Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
 Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket +luabitop)
 Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
@@ -55,9 +57,9 @@ Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
   +LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
 Package/lua-eco-ubus=$(call Package/lua-eco/Module,ubus,+libubus)
 Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
-Package/lua-eco-http=$(call Package/lua-eco/Module,http/https client/server,+lua-eco-dns +lua-eco-ssl)
-Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
+Package/lua-eco-http=$(call Package/lua-eco/Module,http/https,+lua-eco-dns +lua-eco-ssl)
 Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco-dns +lua-mosquitto)
+Package/lua-eco-websocket=$(call Package/lua-eco/Module,websocket,+lua-eco-http +lua-eco-base64 +lua-eco-sha1)
 
 define Package/lua-eco-ssl/config
 	choice
@@ -90,44 +92,95 @@ ifneq ($(CONFIG_PACKAGE_lua-eco-ssl),)
   endif
 endif
 
-define Package/lua-eco/Module/install
-	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
-	[ -f $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/$2.so ] && \
-		$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/$2.so $(1)/usr/lib/lua/eco/core || true
-	[ -f $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.so ] && \
-		$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.so $(1)/usr/lib/lua/eco || true
-	[ -f $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.lua ] && \
-		$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/$2.lua $(1)/usr/lib/lua/eco || true
-endef
-
 define Package/lua-eco/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/eco $(1)/usr/bin
-	$(call Package/lua-eco/Module/install,$(1),time)
-	$(call Package/lua-eco/Module/install,$(1),buffer)
+	$(INSTALL_DIR) $(1)/usr/bin $(1)/usr/lib/lua/eco/core $(1)/usr/lib/lua/eco/encoding
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/eco $(1)/usr/bins
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/encoding/hex.lua $(1)/usr/lib/lua/eco/encoding
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/{time,buffer}.so $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/{time,buffer,bit,sync}.lua $(1)/usr/lib/lua/eco
 endef
 
-Package/lua-eco-log/install=$(call Package/lua-eco/Module/install,$1,log)
-Package/lua-eco-sys/install=$(call Package/lua-eco/Module/install,$1,sys)
-Package/lua-eco-dns/install=$(call Package/lua-eco/Module/install,$1,dns)
-Package/lua-eco-socket/install=$(call Package/lua-eco/Module/install,$1,socket)
-Package/lua-eco-ssl/install=$(call Package/lua-eco/Module/install,$1,ssl)
-Package/lua-eco-file/install=$(call Package/lua-eco/Module/install,$1,file)
-Package/lua-eco-ubus/install=$(call Package/lua-eco/Module/install,$1,ubus)
-Package/lua-eco-termios/install=$(call Package/lua-eco/Module/install,$1,termios)
-Package/lua-eco-http/install=$(call Package/lua-eco/Module/install,$1,http)
-Package/lua-eco-base64/install=$(call Package/lua-eco/Module/install,$1,base64)
-Package/lua-eco-mqtt/install=$(call Package/lua-eco/Module/install,$1,mqtt)
+define Package/lua-eco-log/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/log.so $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-sys/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/sys.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/sys.so $(1)/usr/lib/lua/eco/core
+endef
+
+define Package/lua-eco-file/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/file.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/file.so $(1)/usr/lib/lua/eco/core
+endef
+
+define Package/lua-eco-base64/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/encoding
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/encoding/base64.so $(1)/usr/lib/lua/eco/encoding
+endef
+
+define Package/lua-eco-sha1/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/crypto
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/crypto/sha1.so $(1)/usr/lib/lua/eco/crypto
+endef
+
+define Package/lua-eco-socket/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/socket.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/socket.so $(1)/usr/lib/lua/eco/core
+endef
+
+define Package/lua-eco-dns/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/dns.lua $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-ssl/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/ssl.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/ssl.so $(1)/usr/lib/lua/eco/core
+endef
+
+define Package/lua-eco-ubus/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/ubus.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/ubus.so $(1)/usr/lib/lua/eco/core
+endef
+
+define Package/lua-eco-http/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/http.lua $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-mqtt/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/mqtt.lua $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-websocket/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/websocket.lua $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-termios/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/termios.so $(1)/usr/lib/lua/eco
+endef
 
 $(eval $(call BuildPackage,lua-eco))
 $(eval $(call BuildPackage,lua-eco-log))
 $(eval $(call BuildPackage,lua-eco-sys))
-$(eval $(call BuildPackage,lua-eco-dns))
-$(eval $(call BuildPackage,lua-eco-socket))
-$(eval $(call BuildPackage,lua-eco-ssl))
 $(eval $(call BuildPackage,lua-eco-file))
-$(eval $(call BuildPackage,lua-eco-ubus))
-$(eval $(call BuildPackage,lua-eco-termios))
-$(eval $(call BuildPackage,lua-eco-http))
 $(eval $(call BuildPackage,lua-eco-base64))
+$(eval $(call BuildPackage,lua-eco-sha1))
+$(eval $(call BuildPackage,lua-eco-socket))
+$(eval $(call BuildPackage,lua-eco-dns))
+$(eval $(call BuildPackage,lua-eco-ssl))
+$(eval $(call BuildPackage,lua-eco-ubus))
+$(eval $(call BuildPackage,lua-eco-http))
 $(eval $(call BuildPackage,lua-eco-mqtt))
+$(eval $(call BuildPackage,lua-eco-websocket))
+$(eval $(call BuildPackage,lua-eco-termios))
