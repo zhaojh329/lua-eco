@@ -94,7 +94,7 @@ endif
 
 define Package/lua-eco/install
 	$(INSTALL_DIR) $(1)/usr/bin $(1)/usr/lib/lua/eco/core $(1)/usr/lib/lua/eco/encoding
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/eco $(1)/usr/bins
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/eco $(1)/usr/bin
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/encoding/hex.lua $(1)/usr/lib/lua/eco/encoding
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/{time,buffer}.so $(1)/usr/lib/lua/eco/core
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/{time,buffer,bit,sync}.lua $(1)/usr/lib/lua/eco
