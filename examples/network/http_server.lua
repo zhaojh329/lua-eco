@@ -26,11 +26,7 @@ local function handler(con, req)
 
         con:send('<h2>body:', con:read_body(), '</h2>\n')
     else
-        con:serve_file(req, {
-            docroot = '.',
-            index = 'index.html',
-            gzip = false
-        })
+        con:serve_file(req)
     end
 end
 
@@ -42,7 +38,10 @@ local options = {
     http_keepalive = 30,
     tcp_keepalive = 5,
     tcp_nodelay = true,
-    ipv6 = false
+    ipv6 = false,
+    docroot = '.',
+    index = 'index.html',
+    gzip = false
 }
 
 -- https

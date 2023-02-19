@@ -874,23 +874,20 @@ function con_methods:discard_body()
     return true
 end
 
-function con_methods:serve_file(req, options)
+function con_methods:serve_file(req)
     local mt = getmetatable(self)
+    local options = mt.options
     local path = req.path
-    local phy_path
 
     if mt.sock:closed() then
         return false, 'closed'
     end
 
-    options = options or {}
-
     if path == '/' then
-        phy_path = options.docroot .. options.index
-    else
-        phy_path = options.docroot .. path
+        path = '/' .. options.index
     end
 
+    local phy_path = options.docroot .. path
     local suffix = phy_path:match('(%w+)$') or ''
     local gzip = options.gzip
 
@@ -968,7 +965,7 @@ function con_methods:serve_file(req, options)
 
     local ok, err, data
 
-    if mt.options.ssl then
+    if options.ssl then
         while true do
             data, err = file.read(fd, 4096)
             if not data then
