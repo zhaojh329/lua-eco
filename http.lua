@@ -999,7 +999,7 @@ local function http_con_log_info(addr, msg)
     return  str .. ' ' .. msg
 end
 
-local function handle_connection(con, peer, handler, first)
+local function handle_connection(con, peer, handler)
     local mt = getmetatable(con)
     local sock = mt.sock
 
@@ -1202,8 +1202,6 @@ function M.listen(ipaddr, port, options, handler, logger)
             end
 
             eco.run(function(c)
-                local first = true
-
                 local con = setmetatable({}, {
                     sock = c,
                     resp = {
@@ -1217,14 +1215,13 @@ function M.listen(ipaddr, port, options, handler, logger)
                 })
 
                 while not c:closed() do
-                    local ok, err = handle_connection(con, peer, handler, first)
+                    local ok, err = handle_connection(con, peer, handler)
                     if not ok then
                         if logger then
                             logger(err)
                         end
                         c:close()
                     end
-                    first = false
                 end
             end, c)
         else
