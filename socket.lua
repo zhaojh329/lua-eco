@@ -24,14 +24,17 @@
 
 local socket = require 'eco.core.socket'
 local file = require 'eco.core.file'
-local buffer = require 'eco.buffer'
 local sys = require 'eco.core.sys'
+local bufio = require 'eco.bufio'
 
-local read_buffer = file.read_buffer
 local sendfile = file.sendfile
 local write = file.write
 
+local read = file.read
+local read_to_buffer = file.read_to_buffer
+
 local str_sub = string.sub
+local concat = table.concat
 local type = type
 
 local SOCK_MT_STREAM = 0
@@ -92,35 +95,102 @@ local function sock_closed(sock)
 end
 
 --[[
-    Reads data from a socket, according to the specified read pattern.
-    '*l': reads a line of text from the socket. The line is terminated by a LF character (ASCII 10).
-          The LF characters are not included in the returned line.
-    '*L': Works exactly as the '*l' pattern but the LF characters are included in the returned line.
-    number: read a specified number of bytes from the socket.
+    syntax:
+        data, err, partial = tcpsock:recv(size, timeout)
+        data, err, partial = tcpsock:recv(pattern?, timeout)
 
-    If successful, the method returns the received pattern. In case of error, the method returns nil
-    followed by an error message, followed by a (possibly empty) string containing the partial that
-    was received. The error message can be the string 'closed' in case the connection was closed
-    before the transmission was completed or the string 'timeout' in case there was a timeout during
-    the operation.
+    In case of success, it returns the data received; in case of error, it returns
+    nil with a string describing the error and the partial data received so far.
+
+    If a number-like argument is specified, then it is interpreted as a size. This
+    method will return any data received at most size bytes or an error occurs.
+
+    If a non-number-like string argument is specified, then it is interpreted as a
+    "pattern". The following patterns are supported:
+        '*a': reads from the socket until the connection is closed.
+        '*l': reads a line of text from the socket. Not including the end-of-line bytes("\r\n" or "\n").
+
+    If no argument is specified, then it is assumed to be the pattern '*l', that is, the line reading pattern.
 --]]
 local function sock_recv(sock, pattern, timeout)
     local mt = getmetatable(sock)
+    local fd = mt.fd
+    local b = mt.b
 
-    if mt.fd < 0 then
+    if fd < 0 then
         return nil, 'closed'
     end
 
-    assert((type(pattern) == 'number' and pattern > 0)
-        or pattern == '*l' or pattern == '*L', 'pattern must be a number great than 0 or "*l" or "*L"')
+    if mt.name == SOCK_MT_DGRAM then
+        if not mt.ior:wait(timeout) then
+            return nil, 'timeout'
+        end
 
-    local b = mt.b
+        return socket.recv(fd, pattern)
+    end
 
-    if type(pattern) == 'number' then
+    if (type(pattern) == 'number') then
+        if pattern <= 0 then return '' end
         return b:read(pattern, timeout)
     end
 
-    return b:readline(timeout, pattern == '*l')
+    if pattern == '*a' then
+        local data = {}
+        local chunk, err
+        while true do
+            chunk, err = b:read(4096)
+            if not chunk then break end
+            data[#data + 1] = chunk
+        end
+
+        if #data == 0 then
+            return nil, err
+        end
+
+        if err == 'closed' then
+            return concat(data)
+        end
+
+        return nil, err, concat(data)
+    end
+
+    if not pattern or pattern == '*l' then
+        return b:readline(timeout)
+    end
+
+    error('invalid pattern:' .. tostring(pattern))
+end
+
+--[[
+    syntax: data, err, partial = tcpsock:recvfull(size, timeout)
+    This method will not return until it reads exactly this size of data or an error occurs.
+--]]
+local function sock_recvfull(sock, size, timeout)
+    local mt = getmetatable(sock)
+    local fd = mt.fd
+    local b = mt.b
+
+    if fd < 0 then
+        return nil, 'closed'
+    end
+
+    if size <= 0 then return '' end
+
+    return b:readfull(size, timeout)
+end
+
+local function sock_discard(sock, size, timeout)
+    local mt = getmetatable(sock)
+    local fd = mt.fd
+    local b = mt.b
+
+    if fd < 0 then
+        return nil, 'closed'
+    end
+
+    if size <= 0 then return 0 end
+
+    return b:discard(size, timeout)
 end
 
 local function sock_send(sock, data)
@@ -221,6 +291,8 @@ local client_methods = {
     closed = sock_closed,
     getfd = sock_getfd,
     recv = sock_recv,
+    recvfull = sock_recvfull,
+    discard = sock_discard,
     send = sock_send,
     sendfile = sock_sendfile,
     getsockname = sock_getsockname,
@@ -254,6 +326,53 @@ local function sock_bind(sock, ...)
     return true
 end
 
+local function create_bufio(mt)
+    local reader = {
+        fd = mt.fd,
+        ior = mt.ior
+    }
+
+    function reader:read(n, timeout)
+        if not self.ior:wait(timeout) then
+            return nil, 'timeout'
+        end
+
+        local data, err = read(self.fd, n, timeout)
+        if not data then
+            return nil, err
+        end
+
+        if #data == 0 then
+            return nil, 'closed'
+        end
+
+        return data
+    end
+
+    function reader:read2b(b, timeout)
+        if b:room() == 0 then
+            return nil, 'buffer is full'
+        end
+
+        if not self.ior:wait(timeout) then
+            return nil, 'timeout'
+        end
+
+        local r, err = read_to_buffer(self.fd, b, timeout)
+        if not r then
+            return nil, err
+        end
+
+        if r == 0 then
+            return nil, 'closed'
+        end
+
+        return r, err
+    end
+
+    return bufio.new(reader)
+end
+
 local function sock_update_mt(sock, methods, name)
     local mt = getmetatable(sock)
     mt.name = name
@@ -262,22 +381,11 @@ local function sock_update_mt(sock, methods, name)
     if name == SOCK_MT_SERVER then
         mt.iow = nil
     else
-        mt.b = buffer.new(function(b, timeout)
-            if not mt.ior:wait(timeout) then
-                return nil, 'timeout'
-            end
-
-            local n, err = read_buffer(mt.fd, b)
-            if n == 0 then
-                return nil, 'closed'
-            end
-
-            return n, err
-        end)
+        mt.b = create_bufio(mt)
     end
 end
 
-local function sock_setmetatable(fd, family, type, methods, name)
+local function sock_setmetatable(fd, family, typ, methods, name)
     local sock = {}
 
     if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
@@ -289,7 +397,7 @@ local function sock_setmetatable(fd, family, type, methods, name)
     local mt = {
         name = name,
         family = family,
-        type = type,
+        typ = typ,
         fd = fd,
         ior = eco.watcher(eco.IO, fd),
         iow = eco.watcher(eco.IO, fd, eco.WRITE),
@@ -297,19 +405,8 @@ local function sock_setmetatable(fd, family, type, methods, name)
         __gc = methods.close
     }
 
-    if type == socket.SOCK_DGRAM or name == SOCK_MT_ESTAB then
-        mt.b = buffer.new(function(b, timeout)
-            if not mt.ior:wait(timeout) then
-                return nil, 'timeout'
-            end
-
-            local n, err = read_buffer(mt.fd, b)
-            if name == SOCK_MT_ESTAB and n == 0 then
-                return nil, 'closed'
-            end
-
-            return n, err
-        end)
+    if name == SOCK_MT_ESTAB then
+        mt.b = create_bufio(mt)
     end
 
     setmetatable(sock, mt)
@@ -333,7 +430,7 @@ local function sock_accept(sock, timeout)
         return nil, sys.strerror(addr)
     end
 
-    return sock_setmetatable(fd, mt.family, mt.type, client_methods, SOCK_MT_ESTAB), addr
+    return sock_setmetatable(fd, mt.family, mt.typ, client_methods, SOCK_MT_ESTAB), addr
 end
 
 local server_methods = {
@@ -361,7 +458,7 @@ end
 local function sock_connect_ok(sock)
     local mt = getmetatable(sock)
 
-    if mt.type == socket.SOCK_STREAM then
+    if mt.typ == socket.SOCK_STREAM then
         sock_update_mt(sock, client_methods, SOCK_MT_CLIENT)
     end
 
@@ -430,13 +527,13 @@ local dgram_methods = {
     getoption = sock_getoption
 }
 
-local function create_socket(family, type, protocol, methods, name)
-    local fd, err = socket.socket(family, type, protocol)
+local function create_socket(family, typ, protocol, methods, name)
+    local fd, err = socket.socket(family, typ, protocol)
     if not fd then
         return nil, 'create socket: ' .. sys.strerror(err)
     end
 
-    return sock_setmetatable(fd, family, type, methods, name)
+    return sock_setmetatable(fd, family, typ, methods, name)
 end
 
 function M.tcp()

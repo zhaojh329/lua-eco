@@ -30,7 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "buffer.h"
+#include "bufio.h"
 #include "eco.h"
 
 #define ECO_FILE_DIR_MT "eco{file-dir}"
@@ -72,32 +72,33 @@ static int eco_file_close(lua_State *L)
 static int eco_file_read(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
-    size_t n = luaL_optinteger(L, 2, LUAL_BUFFERSIZE);
-    luaL_Buffer b;
+    size_t n = luaL_checkinteger(L, 2);
     ssize_t ret;
-    char *p;
+    char *buf;
 
-    luaL_buffinit(L, &b);
+    if (n < 1)
+        luaL_argerror(L, 2, "must be greater than 0");
 
-    p = luaL_prepbuffer(&b);
-
-    if (n > LUAL_BUFFERSIZE)
-        n = LUAL_BUFFERSIZE;
-
-again:
-    ret = read(fd, p, n);
-    if (unlikely(ret < 0)) {
-        if (errno == EINTR)
-            goto again;
-        luaL_pushresult(&b);
-        lua_pushstring(L, strerror(errno));
+    buf = malloc(n);
+    if (!buf) {
         lua_pushnil(L);
-        lua_replace(L, -3);
+        lua_pushstring(L, strerror(errno));
         return 2;
     }
 
-    luaL_addsize(&b, ret);
-    luaL_pushresult(&b);
+again:
+    ret = read(fd, buf, n);
+    if (unlikely(ret < 0)) {
+        if (errno == EINTR)
+            goto again;
+        free(buf);
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushlstring(L, buf, ret);
+    free(buf);
 
     return 1;
 }
@@ -105,7 +106,7 @@ again:
 static int eco_file_read_to_buffer(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
-    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
+    struct eco_bufio *b = luaL_checkudata(L, 2, ECO_BUFIO_MT);
     size_t n = buffer_room(b);
     ssize_t ret;
 
@@ -116,7 +117,7 @@ static int eco_file_read_to_buffer(lua_State *L)
     }
 
 again:
-    ret = read(fd, b->data + b->last, n);
+    ret = read(fd, b->data + b->w, n);
     if (unlikely(ret < 0)) {
         if (errno == EINTR)
             goto again;
@@ -125,7 +126,7 @@ again:
         return 2;
     }
 
-    b->last += ret;
+    b->w += ret;
     lua_pushinteger(L, ret);
 
     return 1;
@@ -147,20 +148,6 @@ again:
 
     lua_pushnumber(L, ret);
     return 1;
-}
-
-static int eco_file_write_from_buffer(lua_State *L)
-{
-    int fd = luaL_checkinteger(L, 1);
-    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
-    size_t blen = buffer_length(b);
-    size_t len = luaL_optinteger(L, 3, blen);
-
-
-    if (len > blen)
-        len = blen;
-
-    return eco_file_write_data(L, fd, buffer_data(b), len);
 }
 
 static int eco_file_write(lua_State *L)
@@ -446,10 +433,7 @@ int luaopen_eco_core_file(lua_State *L)
     lua_setfield(L, -2, "read");
 
     lua_pushcfunction(L, eco_file_read_to_buffer);
-    lua_setfield(L, -2, "read_buffer");
-
-    lua_pushcfunction(L, eco_file_write_from_buffer);
-    lua_setfield(L, -2, "write_buffer");
+    lua_setfield(L, -2, "read_to_buffer");
 
     lua_pushcfunction(L, eco_file_write);
     lua_setfield(L, -2, "write");

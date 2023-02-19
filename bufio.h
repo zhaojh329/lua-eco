@@ -22,40 +22,28 @@
  * SOFTWARE.
  */
 
-#ifndef __ECO_BUFFER_H
-#define __ECO_BUFFER_H
+#ifndef __ECO_BUFIO_H
+#define __ECO_BUFIO_H
 
-#include <stdbool.h>
 #include <stddef.h>
-#include <lauxlib.h>
 
-#define ECO_BUFFER_MT "eco{buffer}"
+#define ECO_BUFIO_MT "eco{bufio}"
 
-#define SB_SIZE 4096
-
-struct eco_buffer {
+struct eco_bufio {
     size_t size;
-    size_t first;
-    size_t last;
-    struct {
-        char data[SB_SIZE];
-        size_t len;
-    } sb;
+    size_t r, w;
     char data[0];
 };
 
-#define buffer_skip(b, n)           \
-    do {                            \
-        b->first += n;              \
-        if (b->first >= b->last)    \
-            b->first = b->last = 0; \
+#define buffer_skip(b, n)    \
+    do {                     \
+        b->r += n;           \
+        if (b->r == b->w)    \
+            b->r = b->w = 0; \
     } while(0)
 
-#define buffer_length(b) (b->last - b->first)
-#define buffer_data(b) (b->data + b->first)
-#define buffer_room(b) (b->size - b->last)
-
-#define buffer_sb_data(b) (b->sb.data + b->sb.len)
-#define buffer_sb_room(b) (SB_SIZE - b->sb.len)
+#define buffer_length(b) (b->w - b->r)
+#define buffer_data(b) (b->data + b->r)
+#define buffer_room(b) (b->size - b->w)
 
 #endif

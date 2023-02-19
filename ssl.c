@@ -28,7 +28,7 @@
 #include <glob.h>
 
 #include "ssl/ssl.h"
-#include "buffer.h"
+#include "bufio.h"
 #include "eco.h"
 
 struct eco_ssl_context {
@@ -138,44 +138,45 @@ static int eco_ssl_ssl_negotiate(lua_State *L)
 static int eco_ssl_read(lua_State *L)
 {
     struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
-    size_t n = luaL_optinteger(L, 2, LUAL_BUFFERSIZE);
+    size_t n = luaL_checkinteger(L, 2);
     static char err_buf[128];
-    luaL_Buffer b;
-    char *p;
+    char *buf;
     int ret;
 
-    luaL_buffinit(L, &b);
+    if (n < 1)
+        luaL_argerror(L, 2, "must be greater than 0");
 
-    p = luaL_prepbuffer(&b);
+    buf = malloc(n);
+    if (!buf) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
 
-    if (n > LUAL_BUFFERSIZE)
-        n = LUAL_BUFFERSIZE;
-
-    ret = ssl_read(s->ssl, p, n);
+    ret = ssl_read(s->ssl, buf, n);
     if (unlikely(ret < 0)) {
         s->state = ret;
-        luaL_pushresult(&b);
-        if (ret == SSL_ERROR)
-            lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
-        else
-            lua_pushnil(L);
+        free(buf);
         lua_pushnil(L);
-        lua_replace(L, -3);
-        return 2;
+        if (ret == SSL_ERROR) {
+            lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
+            return 2;
+        }
+        return 1;
     }
 
     s->state = SSL_OK;
 
-    luaL_addsize(&b, ret);
-    luaL_pushresult(&b);
+    lua_pushlstring(L, buf, ret);
+    free(buf);
 
     return 1;
 }
 
-static int eco_ssl_read_buffer(lua_State *L)
+static int eco_ssl_read_to_buffer(lua_State *L)
 {
     struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
-    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
+    struct eco_bufio *b = luaL_checkudata(L, 2, ECO_BUFIO_MT);
     size_t n = buffer_room(b);
     static char err_buf[128];
     ssize_t ret;
@@ -186,7 +187,7 @@ static int eco_ssl_read_buffer(lua_State *L)
         return 2;
     }
 
-    ret = ssl_read(s->ssl, b->data + b->last, n);
+    ret = ssl_read(s->ssl, b->data + b->w, n);
     if (unlikely(ret < 0)) {
         s->state = ret;
         lua_pushnil(L);
@@ -199,7 +200,7 @@ static int eco_ssl_read_buffer(lua_State *L)
 
     s->state = SSL_OK;
 
-    b->last += ret;
+    b->w += ret;
     lua_pushinteger(L, ret);
 
     return 1;
@@ -351,7 +352,7 @@ static const struct luaL_Reg ssl_methods[] =  {
     {"set_server_name", eco_ssl_set_server_name},
     {"negotiate", eco_ssl_ssl_negotiate},
     {"read", eco_ssl_read},
-    {"read_buffer", eco_ssl_read_buffer},
+    {"read_to_buffer", eco_ssl_read_to_buffer},
     {"write", eco_ssl_write},
     {"state", eco_ssl_state},
     {NULL, NULL}

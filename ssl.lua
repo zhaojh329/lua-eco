@@ -23,11 +23,12 @@
 --]]
 
 local socket = require 'eco.socket'
-local buffer = require 'eco.buffer'
 local ssl = require 'eco.core.ssl'
+local bufio = require 'eco.bufio'
 local time = require 'eco.time'
 
 local str_sub = string.sub
+local concat = table.concat
 local type = type
 
 local SSL_MT_SERVER = 0
@@ -103,36 +104,70 @@ function client_methods:send(data)
     return sent
 end
 
---[[
-    Reads data from a socket, according to the specified read pattern.
-    '*l': reads a line of text from the socket. The line is terminated by a LF character (ASCII 10).
-          The LF characters are not included in the returned line.
-    '*L': Works exactly as the '*l' pattern but the LF characters are included in the returned line.
-    number: read a specified number of bytes from the socket.
-
-    If successful, the method returns the received pattern. In case of error, the method returns nil
-    followed by an error message, followed by a (possibly empty) string containing the partial that
-    was received. The error message can be the string 'closed' in case the connection was closed
-    before the transmission was completed or the string 'timeout' in case there was a timeout during
-    the operation.
---]]
 function client_methods:recv(pattern, timeout)
     local mt = getmetatable(self)
+    local b = mt.b
 
     if mt.closed then
         return nil, 'closed'
     end
 
-    assert((type(pattern) == 'number' and pattern > 0)
-        or pattern == '*l' or pattern == '*L', 'pattern must be a number great than 0 or "*l" or "*L"')
-
-    local b = mt.b
-
-    if type(pattern) == 'number' then
+    if (type(pattern) == 'number') then
+        if pattern <= 0 then return '' end
         return b:read(pattern, timeout)
     end
 
-    return b:readline(timeout, pattern == '*l')
+    if pattern == '*a' then
+        local data = {}
+        local chunk, err
+        while true do
+            chunk, err = b:read(4096)
+            if not chunk then break end
+            data[#data + 1] = chunk
+        end
+
+        if #data == 0 then
+            return nil, err
+        end
+
+        if err == 'closed' then
+            return concat(data)
+        end
+
+        return nil, err, concat(data)
+    end
+
+    if not pattern or pattern == '*l' then
+        return b:readline(timeout)
+    end
+
+    error('invalid pattern:' .. tostring(pattern))
+end
+
+function client_methods:recvfull(size, timeout)
+    local mt = getmetatable(self)
+    local b = mt.b
+
+    if mt.closed then
+        return nil, 'closed'
+    end
+
+    if size <= 0 then return '' end
+
+    return b:readfull(size, timeout)
+end
+
+function client_methods:discard(size, timeout)
+    local mt = getmetatable(self)
+    local b = mt.b
+
+    if mt.closed then
+        return nil, 'closed'
+    end
+
+    if size <= 0 then return 0 end
+
+    return b:discard(size, timeout)
 end
 
 local function ssl_negotiate(mt, deadtime)
@@ -157,6 +192,88 @@ local function ssl_negotiate(mt, deadtime)
     end
 
     return true
+end
+
+local function create_bufio(mt)
+    local reader = { ssl = mt.ssl, ior = mt.ior, iow = mt.iow }
+
+    function reader:read(n, timeout)
+        if not self.ior:wait(timeout) then
+            return nil, 'timeout'
+        end
+
+        local ssl = self.ssl
+
+        while true do
+            local data, err = ssl:read(n)
+            if not data then
+                if err then
+                    return nil, err
+                end
+
+                local state = ssl:state()
+                local ok
+
+                if state == -2 then
+                    ok = self.ior:wait(timeout)
+                else
+                    ok = self.iow:wait(timeout)
+                end
+
+                if not ok then
+                    return nil, 'timeout'
+                end
+            else
+                if #data == 0 then
+                    return nil, 'closed'
+                end
+
+                return data
+            end
+        end
+    end
+
+    function reader:read2b(b, timeout)
+        if b:room() == 0 then
+            return nil, 'buffer is full'
+        end
+
+        if not self.ior:wait(timeout) then
+            return nil, 'timeout'
+        end
+
+        local ssl = self.ssl
+
+        while true do
+            local r, err = ssl:read_to_buffer(b)
+            if not r then
+                if err then
+                    return nil, err
+                end
+
+                local state = ssl:state()
+                local ok
+
+                if state == -2 then
+                    ok = self.ior:wait(timeout)
+                else
+                    ok = self.iow:wait(timeout)
+                end
+
+                if not ok then
+                    return nil, 'timeout'
+                end
+            else
+                if r == 0 then
+                    return nil, 'closed'
+                end
+
+                return r
+            end
+        end
+    end
+
+    return bufio.new(reader)
 end
 
 local function ssl_setmetatable(ctx, sock, methods, name)
@@ -187,41 +304,7 @@ local function ssl_setmetatable(ctx, sock, methods, name)
     else
         mt.ssl = ctx:new(fd, true)
         mt.iow = eco.watcher(eco.IO, fd, eco.WRITE)
-        mt.b = buffer.new(function(b, timeout)
-            if not mt.ior:wait(timeout) then
-                return nil, 'timeout'
-            end
-
-            local ss = mt.ssl
-
-            while true do
-                local n, err = ss:read_buffer(b)
-                if not n then
-                    if err then
-                        return nil, err
-                    end
-
-                    local state = ss:state()
-                    local ok
-
-                    if state == -2 then
-                        ok = mt.ior:wait(timeout)
-                    else
-                        ok = mt.iow:wait(timeout)
-                    end
-
-                    if not ok then
-                        return nil, 'timeout'
-                    end
-                else
-                    if n == 0 then
-                        return nil, 'closed'
-                    end
-
-                    return n
-                end
-            end
-        end)
+        mt.b = create_bufio(mt)
     end
 
     local ok, err = ssl_negotiate(mt, time.now() + 3.0)

@@ -318,18 +318,13 @@ local function recv_http_headers(s, deadtime)
 end
 
 local function recv_http_body(s, content_length, chunked, deadtime)
-    local body = {}
-
     if content_length > 0 then
-        while content_length > 0 do
-            local data, err = s:recv(content_length, deadtime - time.now())
-            if not data then
-                return nil, err
-            end
-            body[#body + 1] = data
-            content_length = content_length - #data
-        end
-    elseif chunked then
+        local body, _, partial = s:recvfull(content_length, deadtime - time.now())
+        return body or partial
+    end
+
+    if chunked then
+        local body = {}
         while true do
             local data, err = s:recv('*l', deadtime - time.now())
             if not data then
@@ -341,34 +336,30 @@ local function recv_http_body(s, content_length, chunked, deadtime)
             end
 
             local size = tonumber(data, 16)
-            local remain = size
-            local chunk = {}
-
-            while remain > 0 do
-                data, err = s:recv(remain, deadtime - time.now())
-                if not data then
-                    return nil, err
-                end
-                remain = remain - #data
-                chunk[#chunk + 1] = data
+            local chunk, err, partial = s:recvfull(size, deadtime - time.now())
+            if err then
+                body[#body + 1] = partial
+                break
             end
 
             data, err = s:recv('*l', deadtime - time.now())
             if err then
-                return nil, err
+                break
             end
 
             if data ~= '' then
-                return nil, 'not a vaild http chunked body'
+                break
             end
 
-            body[#body + 1] = table.concat(chunk)
+            body[#body + 1] = chunk
 
             if size == 0 then break end
         end
+
+        return table.concat(body)
     end
 
-    return table.concat(body)
+    return ''
 end
 
 local function do_http_request(s, method, path, headers, body, timeout)
@@ -860,15 +851,11 @@ end
 
 function con_methods:discard_body()
     local mt = getmetatable(self)
-    local body_remain = mt.body_remain
     local sock = mt.sock
 
-    while body_remain > 0 do
-        local data, err = sock:recv(body_remain, 3.0)
-        if not data then
-            return false, err
-        end
-        body_remain = body_remain - #data
+    local _, err = sock:discard(mt.body_remain, 3.0)
+    if err then
+        return false, err
     end
 
     return true

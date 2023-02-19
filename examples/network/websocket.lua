@@ -85,7 +85,7 @@ local function handler(con, req)
                 local code = err
 
                 -- send a close frame back:
-                ws:send_close(1000, "enough, enough!")
+                ws:send_close(1000, 'enough, enough!')
                 print('closing with status code ' .. code .. ' and message "' .. data .. '"')
                 return
             end

@@ -252,13 +252,70 @@ static int eco_socket_connect_unix(lua_State *L)
     return eco_socket_connect_common(L, fd, (struct sockaddr *)&addr, SUN_LEN(&addr));
 }
 
+static int eco_socket_send(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    size_t len;
+    const char *data = luaL_checklstring(L, 2, &len);
+    int flags = luaL_optinteger(L, 3, 0);
+    int ret;
+
+again:
+    ret = send(fd, data, len, flags);
+    if (ret < 0) {
+        if (errno == EINTR)
+            goto again;
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushnumber(L, ret);
+    return 1;
+}
+
+static int eco_socket_recv(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    size_t n = luaL_checkinteger(L, 2);
+    int flags = luaL_optinteger(L, 3, 0);
+    ssize_t ret;
+    char *buf;
+
+    if (n < 1)
+        luaL_argerror(L, 2, "must be greater than 0");
+
+    buf = malloc(n);
+    if (!buf) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+again:
+    ret = recv(fd, buf, n, flags);
+    if (unlikely(ret < 0)) {
+        if (errno == EINTR)
+            goto again;
+        free(buf);
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushlstring(L, buf, ret);
+    free(buf);
+
+    return 1;
+}
+
 static int eco_socket_sendto_common(lua_State *L, int fd, const void *data, size_t len,
-    struct sockaddr *addr, socklen_t addrlen)
+    struct sockaddr *addr, socklen_t addrlen, int flags)
 {
     int ret;
 
 again:
-    ret = sendto(fd, data, len, 0, addr, addrlen);
+    ret = sendto(fd, data, len, flags, addr, addrlen);
     if (ret < 0) {
         if (errno == EINTR)
             goto again;
@@ -278,6 +335,7 @@ static int eco_socket_sendto(lua_State *L)
     const char *data = luaL_checklstring(L, 2, &len);
     const char *ip = luaL_checkstring(L, 3);
     int port = luaL_checkinteger(L, 4);
+    int flags = luaL_optinteger(L, 5, 0);
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
         .sin_port = htons(port)
@@ -286,7 +344,7 @@ static int eco_socket_sendto(lua_State *L)
     if (inet_pton(AF_INET, ip, &addr.sin_addr) != 1)
         luaL_argerror(L, 2, "not a valid IPv4 address");
 
-    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, sizeof(struct sockaddr_in), flags);
 }
 
 static int eco_socket_sendto6(lua_State *L)
@@ -296,6 +354,7 @@ static int eco_socket_sendto6(lua_State *L)
     const char *data = luaL_checklstring(L, 2, &len);
     const char *ip = luaL_checkstring(L, 3);
     int port = luaL_checkinteger(L, 4);
+    int flags = luaL_optinteger(L, 5, 0);
     struct sockaddr_in6 addr = {
         .sin6_family = AF_INET6,
         .sin6_port = htons(port)
@@ -304,7 +363,7 @@ static int eco_socket_sendto6(lua_State *L)
     if (inet_pton(AF_INET6, ip, &addr.sin6_addr) != 1)
         luaL_argerror(L, 2, "not a valid IPv6 address");
 
-    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, sizeof(struct sockaddr_in6));
+    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, sizeof(struct sockaddr_in6), flags);
 }
 
 static int eco_socket_sendto_unix(lua_State *L)
@@ -313,6 +372,7 @@ static int eco_socket_sendto_unix(lua_State *L)
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
     const char *path = luaL_checkstring(L, 3);
+    int flags = luaL_optinteger(L, 4, 0);
     struct sockaddr_un addr = {
         .sun_family = AF_UNIX
     };
@@ -322,44 +382,47 @@ static int eco_socket_sendto_unix(lua_State *L)
 
     strcpy(addr.sun_path, path);
 
-    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, SUN_LEN(&addr));
+    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, SUN_LEN(&addr), flags);
 }
 
 static int eco_socket_recvfrom(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
-    size_t n = luaL_optinteger(L, 2, LUAL_BUFFERSIZE);
+    size_t n = luaL_checkinteger(L, 2);
+    int flags = luaL_optinteger(L, 3, 0);
     union {
         struct sockaddr_un un;
         struct sockaddr_in in;
         struct sockaddr_in6 in6;
     } addr = {};
     socklen_t addrlen = sizeof(addr);
-    luaL_Buffer b;
     ssize_t ret;
-    char  *p;
+    char *buf;
 
-    luaL_buffinit(L, &b);
+    if (n < 1)
+        luaL_argerror(L, 2, "must be greater than 0");
 
-    p = luaL_prepbuffer(&b);
-
-    if (n > LUAL_BUFFERSIZE)
-        n = LUAL_BUFFERSIZE;
-
-again:
-    ret = recvfrom(fd, p, n, 0, (struct sockaddr *)&addr, &addrlen);
-    if (ret < 0) {
-        if (errno == EINTR)
-            goto again;
-        luaL_pushresult(&b);
-        lua_pushstring(L, strerror(errno));
+    buf = malloc(n);
+    if (!buf) {
         lua_pushnil(L);
-        lua_replace(L, -3);
+        lua_pushstring(L, strerror(errno));
         return 2;
     }
 
-    luaL_addsize(&b, ret);
-    luaL_pushresult(&b);
+again:
+    ret = recvfrom(fd, buf, n, flags, (struct sockaddr *)&addr, &addrlen);
+    if (ret < 0) {
+        if (errno == EINTR)
+            goto again;
+        free(buf);
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushlstring(L, buf, ret);
+    free(buf);
+
     push_socket_addr(L, (struct sockaddr *)&addr);
 
     return 2;
@@ -594,6 +657,20 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_add_constant(L, "SOCK_DGRAM", SOCK_DGRAM);
     lua_add_constant(L, "SOCK_STREAM", SOCK_STREAM);
 
+    /* Bits in the FLAGS argument to `send', `recv' */
+    lua_add_constant(L, "MSG_OOB", MSG_OOB);
+    lua_add_constant(L, "MSG_PEEK", MSG_PEEK);
+    lua_add_constant(L, "MSG_DONTROUTE", MSG_DONTROUTE);
+    lua_add_constant(L, "MSG_TRUNC", MSG_TRUNC);
+    lua_add_constant(L, "MSG_DONTWAIT", MSG_DONTWAIT);
+    lua_add_constant(L, "MSG_EOR", MSG_EOR);
+    lua_add_constant(L, "MSG_WAITALL", MSG_WAITALL);
+    lua_add_constant(L, "MSG_CONFIRM", MSG_CONFIRM);
+    lua_add_constant(L, "MSG_ERRQUEUE", MSG_ERRQUEUE);
+    lua_add_constant(L, "MSG_NOSIGNAL", MSG_NOSIGNAL);
+    lua_add_constant(L, "MSG_MORE", MSG_MORE);
+    lua_add_constant(L, "MSG_CMSG_CLOEXEC", MSG_CMSG_CLOEXEC);
+
     lua_pushcfunction(L, eco_socket_socket);
     lua_setfield(L, -2, "socket");
 
@@ -620,6 +697,12 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_pushcfunction(L, eco_socket_connect_unix);
     lua_setfield(L, -2, "connect_unix");
+
+    lua_pushcfunction(L, eco_socket_send);
+    lua_setfield(L, -2, "send");
+
+    lua_pushcfunction(L, eco_socket_recv);
+    lua_setfield(L, -2, "recv");
 
     lua_pushcfunction(L, eco_socket_sendto);
     lua_setfield(L, -2, "sendto");

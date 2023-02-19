@@ -62,7 +62,7 @@ function  methods:recv_frame(timeout)
     local sock = mt.sock
     local opts = mt.opts
 
-    local data, err = sock:recv(2, timeout)
+    local data, err = sock:recvfull(2, timeout)
     if not data then
         return nil, nil, 'failed to receive the first 2 bytes: ' .. err
     end
@@ -92,7 +92,7 @@ function  methods:recv_frame(timeout)
     local payload_len = band(snd, 0x7f)
 
     if payload_len == 126 then
-        local data, err = sock:recv(2, timeout)
+        local data, err = sock:recvfull(2, timeout)
         if not data then
             return nil, nil, 'failed to receive the 2 byte payload length: ' .. err
         end
@@ -100,7 +100,7 @@ function  methods:recv_frame(timeout)
         payload_len = bor(lshift(byte(data, 1), 8), byte(data, 2))
 
     elseif payload_len == 127 then
-        local data, err = sock:recv(8, timeout)
+        local data, err = sock:recvfull(8, timeout)
         if not data then
             return nil, nil, 'failed to receive the 8 byte payload length: ' .. err
         end
@@ -143,7 +143,7 @@ function  methods:recv_frame(timeout)
     local data
     if rest > 0 then
         timeout = 10
-        data, err = sock:recv(rest, timeout)
+        data, err = sock:recvfull(rest, timeout)
         if not data then
             return nil, nil, 'failed to read masking-len and payload: ' .. err
         end

@@ -57,6 +57,8 @@ function M.writefile(path, data, append)
 end
 
 function M.read(fd, n, timeout)
+    if n <= 0 then return '' end
+
     local w, err = eco.watcher(eco.IO, fd)
     if not w then
         return nil, err
@@ -67,6 +69,23 @@ function M.read(fd, n, timeout)
     end
 
     return file.read(fd, n)
+end
+
+function M.read_to_buffer(fd, b, timeout)
+    if b:room() == 0 then
+        return nil, 'buffer is full'
+    end
+
+    local w, err = eco.watcher(eco.IO, fd)
+    if not w then
+        return nil, err
+    end
+
+    if not w:wait(timeout) then
+        return nil, 'timeout'
+    end
+
+    return file.read_to_buffer(fd, b)
 end
 
 function M.write(fd, data)

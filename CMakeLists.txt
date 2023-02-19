@@ -40,8 +40,8 @@ add_library(time MODULE time.c)
 target_link_libraries(time PRIVATE ${LIBEV_LIBRARY})
 set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
 
-add_library(buffer MODULE buffer.c)
-set_target_properties(buffer PROPERTIES OUTPUT_NAME buffer PREFIX "")
+add_library(bufio MODULE bufio.c)
+set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
 
 add_library(sys MODULE sys.c)
 set_target_properties(sys PROPERTIES OUTPUT_NAME sys PREFIX "")
@@ -117,7 +117,7 @@ install(
 )
 
 install(
-    TARGETS sys file time buffer socket
+    TARGETS sys file time bufio socket
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
@@ -137,6 +137,6 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua buffer.lua dns.lua socket.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua
+    FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
