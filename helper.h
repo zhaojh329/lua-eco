@@ -97,6 +97,9 @@ static inline void eco_new_metatable(lua_State *L, const char *name, const struc
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
 
+    if (!regs)
+        return;
+
     reg = regs;
 
     while (reg->name) {

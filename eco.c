@@ -53,7 +53,11 @@ struct eco_watcher {
     int type;
 };
 
-#define ECO_WATCHER_MT "eco{watcher}"
+#define ECO_WATCHER_IO_MT     "eco{watcher.io}"
+#define ECO_WATCHER_ASYNC_MT  "eco{watcher.async}"
+#define ECO_WATCHER_TIMER_MT  "eco{watcher.timer}"
+#define ECO_WATCHER_CHILD_MT  "eco{watcher.child}"
+#define ECO_WATCHER_SIGNAL_MT "eco{watcher.signal}"
 
 static const char *obj_registry = "eco{obj}";
 static const char *eco_context_registry = "eco-context";
@@ -309,82 +313,49 @@ static void eco_watcher_signal_cb(struct ev_loop *loop, struct ev_signal *w, int
     eco_resume(watcher->ctx->L, co, 1);
 }
 
-static int eco_watcher(lua_State *L)
+static int eco_watcher_active(lua_State *L, const char *tname)
 {
-    int type = luaL_checkinteger(L, 1);
-    struct eco_watcher *w;
-
-    switch (type) {
-    case ECO_WATCHER_TIMER:
-        w = lua_newuserdata(L, sizeof(struct eco_watcher));
-        break;
-
-    case ECO_WATCHER_IO: {
-            int fd = luaL_checkinteger(L, 2);
-            int ev = luaL_optinteger(L, 3, EV_READ);
-
-            if (fcntl(fd, F_GETFL) < 0) {
-                lua_pushnil(L);
-                lua_pushstring(L, strerror(errno));
-                return 2;
-            }
-
-            if (ev != EV_READ && ev != EV_WRITE)
-                luaL_argerror(L, 3, "must be eco.READ or eco.WRITE");
-
-            w = lua_newuserdata(L, sizeof(struct eco_watcher));
-            ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
-        }
-        break;
-
-    case ECO_WATCHER_ASYNC:
-        w = lua_newuserdata(L, sizeof(struct eco_watcher));
-        ev_async_init(&w->w.async, eco_watcher_async_cb);
-        break;
-
-    case ECO_WATCHER_CHILD: {
-            int pid = luaL_checkinteger(L, 2);
-
-            w = lua_newuserdata(L, sizeof(struct eco_watcher));
-            ev_child_init(&w->w.child, eco_watcher_child_cb, pid, 0);
-        }
-        break;
-
-    case ECO_WATCHER_SIGNAL: {
-            int signal = luaL_checkinteger(L, 2);
-
-            w = lua_newuserdata(L, sizeof(struct eco_watcher));
-            ev_signal_init(&w->w.signal, eco_watcher_signal_cb, signal);
-        }
-        break;
-
-    default:
-        luaL_argerror(L, 1, "invalid type");
-    }
-
-    w->type = type;
-
-    ev_init(&w->tmr, eco_watcher_timeout_cb);
-
-    w->ctx = eco_get_context(L);
-    w->co = NULL;
-
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
-
-    return 1;
-}
-
-static int eco_watcher_active(lua_State *L)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
+    struct eco_watcher *w = luaL_checkudata(L, 1, tname);
     lua_pushboolean(L, !!w->co);
     return 1;
 }
 
-static int eco_watcher_wait(lua_State *L)
+static inline int eco_watcher_timer_active(lua_State *L)
 {
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
+    return eco_watcher_active(L, ECO_WATCHER_TIMER_MT);
+}
+
+static inline int eco_watcher_io_active(lua_State *L)
+{
+    return eco_watcher_active(L, ECO_WATCHER_IO_MT);
+}
+
+static inline int eco_watcher_async_active(lua_State *L)
+{
+    return eco_watcher_active(L, ECO_WATCHER_ASYNC_MT);
+}
+
+static inline int eco_watcher_child_active(lua_State *L)
+{
+    return eco_watcher_active(L, ECO_WATCHER_CHILD_MT);
+}
+
+static inline int eco_watcher_signal_active(lua_State *L)
+{
+    return eco_watcher_active(L, ECO_WATCHER_SIGNAL_MT);
+}
+
+static lua_CFunction eco_watcher_active_methods[] =  {
+    [ECO_WATCHER_TIMER] = eco_watcher_timer_active,
+    [ECO_WATCHER_IO] = eco_watcher_io_active,
+    [ECO_WATCHER_ASYNC] = eco_watcher_async_active,
+    [ECO_WATCHER_CHILD] = eco_watcher_child_active,
+    [ECO_WATCHER_SIGNAL] = eco_watcher_signal_active
+};
+
+static int eco_watcher_wait(lua_State *L, const char *tname)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, tname);
     struct ev_loop *loop = w->ctx->loop;
     double timeout = lua_tonumber(L, 2);
 
@@ -435,22 +406,42 @@ static int eco_watcher_wait(lua_State *L)
     return lua_yield(L, 0);
 }
 
-static int eco_watcher_send(lua_State *L)
+static inline int eco_watcher_timer_wait(lua_State *L)
 {
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
-    struct ev_loop *loop = w->ctx->loop;
-
-    if (w->type != ECO_WATCHER_ASYNC)
-        luaL_error(L, "only async watcher support send");
-
-    ev_async_send(loop, &w->w.async);
-
-    return 0;
+    return eco_watcher_wait(L, ECO_WATCHER_TIMER_MT);
 }
 
-static int eco_watcher_cancel(lua_State *L)
+static inline int eco_watcher_io_wait(lua_State *L)
 {
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_MT);
+    return eco_watcher_wait(L, ECO_WATCHER_IO_MT);
+}
+
+static inline int eco_watcher_async_wait(lua_State *L)
+{
+    return eco_watcher_wait(L, ECO_WATCHER_ASYNC_MT);
+}
+
+static inline int eco_watcher_child_wait(lua_State *L)
+{
+    return eco_watcher_wait(L, ECO_WATCHER_CHILD_MT);
+}
+
+static inline int eco_watcher_signal_wait(lua_State *L)
+{
+    return eco_watcher_wait(L, ECO_WATCHER_SIGNAL_MT);
+}
+
+static lua_CFunction eco_watcher_wait_methods[] =  {
+    [ECO_WATCHER_TIMER] = eco_watcher_timer_wait,
+    [ECO_WATCHER_IO] = eco_watcher_io_wait,
+    [ECO_WATCHER_ASYNC] = eco_watcher_async_wait,
+    [ECO_WATCHER_CHILD] = eco_watcher_child_wait,
+    [ECO_WATCHER_SIGNAL] = eco_watcher_signal_wait
+};
+
+static int eco_watcher_cancel(lua_State *L, const char *tname)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, tname);
     struct ev_loop *loop = w->ctx->loop;
     lua_State *co = w->co;
 
@@ -489,13 +480,167 @@ static int eco_watcher_cancel(lua_State *L)
     return 0;
 }
 
-static const struct luaL_Reg eco_watcher_methods[] =  {
-    {"active", eco_watcher_active},
-    {"wait", eco_watcher_wait},
-    {"send", eco_watcher_send},
-    {"cancel", eco_watcher_cancel},
-    {NULL, NULL}
+static inline int eco_watcher_timer_cancel(lua_State *L)
+{
+    return eco_watcher_cancel(L, ECO_WATCHER_TIMER_MT);
+}
+
+static inline int eco_watcher_io_cancel(lua_State *L)
+{
+    return eco_watcher_cancel(L, ECO_WATCHER_IO_MT);
+}
+
+static inline int eco_watcher_async_cancel(lua_State *L)
+{
+    return eco_watcher_cancel(L, ECO_WATCHER_ASYNC_MT);
+}
+
+static inline int eco_watcher_child_cancel(lua_State *L)
+{
+    return eco_watcher_cancel(L, ECO_WATCHER_CHILD_MT);
+}
+
+static inline int eco_watcher_signal_cancel(lua_State *L)
+{
+    return eco_watcher_cancel(L, ECO_WATCHER_SIGNAL_MT);
+}
+
+static lua_CFunction eco_watcher_cancel_methods[] =  {
+    [ECO_WATCHER_TIMER] = eco_watcher_timer_cancel,
+    [ECO_WATCHER_IO] = eco_watcher_io_cancel,
+    [ECO_WATCHER_ASYNC] = eco_watcher_async_cancel,
+    [ECO_WATCHER_CHILD] = eco_watcher_child_cancel,
+    [ECO_WATCHER_SIGNAL] = eco_watcher_signal_cancel
 };
+
+static int eco_watcher_async_send(lua_State *L)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_ASYNC_MT);
+    struct ev_loop *loop = w->ctx->loop;
+
+    ev_async_send(loop, &w->w.async);
+
+    return 0;
+}
+
+static struct eco_watcher *eco_watcher_timer(lua_State *L)
+{
+    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+    eco_new_metatable(L, ECO_WATCHER_TIMER_MT, NULL);
+    return w;
+}
+
+static struct eco_watcher *eco_watcher_io(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 2);
+    int ev = luaL_optinteger(L, 3, EV_READ);
+    struct eco_watcher *w;
+
+    if (fcntl(fd, F_GETFL) < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return NULL;
+    }
+
+    if (ev != EV_READ && ev != EV_WRITE)
+        luaL_argerror(L, 3, "must be eco.READ or eco.WRITE");
+
+    w = lua_newuserdata(L, sizeof(struct eco_watcher));
+    ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
+
+    eco_new_metatable(L, ECO_WATCHER_IO_MT, NULL);
+    return w;
+}
+
+static struct eco_watcher *eco_watcher_async(lua_State *L)
+{
+    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+
+    ev_async_init(&w->w.async, eco_watcher_async_cb);
+    eco_new_metatable(L, ECO_WATCHER_ASYNC_MT, NULL);
+
+    lua_pushcfunction(L, eco_watcher_async_send);
+    lua_setfield(L, -2, "send");
+
+    return w;
+}
+
+static struct eco_watcher *eco_watcher_child(lua_State *L)
+{
+    int pid = luaL_checkinteger(L, 2);
+    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+
+    ev_child_init(&w->w.child, eco_watcher_child_cb, pid, 0);
+    eco_new_metatable(L, ECO_WATCHER_CHILD_MT, NULL);
+
+    return w;
+}
+
+static struct eco_watcher *eco_watcher_signal(lua_State *L)
+{
+    int signal = luaL_checkinteger(L, 2);
+    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+
+    ev_signal_init(&w->w.signal, eco_watcher_signal_cb, signal);
+    eco_new_metatable(L, ECO_WATCHER_SIGNAL_MT, NULL);
+
+    return w;
+}
+
+static int eco_watcher(lua_State *L)
+{
+    int type = luaL_checkinteger(L, 1);
+    struct eco_watcher *w;
+
+    switch (type) {
+    case ECO_WATCHER_TIMER:
+        w = eco_watcher_timer(L);
+        break;
+
+    case ECO_WATCHER_IO:
+        w = eco_watcher_io(L);
+        break;
+
+    case ECO_WATCHER_ASYNC:
+        w = eco_watcher_async(L);
+        break;
+
+    case ECO_WATCHER_CHILD:
+        w = eco_watcher_child(L);
+        break;
+
+    case ECO_WATCHER_SIGNAL:
+        w = eco_watcher_signal(L);
+        break;
+
+    default:
+        luaL_argerror(L, 1, "invalid type");
+        return 0;
+    }
+
+    if (!w)
+        return 2;
+
+    w->type = type;
+
+    ev_init(&w->tmr, eco_watcher_timeout_cb);
+
+    w->ctx = eco_get_context(L);
+    w->co = NULL;
+
+    lua_pushcfunction(L, eco_watcher_active_methods[type]);
+    lua_setfield(L, -2, "active");
+
+    lua_pushcfunction(L, eco_watcher_wait_methods[type]);
+    lua_setfield(L, -2, "wait");
+
+    lua_pushcfunction(L, eco_watcher_cancel_methods[type]);
+    lua_setfield(L, -2, "cancel");
+
+    lua_setmetatable(L, -2);
+
+    return 1;
+}
 
 static int luaopen_eco(lua_State *L)
 {
@@ -540,8 +685,7 @@ static int luaopen_eco(lua_State *L)
     lua_add_constant(L, "READ", EV_READ);
     lua_add_constant(L, "WRITE", EV_WRITE);
 
-    eco_new_metatable(L, ECO_WATCHER_MT, eco_watcher_methods);
-    lua_pushcclosure(L, eco_watcher, 1);
+    lua_pushcfunction(L, eco_watcher);
     lua_setfield(L, -2, "watcher");
 
     return 1;
