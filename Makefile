@@ -5,8 +5,8 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=b8002e2b7903fcc655766305e04a6a00e40ea145
-PKG_MIRROR_HASH:=f59051a71722986a57f8d6d864b2651676efd8d6cbbc88500b50fe2236dc06ca
+PKG_SOURCE_VERSION:=06986f19e860bb138b4e64a9567ce6307e458149
+PKG_MIRROR_HASH:=d667476ff1f2511a1cb6a2357c13060faf876b5bb96e45a518cc55c06a23875c
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -96,8 +96,8 @@ define Package/lua-eco/install
 	$(INSTALL_DIR) $(1)/usr/bin $(1)/usr/lib/lua/eco/core $(1)/usr/lib/lua/eco/encoding
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/eco $(1)/usr/bin
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/encoding/hex.lua $(1)/usr/lib/lua/eco/encoding
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/{time,buffer}.so $(1)/usr/lib/lua/eco/core
-	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/{time,buffer,bit,sync}.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/{time,bufio}.so $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/{time,bufio,bit,sync}.lua $(1)/usr/lib/lua/eco
 endef
 
 define Package/lua-eco-log/install
