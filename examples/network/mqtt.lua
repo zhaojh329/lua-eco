@@ -28,7 +28,7 @@ con:set_callback('ON_CONNECT', function(success, rc, str)
     con:subscribe('$SYS/#')
     con:subscribe('eco', 2)
 
-    con:publish("world", "hello")
+    con:publish('world', 'hello')
 end)
 
 con:set_callback('ON_DISCONNECT', function(success, rc, str)
