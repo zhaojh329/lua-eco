@@ -32,22 +32,6 @@ local dns = require 'eco.dns'
 
 local M = {}
 
-local function read_loop(mt)
-    local done = mt.done
-    local con = mt.con
-    local w = mt.ior
-
-    while not done.v do
-        if not w:wait() then
-            break
-        end
-
-        if not con:loop_read(10) then
-            break
-        end
-    end
-end
-
 local function write_loop(mt)
     local done = mt.done
     local con = mt.con
@@ -55,19 +39,45 @@ local function write_loop(mt)
 
     while not done.v do
         if not w:wait() then
-            break
+            return false
         end
 
+        if not con:want_write() then return true end
+
+        if not con:loop_write(10) then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function read_loop(mt)
+    local done = mt.done
+    local con = mt.con
+    local w = mt.ior
+
+    while not done.v do
         if con:want_write() then
-            if not con:loop_write(10) then
+            if not write_loop(mt) then
                 break
             end
         end
 
-        time.sleep(0.1)
-    end
+        if not w:wait() then
+            break
+        end
 
-    mt.ior:cancel()
+        if not con:loop_read(1) then
+            break
+        end
+
+        if con:want_write() then
+            if not write_loop(mt) then
+                break
+            end
+        end
+    end
 end
 
 local function check_keepalive_loop(mt)
@@ -189,7 +199,6 @@ local function wait_connected(mt, con)
     mt.iow = w
 
     eco.run(read_loop, mt)
-    eco.run(write_loop, mt)
     eco.run(check_keepalive_loop, mt)
 
     return true
