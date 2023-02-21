@@ -542,8 +542,8 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
         return NULL;
     }
 
-    if (ev != EV_READ && ev != EV_WRITE)
-        luaL_argerror(L, 3, "must be eco.READ or eco.WRITE");
+    if (ev & ~(EV_READ | EV_WRITE))
+        luaL_argerror(L, 3, "must be eco.READ or eco.WRITE or both them");
 
     w = lua_newuserdata(L, sizeof(struct eco_watcher));
     ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
