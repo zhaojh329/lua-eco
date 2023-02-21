@@ -232,7 +232,7 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
         break;
     }
 
-    lua_pushboolean(co, false);
+    lua_pushnil(co);
     lua_pushliteral(co, "timeout");
     eco_resume(watcher->ctx->L, co, 2);
 }
@@ -247,7 +247,7 @@ static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
     ev_io_stop(loop, w);
     ev_timer_stop(loop, &watcher->tmr);
 
-    lua_pushboolean(co, true);
+    lua_pushinteger(co, revents);
     eco_resume(watcher->ctx->L, co, 1);
 }
 
@@ -530,6 +530,19 @@ static struct eco_watcher *eco_watcher_timer(lua_State *L)
     return w;
 }
 
+static int eco_watcher_io_modify(lua_State *L)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_IO_MT);
+    int ev = luaL_checkinteger(L, 2);
+
+    if (ev & ~(EV_READ | EV_WRITE))
+        luaL_argerror(L, 3, "must be eco.READ or eco.WRITE or both them");
+
+    ev_io_modify(&w->w.io, ev);
+
+    return 0;
+}
+
 static struct eco_watcher *eco_watcher_io(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 2);
@@ -549,6 +562,9 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
     ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
 
     eco_new_metatable(L, ECO_WATCHER_IO_MT, NULL);
+    lua_pushcfunction(L, eco_watcher_io_modify);
+    lua_setfield(L, -2, "modify");
+
     return w;
 }
 
