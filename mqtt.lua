@@ -29,52 +29,38 @@ local mosq  = require 'mosquitto'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
 local dns = require 'eco.dns'
+local bit = require 'eco.bit'
 
 local M = {}
 
-local function write_loop(mt)
+local function mqtt_io_loop(mt)
     local done = mt.done
     local con = mt.con
     local w = mt.iow
 
     while not done.v do
-        if not w:wait() then
-            return false
-        end
+        local ev = eco.READ
 
-        if not con:want_write() then return true end
-
-        if not con:loop_write(10) then
-            return false
-        end
-    end
-
-    return true
-end
-
-local function read_loop(mt)
-    local done = mt.done
-    local con = mt.con
-    local w = mt.ior
-
-    while not done.v do
         if con:want_write() then
-            if not write_loop(mt) then
+            ev = bit.bor(ev, eco.WRITE)
+        end
+
+        w:modify(ev)
+
+        ev = w:wait()
+        if not ev then
+            break
+        end
+
+        if bit.band(ev, eco.READ) > 0 then
+            if not con:loop_read(1) then
                 break
             end
         end
 
-        if not w:wait() then
-            break
-        end
-
-        if not con:loop_read(1) then
-            break
-        end
-
-        if con:want_write() then
-            if not write_loop(mt) then
-                break
+        if bit.band(ev, eco.WRITE) > 0 then
+            if not con:loop_write(1) then
+                return false
             end
         end
     end
@@ -194,11 +180,9 @@ local function wait_connected(mt, con)
     end
 
     mt.done.v = false
-
-    mt.ior = eco.watcher(eco.IO, fd)
     mt.iow = w
 
-    eco.run(read_loop, mt)
+    eco.run(mqtt_io_loop, mt)
     eco.run(check_keepalive_loop, mt)
 
     return true
