@@ -2,7 +2,7 @@
 
 local http = require 'eco.http'
 
-local resp, err = http.request('https://bing.com')
+local resp, err = http.request('http://127.0.0.1:8080/test')
 if not resp then
     print(err)
     return
@@ -16,4 +16,5 @@ for name, value in pairs(resp.headers) do
     print('', name .. ': ' .. value)
 end
 
-print('\nbody:', resp.body)
+print('\nbody:')
+print(resp.read_body(-1))

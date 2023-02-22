@@ -30,6 +30,7 @@ local dns = require 'eco.dns'
 
 local str_format = string.format
 local str_lower = string.lower
+local concat = table.concat
 local tonumber = tonumber
 
 local M = {
@@ -266,7 +267,7 @@ local function send_http_request(s, method, path, headers, body)
 
     data[#data + 1] = '\r\n'
 
-    local _, err = s:send(table.concat(data))
+    local _, err = s:send(concat(data))
     if err then
         return false, err
     end
@@ -317,49 +318,125 @@ local function recv_http_headers(s, deadtime)
     return headers
 end
 
-local function recv_http_body(s, content_length, chunked, deadtime)
-    if content_length > 0 then
-        local body, _, partial = s:recvfull(content_length, deadtime - time.now())
-        return body or partial
-    end
+local function body_reader(s, headers)
+    local content_length = tonumber(headers['content-length'] or 0)
+    local chunked = headers['transfer-encoding'] == 'chunked'
 
-    if chunked then
-        local body = {}
-        while true do
-            local data, err = s:recv('*l', deadtime - time.now())
-            if not data then
+    if content_length > 0 then
+        return function (n, timeout)
+            if s:closed() then
+                return nil, 'closed'
+            end
+
+            if type(n) ~= 'number' then
+                error('arg 1 must be a number')
+            end
+
+            if n > content_length or n < 0 then
+                n = content_length
+            end
+
+            local body, err, partial = s:recvfull(n, timeout)
+            if err then
+                s:close()
+            end
+
+            if not body then
+                if partial then
+                    content_length = content_length - #partial
+                    return nil, err, partial
+                end
                 return nil, err
             end
 
-            if not data:match('^%x+$') then
-                return nil, 'not a vaild http chunked body'
-            end
-
-            local size = tonumber(data, 16)
-            local chunk, err, partial = s:recvfull(size, deadtime - time.now())
-            if err then
-                body[#body + 1] = partial
-                break
-            end
-
-            data, err = s:recv('*l', deadtime - time.now())
-            if err then
-                break
-            end
-
-            if data ~= '' then
-                break
-            end
-
-            body[#body + 1] = chunk
-
-            if size == 0 then break end
+            content_length = content_length - #body
+            return body
         end
-
-        return table.concat(body)
     end
 
-    return ''
+    if chunked then
+        local state = 0
+
+        return function (n, timeout)
+            if s:closed() then
+                return nil, 'closed'
+            end
+
+            if type(n) ~= 'number' then
+                error('arg 1 must be a number')
+            end
+
+            local deadtime
+
+            if timeout then
+                deadtime = time.now() + timeout
+            end
+
+            local body = {}
+            local need = n
+
+            while true do
+                if state == 0 then
+                    local data, err = s:recv('*l', deadtime and deadtime - time.now())
+                    if not data then
+                        s:close()
+                        return nil, err
+                    end
+
+                    if not data:match('^%x+$') then
+                        s:close()
+                        return nil, 'not a vaild http chunked body'
+                    end
+
+                    content_length = tonumber(data, 16)
+
+                    if content_length == 0 then
+                        s:close()
+                        return concat(body)
+                    end
+
+                    state = 1
+                elseif state == 1 then
+                    n = need
+                    if n > content_length or n < 0 then
+                        n = content_length
+                    end
+
+                    local data, err, partial = s:recvfull(n, deadtime and deadtime - time.now())
+                    if not data then
+                        s:close()
+                        if partial then
+                            content_length = content_length - #partial
+                            body[#body + 1] = partial
+                        end
+                        return nil, err, concat(body)
+                    end
+
+                    content_length = content_length - #data
+                    if need > 0 then
+                        need = need - #data
+                    end
+
+                    body[#body + 1] = data
+
+                    if content_length == 0 then
+                        data, err = s:recv('*l', deadtime and deadtime - time.now())
+                        if err or data ~= '' then
+                            s:close()
+                            return concat(body)
+                        end
+                        state = 0
+                    end
+
+                    if need == 0 then
+                        return concat(body)
+                    end
+                end
+            end
+        end
+    end
+
+    return function() return '' end
 end
 
 local function do_http_request(s, method, path, headers, body, timeout)
@@ -392,17 +469,12 @@ local function do_http_request(s, method, path, headers, body, timeout)
     }
 
     if method == 'HEAD' then
+        resp.read_body = function() return '' end
         return resp
     end
 
-    local content_length = tonumber(headers['content-length'] or 0)
-    local chunked = headers['transfer-encoding'] == 'chunked'
-    body, err = recv_http_body(s, content_length, chunked, deadtime)
-    if not body then
-        return nil, err
-    end
+    resp.read_body = body_reader(s, headers)
 
-    resp.body = body
     return resp
 end
 
@@ -593,8 +665,15 @@ function M.request(req, body)
     end
 
     local resp, err = do_http_request(s, method, path, headers, body, req.timeout)
-    s:close()
-    return resp, err
+    if err or method == 'HEAD' then
+        s:close()
+    end
+
+    if err then
+        return nil, err
+    end
+
+    return resp
 end
 
 local con_methods = {}
@@ -677,7 +756,7 @@ function con_methods:send(...)
         return false, 'closed'
     end
 
-    local data = table.concat({...})
+    local data = concat({...})
     local len = #data
     if len == 0 then
         return true
@@ -807,7 +886,7 @@ function con_methods:flush()
         return true
     end
 
-    local _, err = sock:send(table.concat(data))
+    local _, err = sock:send(concat(data))
     if err then
         sock:close()
         return false, err
