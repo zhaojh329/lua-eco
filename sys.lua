@@ -24,58 +24,146 @@
 
 local file = require 'eco.core.file'
 local sys = require 'eco.core.sys'
+local bufio = require 'eco.bufio'
+
+local concat = table.concat
+local type = type
 
 local M = {}
 
-local exec_mt = {}
+local exec_methods = {}
 
-function exec_mt:release()
-    if not self.__stdout then
+function exec_methods:release()
+    local mt = getmetatable(self)
+
+    if not mt.stdout_fd then
         return
     end
 
-    file.close(self.__stdout)
-    file.close(self.__stderr)
+    file.close(mt.stdout_fd)
+    file.close(mt.stderr_fd)
 
-    self.__stdout = nil
-    self.__stderr = nil
+    self.stdout_fd = nil
+    self.stderr_fd = nil
 end
 
-function exec_mt:wait(timeout)
-    return self.__child_w:wait(timeout or 30.0)
+function exec_methods:wait(timeout)
+    local mt = getmetatable(self)
+    return mt.child_w:wait(timeout or 30.0)
 end
 
-function exec_mt:read_stdout(n, timeout)
-    if not self.__stdout_w:wait(timeout or 30.0) then
-        return nil, 'timeout'
+function exec_methods:pid()
+    local mt = getmetatable(self)
+    return mt.pid
+end
+
+local function exec_read(b, pattern, timeout)
+    if (type(pattern) == 'number') then
+        if pattern <= 0 then return '' end
+        return b:read(pattern, timeout)
     end
 
-    return file.read(self.__stdout, n)
-end
+    if pattern == '*a' then
+        local data = {}
+        local chunk, err
+        while true do
+            chunk, err = b:read(4096)
+            if not chunk then break end
+            data[#data + 1] = chunk
+        end
 
-function exec_mt:read_stderr(n, timeout)
-    if not self.__stderr_w:wait(timeout or 30.0) then
-        return nil, 'timeout'
+        if #data == 0 then
+            return nil, err
+        end
+
+        if err == 'closed' then
+            return concat(data)
+        end
+
+        return nil, err, concat(data)
     end
 
-    return file.read(self.__stderr, n)
+    if not pattern or pattern == '*l' then
+        return b:readline(timeout)
+    end
+
+    error('invalid pattern:' .. tostring(pattern))
+end
+
+function exec_methods:read_stdout(pattern, timeout)
+    local mt = getmetatable(self)
+
+    if not mt.stdout_fd then
+        return nil, 'closeed'
+    end
+
+    return exec_read(mt.stdout_b, pattern, timeout)
+end
+
+function exec_methods:read_stderr(pattern, timeout)
+    local mt = getmetatable(self)
+
+    if not mt.stderr_fd then
+        return nil, 'closeed'
+    end
+
+    return exec_read(mt.stderr_b, pattern, timeout)
+end
+
+local function create_bufio(fd)
+    local reader = {
+        w = eco.watcher(eco.IO, fd),
+        fd = fd
+    }
+
+    function reader:read(n, timeout)
+        if not self.w:wait(timeout) then
+            return nil, 'timeout'
+        end
+
+        local data, err = file.read(self.fd, n, timeout)
+        if not data then
+            return nil, err
+        end
+
+        if #data == 0 then
+            return nil, 'closed'
+        end
+
+        return data
+    end
+
+    function reader:read2b(b, timeout)
+        if b:room() == 0 then
+            return nil, 'buffer is full'
+        end
+
+        if not self.w:wait(timeout) then
+            return nil, 'timeout'
+        end
+
+        local r, err = file.read_to_buffer(self.fd, b, timeout)
+        if not r then
+            return nil, err
+        end
+
+        if r == 0 then
+            return nil, 'closed'
+        end
+
+        return r, err
+    end
+
+    return bufio.new(reader)
 end
 
 function M.exec(...)
-    local pid, stdout, stderr = sys.exec(...)
+    local pid, stdout_fd, stderr_fd = sys.exec(...)
     if not pid then
-        return nil, stdout
+        return nil, stdout_fd
     end
 
-    local p = {
-        pid = pid,
-        __stdout = stdout,
-        __stderr = stderr,
-        __child_w = eco.watcher(eco.CHILD, pid),
-        __stdout_w = eco.watcher(eco.IO, stdout),
-        __stderr_w = eco.watcher(eco.IO, stderr),
-
-    }
+    local p = {}
 
     if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
         local __prox = newproxy(true)
@@ -84,8 +172,14 @@ function M.exec(...)
     end
 
     return setmetatable(p, {
-        __index = exec_mt,
-        __gc = exec_mt.release
+        pid = pid,
+        stdout_fd = stdout_fd,
+        stderr_fd = stderr_fd,
+        child_w = eco.watcher(eco.CHILD, pid),
+        stdout_b = create_bufio(stdout_fd),
+        stderr_b = create_bufio(stderr_fd),
+        __index = exec_methods,
+        __gc = exec_methods.release
     })
 end
 
