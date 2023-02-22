@@ -711,6 +711,29 @@ static int luaopen_eco(lua_State *L)
     return 1;
 }
 
+
+/*
+** Create the 'arg' table, which stores all arguments from the
+** command line ('argv'). It should be aligned so that, at index 0,
+** it has 'argv[script]', which is the script name. The arguments
+** to the script (everything after 'script') go to positive indices;
+** other arguments (before the script name) go to negative indices.
+** If there is no script name, assume interpreter's name as base.
+*/
+static void createargtable (lua_State *L, int argc, char const **argv)
+{
+    int i;
+
+    lua_createtable(L, argc - 2, 2);
+
+    for (i = 0; i < argc; i++) {
+        lua_pushstring(L, argv[i]);
+        lua_rawseti(L, -2, i - 1);
+    }
+
+    lua_setglobal(L, "arg");
+}
+
 int main(int argc, char const *argv[])
 {
     struct ev_loop *loop = EV_DEFAULT;
@@ -727,6 +750,8 @@ int main(int argc, char const *argv[])
     srand(time(NULL));
 
     L = luaL_newstate();
+
+    createargtable(L, argc, argv);
 
     luaL_openlibs(L);
 
