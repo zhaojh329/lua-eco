@@ -35,15 +35,16 @@ Lua-eco 还提供了一些有用的模块:
 * file - open/close/read/write; access; readlink; stat; statvfs; chown; 遍历目录
 * sys - exec; signal
 * socket - tcp/tcp6; udp/udp6; unix
-* ssl - 包括客户端和服务器
+* ssl - openssl, mbedtls, CyaSSl(wolfssl)
 * http/https - 包括客户端和服务器
 * websocket - 服务器
 * mqtt - 客户端，使用 [lua-mosquitto]
 * dns
 * termios
 * ubus - 对 [ubus] 的 Lua 绑定
-* base64
-* ...
+* encoding - hex, base64
+* crypto - sha1
+* log
 
 想试试吗？很有趣的!
 

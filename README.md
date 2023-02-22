@@ -34,15 +34,16 @@ Lua-eco also provides some modules:
 * file - open/close/read/write; access; readlink; stat; statvfs; chown; traverse directory
 * sys - exec; signal
 * socket - tcp/tcp6; udp/udp6; unix
-* ssl
+* ssl - openssl, mbedtls, CyaSSl(wolfssl)
 * http/https - Including server and client
 * websocket - Server
 * mqtt - client, Using [lua-mosquitto]
 * dns
 * termios
 * ubus - A lua binding for [ubus]
-* base64
-* ...
+* encoding - hex, base64
+* crypto - sha1
+* log
 
 Would you like to try it? Kinda interesting.
 
