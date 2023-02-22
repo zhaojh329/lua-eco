@@ -129,7 +129,7 @@ local function sock_recv(sock, pattern, timeout)
         return socket.recv(fd, pattern)
     end
 
-    if (type(pattern) == 'number') then
+    if type(pattern) == 'number' then
         if pattern <= 0 then return '' end
         return b:read(pattern, timeout)
     end

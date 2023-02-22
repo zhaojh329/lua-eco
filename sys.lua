@@ -58,7 +58,7 @@ function exec_methods:pid()
 end
 
 local function exec_read(b, pattern, timeout)
-    if (type(pattern) == 'number') then
+    if type(pattern) == 'number' then
         if pattern <= 0 then return '' end
         return b:read(pattern, timeout)
     end

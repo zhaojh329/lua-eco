@@ -112,7 +112,7 @@ function client_methods:recv(pattern, timeout)
         return nil, 'closed'
     end
 
-    if (type(pattern) == 'number') then
+    if type(pattern) == 'number' then
         if pattern <= 0 then return '' end
         return b:read(pattern, timeout)
     end
