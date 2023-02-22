@@ -32,6 +32,10 @@
 #include "list.h"
 #include "eco.h"
 
+#ifndef ev_io_modify
+#define ev_io_modify(ev,events_) do { (ev)->events = ((ev)->events & EV__IOFDSET) | (events_); } while (0)
+#endif
+
 enum {
     ECO_WATCHER_IO,
     ECO_WATCHER_ASYNC,
