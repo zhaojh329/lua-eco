@@ -1,16 +1,19 @@
 #!/usr/bin/env eco
 
 local http = require 'eco.http'
+local log = require 'eco.log'
+
+log.set_level(log.DEBUG)
 
 local function handler(con, req)
-    print(string.format('new request from %s:%d', req.remote_addr, req.remote_port))
-
     if req.path == '/test' then
         con:add_header('content-type', 'text/html')
 
         con:send('<h1>Lua-eco HTTP server test</h1>\n')
 
-        con:send('<h2>method: ', http.method_string(req.method), '</h2>\n')
+        con:send('<h2>remote addr: ', req.remote_addr, '</h2>\n')
+        con:send('<h2>remote port: ', req.remote_port, '</h2>\n')
+        con:send('<h2>method: ', req.method, '</h2>\n')
         con:send('<h2>path: ', req.path, '</h2>\n')
         con:send('<h2>http version: ', req.http_version, '</h2>\n')
 
@@ -30,10 +33,6 @@ local function handler(con, req)
     end
 end
 
-local function logger(msg)
-    -- print(msg)
-end
-
 local options = {
     http_keepalive = 30,
     tcp_keepalive = 5,
@@ -48,7 +47,7 @@ local options = {
 -- options.cert = 'cert.pem'
 -- options.key = 'key.pem'
 
-local srv, err = http.listen(nil, 8080, options, handler, logger)
+local srv, err = http.listen(nil, 8080, options, handler)
 if not srv then
     print(err)
     return

@@ -27,6 +27,7 @@ local file = require 'eco.file'
 local time = require 'eco.time'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
+local log = require 'eco.log'
 
 local str_format = string.format
 local str_lower = string.lower
@@ -92,17 +93,7 @@ local M = {
     STATUS_INSUFFICIENT_STORAGE = 507,
     STATUS_LOOP_DETECTED = 508,
     STATUS_NOT_EXTENDED = 510,
-    STATUS_NETWORK_AUTHENTICATION_REQUIRED = 511,
-
-    METHOD_GET = 0,
-    METHOD_POST = 1,
-    METHOD_PUT = 2,
-    METHOD_HEAD = 3,
-    METHOD_DELETE = 4,
-    METHOD_CONNECT = 5,
-    METHOD_OPTIONS = 6,
-    METHOD_TRACE = 7,
-    METHOD_PATCH = 8
+    STATUS_NETWORK_AUTHENTICATION_REQUIRED = 511
 }
 
 local status_map = {
@@ -984,7 +975,7 @@ function con_methods:serve_file(req)
         return self:send_error(M.STATUS_FORBIDDEN)
     end
 
-    if req.method ~= M.METHOD_GET and req.method ~= M.METHOD_HEAD then
+    if req.method ~= 'GET' and req.method ~= 'HEAD' then
         return self:send_error(M.STATUS_METHOD_NOT_ALLOWED)
     end
 
@@ -1020,7 +1011,7 @@ function con_methods:serve_file(req)
         self:add_header('content-encoding', 'gzip')
     end
 
-    if req.method == M.METHOD_HEAD then
+    if req.method == 'HEAD' then
         return true
     end
 
@@ -1054,47 +1045,45 @@ function con_methods:serve_file(req)
     return ok, err
 end
 
-local function http_con_log_info(addr, msg)
-    local s = debug.getinfo(2, 'Sl')
-    local str = os.date() .. ' ' .. s.short_src .. ':' .. s.currentline
-
-    if addr then
-        str = str .. str_format(' %s:%d', addr.ipaddr, addr.port)
-    end
-
-    return  str .. ' ' .. msg
-end
-
 local function handle_connection(con, peer, handler)
     local mt = getmetatable(con)
     local sock = mt.sock
 
+    local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
     local http_keepalive = mt.options.http_keepalive
     local read_timeout = 3.0
 
-    local method, path, ver
+    local method, path, http_version
 
     while true do
         local data, err = sock:recv('*l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
-            return false, http_con_log_info(peer, 'before request received: ' .. err)
+            if err == 'closed' then
+                log.debug(log_prefix .. err)
+            else
+                log.err(log_prefix .. err)
+            end
+            return false
         end
 
         if #data > 0 then
-            local method_str
-            method_str, path, ver = data:match('^(%u+)%s+(%S+)%s+HTTP/(%d%.%d)$')
-            if not method_str or not path or not ver then
-                return false,  http_con_log_info(peer, 'not a vaild http request start line')
+            method, path, http_version = data:match('^(%u+)%s+(%S+)%s+HTTP/(%d%.%d)$')
+            if not method or not path or not http_version then
+                log.err(log_prefix .. 'not a vaild http request start line')
+                return false
             end
 
-            method = M['METHOD_' .. method_str]
             if not method then
-                return false, http_con_log_info(peer, 'not supported http method "' .. method_str .. '"')
+                log.err(log_prefix .. 'not supported http method "' .. method .. '"')
+                return false
             end
 
-            if ver ~= '1.1' then
-                return false, http_con_log_info(peer, 'not supported http version ' .. ver)
+            if http_version ~= '1.1' then
+                log.err(log_prefix .. 'not supported http version "' .. method .. '"')
+                return false
             end
+
+            http_version = tonumber(http_version)
 
             break
         end
@@ -1107,7 +1096,8 @@ local function handle_connection(con, peer, handler)
     while true do
         local data, err = sock:recv('*l', read_timeout)
         if not data then
-            return false, http_con_log_info(peer, 'not a complete http request: ' .. err)
+            log.err(log_prefix .. 'not a complete http request: ' .. err)
+            return false
         end
 
         if data == '' then
@@ -1116,14 +1106,16 @@ local function handle_connection(con, peer, handler)
 
         local name, value = data:match('^([%w-_]+):%s*(.+)$')
         if not name or not value then
-            return false, http_con_log_info(peer, 'not a vaild http header')
+            log.err(log_prefix .. 'not a vaild http header: ' .. data)
+            return false
         end
 
         headers[str_lower(name)] = value
     end
 
     if str_lower(headers['transfer-encoding'] or '') == 'chunked' then
-        return false, http_con_log_info(peer, 'not support chunked http request')
+        log.err(log_prefix .. 'not support chunked http request')
+        return false
     end
 
     local query_string = ''
@@ -1164,7 +1156,7 @@ local function handle_connection(con, peer, handler)
         remote_port = peer.port,
         method = method,
         path = path,
-        http_version = tonumber(ver),
+        http_version = http_version,
         headers = headers,
         query = query
     }
@@ -1172,7 +1164,8 @@ local function handle_connection(con, peer, handler)
     handler(con, req)
 
     if sock:closed() then
-        return false, http_con_log_info(peer, 'closed')
+        log.err(log_prefix .. 'closed')
+        return false
     end
 
     if resp.has_body then
@@ -1183,8 +1176,11 @@ local function handle_connection(con, peer, handler)
 
     local ok, err = con:flush()
     if not ok then
-        return false, http_con_log_info(peer, 'flush data: ' .. err)
+        log.err(log_prefix .. 'flush data: ' .. err)
+        return false
     end
+
+    log.debug(log_prefix .. string.format('"%s %s HTTP/%.1f" %d', method, path, http_version, resp.code))
 
     local req_connection = str_lower(req.headers['connection'] or '')
     local resp_connection = str_lower(resp.headers['connection'] or '')
@@ -1196,7 +1192,8 @@ local function handle_connection(con, peer, handler)
     else
         ok, err = con:discard_body()
         if not ok then
-            return false, http_con_log_info(peer, 'discard body: ' .. err)
+            log.err(log_prefix .. 'discard body: ' .. err)
+            return false
         end
     end
 
@@ -1226,7 +1223,7 @@ local function set_socket_options(sock, options)
     end
 end
 
-function M.listen(ipaddr, port, options, handler, logger)
+function M.listen(ipaddr, port, options, handler)
     options = options or {}
 
     options.docroot = options.docroot or '.'
@@ -1263,9 +1260,7 @@ function M.listen(ipaddr, port, options, handler, logger)
     while true do
         local c, peer = sock:accept()
         if c then
-            if logger then
-                logger(http_con_log_info(peer, 'new connection'))
-            end
+            log.debug(peer.ipaddr .. ':' .. peer.port .. ': new connection')
 
             eco.run(function(c)
                 local con = setmetatable({}, {
@@ -1281,37 +1276,15 @@ function M.listen(ipaddr, port, options, handler, logger)
                 })
 
                 while not c:closed() do
-                    local ok, err = handle_connection(con, peer, handler)
-                    if not ok then
-                        if logger then
-                            logger(err)
-                        end
+                    if not handle_connection(con, peer, handler) then
                         c:close()
                     end
                 end
             end, c)
         else
-            if logger then
-                logger(http_con_log_info(nil, 'accept: ' .. peer))
-            end
+            log.err('accept fail: ' .. err)
         end
     end
-end
-
-function M.method_string(method)
-    local methods = {
-        [M.METHOD_GET] = 'GET',
-        [M.METHOD_POST] = 'POST',
-        [M.METHOD_PUT] = 'PUT',
-        [M.METHOD_HEAD] = 'HEAD',
-        [M.METHOD_DELETE] = 'DELETE',
-        [M.METHOD_CONNECT] = 'CONNECT',
-        [M.METHOD_OPTIONS] = 'OPTIONS',
-        [M.METHOD_TRACE] = 'TRACE',
-        [M.METHOD_PATCH] = 'PATCH'
-    }
-
-    return methods[method] or ''
 end
 
 return M
