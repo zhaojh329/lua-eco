@@ -646,6 +646,24 @@ static int eco_socket_setoption(lua_State *L)
     return o->func(L, fd);
 }
 
+static int eco_socket_is_ipv4_address(lua_State *L)
+{
+    const char *ip = luaL_checkstring(L, 1);
+    struct in_addr addr;
+
+    lua_pushboolean(L, inet_pton(AF_INET, ip, &addr) == 1);
+    return 1;
+}
+
+static int eco_socket_is_ipv6_address(lua_State *L)
+{
+    const char *ip = luaL_checkstring(L, 1);
+    struct in6_addr addr;
+
+    lua_pushboolean(L, inet_pton(AF_INET6, ip, &addr) == 1);
+    return 1;
+}
+
 int luaopen_eco_core_socket(lua_State *L)
 {
     lua_newtable(L);
@@ -727,6 +745,12 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_pushcfunction(L, eco_socket_setoption);
     lua_setfield(L, -2, "setoption");
+
+    lua_pushcfunction(L, eco_socket_is_ipv4_address);
+    lua_setfield(L, -2, "is_ipv4_address");
+
+    lua_pushcfunction(L, eco_socket_is_ipv6_address);
+    lua_setfield(L, -2, "is_ipv6_address");
 
     return 1;
 }

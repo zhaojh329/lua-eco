@@ -65,9 +65,6 @@ local M = {
     SECTION_AR  = SECTION_AR
 }
 
-local IPv4 = 0
-local IPv6 = 1
-
 local resolver_errstrs = {
     'format error',     -- 1
     'server failure',   -- 2
@@ -77,70 +74,6 @@ local resolver_errstrs = {
 }
 
 local soa_int32_fields = { 'serial', 'refresh', 'retry', 'expire', 'minimum' }
-
-local function is_ipv4_addr(ip)
-    local n = 0
-
-    local chunks = { ip:match('^(%d+)%.(%d+)%.(%d+)%.(%d+)$') }
-
-    if #chunks ~= 4 then
-        return false
-    end
-
-    for _, v in ipairs(chunks) do
-        if tonumber(v) > 255 then
-            return false
-        end
-    end
-
-    return true
-end
-
-local function is_ipv6_addr(ip)
-    local addr = ip:match('^([a-fA-F0-9:]+)$')
-
-    if not addr or #addr == 0 then
-        return false
-    end
-
-    local nc, dc = 0, false
-    for chunk, colons in addr:gmatch('([^:]*)(:*)') do
-        if nc > (dc and 7 or 8) then
-            return false
-        end
-
-        if #chunk > 0 and tonumber(chunk, 16) > 65535 then
-            return false
-        end
-
-        if #colons > 0 then
-            if #colons > 2 then
-                return false
-            end
-            if #colons == 2 and dc == true then
-                return false
-            end
-            if #colons == 2 and dc == false then
-                dc = true
-            end
-        end
-        nc = nc + 1
-    end
-
-    return true
-end
-
-local function is_ip_addr(ip)
-    if is_ipv4_addr(ip) then
-        return IPv4
-    end
-
-    if is_ipv6_addr(ip) then
-        return IPv6
-    end
-
-    return false
-end
 
 local function parse_resolvconf()
     local nameservers = {}
@@ -155,9 +88,8 @@ local function parse_resolvconf()
         elseif line:match('nameserver') then
             local nameserver = line:match('nameserver%s+(.+)')
             if nameserver then
-                local family = is_ip_addr(nameserver)
-                if family then
-                    nameservers[#nameservers + 1] = { nameserver, 53, family == IPv6}
+                if socket.is_ip_address(nameserver) then
+                    nameservers[#nameservers + 1] = { nameserver, 53, socket.is_ipv6_address(nameserver) }
                 end
             end
         end
@@ -611,14 +543,14 @@ end
                 single hostname string or a table holding both the hostname string and the port number.
 --]]
 function M.query(qname, opts)
-    if is_ipv4_addr(qname) then
+    if socket.is_ipv4_address(qname) then
         return { {
             type = TYPE_A,
             address = qname
         } }
     end
 
-    if is_ipv6_addr(qname) then
+    if socket.is_ipv6_address(qname) then
         return { {
             type = TYPE_AAAA,
             address = qname
@@ -642,13 +574,11 @@ function M.query(qname, opts)
             error('invalid nameservers')
         end
 
-        local family = is_ip_addr(host)
-
-        if not family then
+        if not socket.is_ip_address(host) then
             error('invalid nameserver: ' .. nameserver)
         end
 
-        nameservers[#nameservers + 1] = { host, port, family == IPv6 }
+        nameservers[#nameservers + 1] = { host, port, socket.is_ipv6_address(host) }
     end
 
     local resolvconf = parse_resolvconf()

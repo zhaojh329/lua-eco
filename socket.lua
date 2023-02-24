@@ -657,4 +657,8 @@ function M.connect_tcp6(ipaddr, port)
     return connect_tcp_common(M.tcp6, ipaddr, port)
 end
 
+function M.is_ip_address(addr)
+    return socket.is_ipv4_address(addr) or socket.is_ipv6_address(addr)
+end
+
 return setmetatable(M, { __index = socket })
