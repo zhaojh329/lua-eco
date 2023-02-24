@@ -27,7 +27,7 @@
 #include "log/log.h"
 #include "eco.h"
 
-static int lua_log_level(lua_State *L)
+static int lua_log_set_level(lua_State *L)
 {
     int level = luaL_checkinteger(L, 1);
 
@@ -161,8 +161,8 @@ int luaopen_eco_log(lua_State *L)
     lua_add_constant(L, "INFO", LOG_INFO);
     lua_add_constant(L, "DEBUG", LOG_DEBUG);
 
-    lua_pushcfunction(L, lua_log_level);
-    lua_setfield(L, -2, "level");
+    lua_pushcfunction(L, lua_log_set_level);
+    lua_setfield(L, -2, "set_level");
 
     lua_pushcfunction(L, lua_log_debug);
     lua_setfield(L, -2, "debug");
