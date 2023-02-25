@@ -17,4 +17,5 @@ for name, value in pairs(resp.headers) do
 end
 
 print('\nbody:')
+io.write(resp.read_body(10))
 print(resp.read_body(-1))

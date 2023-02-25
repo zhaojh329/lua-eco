@@ -313,38 +313,6 @@ local function body_reader(s, headers)
     local content_length = tonumber(headers['content-length'] or 0)
     local chunked = headers['transfer-encoding'] == 'chunked'
 
-    if content_length > 0 then
-        return function (n, timeout)
-            if s:closed() then
-                return nil, 'closed'
-            end
-
-            if type(n) ~= 'number' then
-                error('arg 1 must be a number')
-            end
-
-            if n > content_length or n < 0 then
-                n = content_length
-            end
-
-            local body, err, partial = s:recvfull(n, timeout)
-            if err then
-                s:close()
-            end
-
-            if not body then
-                if partial then
-                    content_length = content_length - #partial
-                    return nil, err, partial
-                end
-                return nil, err
-            end
-
-            content_length = content_length - #body
-            return body
-        end
-    end
-
     if chunked then
         local state = 0
 
@@ -400,7 +368,8 @@ local function body_reader(s, headers)
                             content_length = content_length - #partial
                             body[#body + 1] = partial
                         end
-                        return nil, err, concat(body)
+                        log.err('read chunked body fail: ' .. err)
+                        return concat(body)
                     end
 
                     content_length = content_length - #data
@@ -426,6 +395,40 @@ local function body_reader(s, headers)
             end
         end
     end
+
+    if content_length > 0 then
+        return function (n, timeout)
+            if s:closed() then
+                return nil, 'closed'
+            end
+
+            if type(n) ~= 'number' then
+                error('arg 1 must be a number')
+            end
+
+            if n > content_length or n < 0 then
+                n = content_length
+            end
+
+            local body, err, partial = s:recvfull(n, timeout)
+            if err or n == content_length then
+                s:close()
+            end
+
+            if not body then
+                if partial and #partial > 0 then
+                    log.err(string.format('with %d bytes remaining to read: ' .. err, content_length - #partial))
+                    return partial
+                end
+                return nil, err
+            end
+
+            content_length = content_length - #body
+            return body
+        end
+    end
+
+    s:close()
 
     return function() return '' end
 end
