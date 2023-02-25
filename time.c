@@ -22,9 +22,6 @@
  * SOFTWARE.
  */
 
-#include <errno.h>
-#include <time.h>
-
 #include "eco.h"
 
 static int eco_time_now(lua_State *L)
@@ -34,38 +31,12 @@ static int eco_time_now(lua_State *L)
     return 1;
 }
 
-static int eco_time_sleep_sync(lua_State *L)
-{
-    double delay = luaL_checknumber(L, 1);
-    struct timespec req = {
-        .tv_sec = delay,
-        .tv_nsec = (delay - (time_t)delay) * 1000000000
-    };
-    struct timespec rem;
-
-again:
-    if (nanosleep(&req, &rem)) {
-        if (errno == EINTR)
-            goto again;
-
-        lua_pushboolean(L, false);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
-
-    lua_pushboolean(L, true);
-    return 1;
-}
-
 int luaopen_eco_core_time(lua_State *L)
 {
     lua_newtable(L);
 
     lua_pushcfunction(L, eco_time_now);
     lua_setfield(L, -2, "now");
-
-    lua_pushcfunction(L, eco_time_sleep_sync);
-    lua_setfield(L, -2, "sleep_sync");
 
     return 1;
 }
