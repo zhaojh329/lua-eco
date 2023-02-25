@@ -690,7 +690,7 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"listen", eco_ubus_listen},
     {"add", eco_ubus_add},
     {"reply", eco_ubus_reply},
-    { "complete_deferred_request", eco_ubus_complete_deferred_request },
+    {"complete_deferred_request", eco_ubus_complete_deferred_request},
     {"close", eco_ubus_close},
     {"getfd", eco_ubus_getfd},
     {"handle_event", eco_ubus_handle_event},
