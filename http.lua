@@ -273,7 +273,7 @@ local function send_http_request(s, method, path, headers, body)
     return true
 end
 
-local function recv_STATUS_line(s, deadtime)
+local function recv_status_line(s, deadtime)
     local data, err = s:recv('*l', deadtime - time.now())
     if not data then
         return nil, err
@@ -442,7 +442,7 @@ local function do_http_request(s, method, path, headers, body, timeout)
 
     local deadtime = time.now() + timeout
 
-    local code, status = recv_STATUS_line(s, deadtime)
+    local code, status = recv_status_line(s, deadtime)
     if not code then
         return nil, status
     end
