@@ -32,7 +32,7 @@ local function process_msg(con, w, done)
         if not w:wait() then
             return
         end
-        con:process_msg()
+        con:handle_event()
     end
 end
 

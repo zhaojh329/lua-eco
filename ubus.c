@@ -677,7 +677,7 @@ static int eco_ubus_getfd(lua_State *L)
     return 1;
 }
 
-static int eco_ubus_process_msg(lua_State *L)
+static int eco_ubus_handle_event(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     ubus_handle_event(&ctx->ctx);
@@ -693,7 +693,7 @@ static const struct luaL_Reg ubus_methods[] =  {
     { "complete_deferred_request", eco_ubus_complete_deferred_request },
     {"close", eco_ubus_close},
     {"getfd", eco_ubus_getfd},
-    {"process_msg", eco_ubus_process_msg},
+    {"handle_event", eco_ubus_handle_event},
     {NULL, NULL}
 };
 
