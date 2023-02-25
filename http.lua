@@ -1240,22 +1240,24 @@ function M.listen(ipaddr, port, options, handler)
     options.index = options.index or 'index.html'
     options.http_keepalive = options.http_keepalive or 30
 
-    local sock, err
+    local sock, err, listen
 
     if options.cert and options.key then
         options.ssl = true
         if options.ipv6 then
-            sock, err = ssl.listen6(ipaddr, port, options)
+            listen = ssl.listen6
         else
-            sock, err = ssl.listen(ipaddr, port, options)
+            listen = ssl.listen
         end
     else
         if options.ipv6 then
-            sock, err = socket.listen_tcp6(ipaddr, port)
+            listen = socket.listen_tcp6
         else
-            sock, err = socket.listen_tcp(ipaddr, port)
+            listen = socket.listen_tcp
         end
     end
+
+    sock, err = listen(ipaddr, port, options)
     if not sock then
         return nil, err
     end

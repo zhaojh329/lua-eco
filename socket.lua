@@ -564,18 +564,20 @@ function M.unix_dgram()
     return create_socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
 end
 
-function M.listen_unix(path, backlog)
+function M.listen_unix(path, options)
     local sock, err = M.unix()
     if not sock then
         return nil, err
     end
+
+    options = options or {}
 
     local ok, err = sock:bind(path)
     if not ok then
         return nil, 'bind: ' .. err
     end
 
-    ok, err = sock:listen(backlog)
+    ok, err = sock:listen(options.backlog)
     if not ok then
         return nil, 'listen: ' .. err
     end
@@ -583,20 +585,28 @@ function M.listen_unix(path, backlog)
     return sock
 end
 
-local function listen_tcp_common(create, ipaddr, port, backlog)
+local function listen_tcp_common(create, ipaddr, port, options)
     local sock, err = create()
     if not sock then
         return nil, err
     end
 
-    sock:setoption('reuseaddr', true)
+    options = options or {}
+
+    if options.reuseaddr then
+        sock:setoption('reuseaddr', true)
+    end
+
+    if options.reuseport then
+        sock:setoption('reuseport', true)
+    end
 
     local ok, err = sock:bind(ipaddr, port)
     if not ok then
         return nil, 'bind: ' .. err
     end
 
-    ok, err = sock:listen(backlog)
+    ok, err = sock:listen(options.backlog)
     if not ok then
         return nil, 'listen: ' .. err
     end
@@ -604,12 +614,12 @@ local function listen_tcp_common(create, ipaddr, port, backlog)
     return sock
 end
 
-function M.listen_tcp(ipaddr, port, backlog)
-    return listen_tcp_common(M.tcp, ipaddr, port, backlog)
+function M.listen_tcp(ipaddr, port, options)
+    return listen_tcp_common(M.tcp, ipaddr, port, options)
 end
 
-function M.listen_tcp6(ipaddr, port, backlog)
-    return listen_tcp_common(M.tcp6, ipaddr, port, backlog)
+function M.listen_tcp6(ipaddr, port, options)
+    return listen_tcp_common(M.tcp6, ipaddr, port, options)
 end
 
 function M.connect_unix(server_path, local_path)

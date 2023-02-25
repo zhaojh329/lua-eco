@@ -8,7 +8,7 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = socket.listen_tcp(nil, 8080)
+local s, err = socket.listen_tcp(nil, 8080, { reuseaddr = true })
 if not s then
     error(err)
 end

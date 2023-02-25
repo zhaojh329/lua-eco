@@ -361,7 +361,7 @@ function M.listen(ipaddr, port, options, ipv6)
         listen = socket.listen_tcp6
     end
 
-    local sock, err = listen(ipaddr, port)
+    local sock, err = listen(ipaddr, port, options)
     if not sock then
         return nil, err
     end
