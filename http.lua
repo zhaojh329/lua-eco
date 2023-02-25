@@ -704,7 +704,7 @@ local function send_http_head(resp)
 
     status = status or status_map[code]
 
-    data[#data + 1] = string.format('HTTP/1.1 %d', code)
+    data[#data + 1] = string.format('HTTP/%d.%d %d', resp.major_version, resp.minor_version, code)
 
     if status then
         data[#data + 1] = ' ' .. status
@@ -1053,7 +1053,7 @@ local function handle_connection(con, peer, handler)
     local http_keepalive = mt.options.http_keepalive
     local read_timeout = 3.0
 
-    local method, path, http_version
+    local method, path, major_version, minor_version
 
     while true do
         local data, err = sock:recv('*l', http_keepalive > 0 and http_keepalive or read_timeout)
@@ -1067,8 +1067,8 @@ local function handle_connection(con, peer, handler)
         end
 
         if #data > 0 then
-            method, path, http_version = data:match('^(%u+)%s+(%S+)%s+HTTP/(%d%.%d)$')
-            if not method or not path or not http_version then
+            method, path, major_version, minor_version = data:match('^(%u+)%s+(%S+)%s+HTTP/(%d+)%.(%d+)$')
+            if not method or not path or not major_version or not minor_version then
                 log.err(log_prefix .. 'not a vaild http request start line')
                 return false
             end
@@ -1078,12 +1078,8 @@ local function handle_connection(con, peer, handler)
                 return false
             end
 
-            if http_version ~= '1.1' then
-                log.err(log_prefix .. 'not supported http version "' .. method .. '"')
-                return false
-            end
-
-            http_version = tonumber(http_version)
+            major_version = tonumber(major_version)
+            minor_version = tonumber(minor_version)
 
             break
         end
@@ -1137,6 +1133,8 @@ local function handle_connection(con, peer, handler)
     mt.body_remain = tonumber(headers['content-length'] or 0)
 
     local resp = {
+        major_version = major_version,
+        minor_version = minor_version,
         code = 200,
         headers = {
             server = 'Lua-eco/' .. eco.VERSION,
@@ -1156,7 +1154,8 @@ local function handle_connection(con, peer, handler)
         remote_port = peer.port,
         method = method,
         path = path,
-        http_version = http_version,
+        major_version = major_version,
+        minor_version = minor_version,
         headers = headers,
         query = query
     }
@@ -1180,14 +1179,17 @@ local function handle_connection(con, peer, handler)
         return false
     end
 
-    log.debug(log_prefix .. string.format('"%s %s HTTP/%.1f" %d', method, path, http_version, resp.code))
+    log.debug(log_prefix .. string.format('"%s %s HTTP/%d.%d" %d',
+        method, path, major_version, minor_version, resp.code))
 
     local req_connection = str_lower(req.headers['connection'] or '')
     local resp_connection = str_lower(resp.headers['connection'] or '')
 
-    if http_keepalive < 1 or req_connection == 'close'
+    if http_keepalive < 1 or (major_version == 1 and minor_version == 0)
+        or req_connection == 'close'
         or req_connection == 'upgrade'
-        or resp_connection == 'close' then
+        or resp_connection == 'close'
+    then
         sock:close()
     else
         ok, err = con:discard_body()

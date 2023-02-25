@@ -15,7 +15,7 @@ local function handler(con, req)
         con:send('<h2>remote port: ', req.remote_port, '</h2>\n')
         con:send('<h2>method: ', req.method, '</h2>\n')
         con:send('<h2>path: ', req.path, '</h2>\n')
-        con:send('<h2>http version: ', req.http_version, '</h2>\n')
+        con:send('<h2>http version: ', req.major_version .. '.' .. req.minor_version, '</h2>\n')
 
         con:send('<h2>query:', '</h2>\n')
         for name, value in pairs(req.query) do
