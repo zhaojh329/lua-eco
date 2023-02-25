@@ -23,10 +23,7 @@
  */
 
 #include <sys/sysinfo.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <stdbool.h>
-#include <string.h>
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -73,78 +70,6 @@ static int eco_sys_kill(lua_State *L)
     return 1;
 }
 
-static int file_is_executable(const char *name)
-{
-    struct stat s;
-    return (!access(name, X_OK) && !stat(name, &s) && S_ISREG(s.st_mode));
-}
-
-static char *concat_path_file(const char *path, const char *filename)
-{
-    bool end_with_slash = path[strlen(path) - 1] == '/';
-    char *strp;
-
-    while (*filename == '/')
-        filename++;
-    if (asprintf(&strp, "%s%s%s", path, (end_with_slash ? "" : "/"), filename) < 0)
-        return NULL;
-    return strp;
-}
-
-static char *find_executable(const char *filename, char **path)
-{
-    char *p, *n;
-
-    p = *path;
-    while (p) {
-        int ex;
-
-        n = strchr(p, ':');
-        if (n) *n = '\0';
-        p = concat_path_file(p[0] ? p : ".", filename);
-        if (!p)
-            break;
-        ex = file_is_executable(p);
-        if (n) *n++ = ':';
-        if (ex) {
-            *path = n;
-            return p;
-        }
-        free(p);
-        p = n;
-    } /* on loop exit p == NULL */
-    return p;
-}
-
-static int which(const char *prog)
-{
-    char buf[] = "/sbin:/usr/sbin:/bin:/usr/bin";
-    char *env_path;
-    int missing = 1;
-
-    env_path = getenv("PATH");
-    if (!env_path)
-        env_path = buf;
-
-    /* If file contains a slash don't use PATH */
-    if (strchr(prog, '/')) {
-        if (file_is_executable(prog))
-            missing = 0;
-    } else {
-        char *path;
-        char *p;
-
-        path = env_path;
-
-        while ((p = find_executable(prog, &path))) {
-            missing = 0;
-            free(p);
-            break;
-        }
-    }
-    return missing;
-}
-
 static int eco_sys_exec(lua_State *L)
 {
     const char *cmd = luaL_checkstring(L, 1);
@@ -152,12 +77,6 @@ static int eco_sys_exec(lua_State *L)
     int opipe[2] = {};
     int epipe[2] = {};
     pid_t pid;
-
-    if (!cmd || which(cmd)) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "command not found");
-        return 2;
-    }
 
     if (pipe(opipe) < 0 || pipe(epipe) < 0)
         goto err;
@@ -197,9 +116,11 @@ static int eco_sys_exec(lua_State *L)
             args[j] = NULL;
         }
 
-        execvp(cmd, (char *const *) args);
+        execvp(cmd, (char *const *)args);
 
+        fprintf(stderr, "%s: %s", cmd, strerror(errno));
         free(args);
+        exit(127);
     } else {
         /* close unused write end */
         close(opipe[1]);
