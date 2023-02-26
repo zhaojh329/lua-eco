@@ -1059,7 +1059,7 @@ local function handle_connection(con, peer, handler)
     for q in query_string:gmatch('[^&]+') do
         local name, value = q:match('(.+)=(.+)')
         if name then
-            query[name] = value
+            query[name] = url.unescape(value)
         end
     end
 
@@ -1086,7 +1086,7 @@ local function handle_connection(con, peer, handler)
         remote_addr = peer.ipaddr,
         remote_port = peer.port,
         method = method,
-        path = path,
+        path = url.unescape(path),
         major_version = major_version,
         minor_version = minor_version,
         headers = headers,
