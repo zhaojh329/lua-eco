@@ -5,8 +5,8 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=bf071f07e84d584a00bcefb7881abd23067aefed
-PKG_MIRROR_HASH:=53c2fa8e1a1acabc5def2f7ce061b4a17ac24e8cc4ed8a8765ee6299f522d4a6
+PKG_SOURCE_VERSION:=b36042ca486f0dbe3a5cc7b4adc07a9c3de30346
+PKG_MIRROR_HASH:=151ab1444f1b30f15fbee6bef3a3fa2e41be1ad2324567c53edf8b66061059ee
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -152,7 +152,7 @@ endef
 
 define Package/lua-eco-http/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
-	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/http.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/{url,http}.lua $(1)/usr/lib/lua/eco
 endef
 
 define Package/lua-eco-mqtt/install
