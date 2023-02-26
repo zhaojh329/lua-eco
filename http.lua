@@ -28,8 +28,8 @@ local time = require 'eco.time'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 local log = require 'eco.log'
+local url = require 'eco.url'
 
-local str_format = string.format
 local str_lower = string.lower
 local concat = table.concat
 local tonumber = tonumber
@@ -472,76 +472,6 @@ local function do_http_request(s, method, path, headers, body, timeout)
     return resp
 end
 
--- <scheme>://<user>:<password>@<host>:<port>/<path>;<params>?<query>#<frag>
-local function parse_url(url)
-    if not url then
-        return nil, 'invalid url'
-    end
-
-    local parsed = {}
-
-    url = string.gsub(url, '^%a%w*://', function(s)
-        parsed.scheme = s:match('%a%w*')
-        return ''
-    end)
-
-    if not parsed.scheme then
-        return nil, 'invalid url'
-    end
-
-    url = string.gsub(url, '^[^:@]+:[^:@]+@', function(s)
-        parsed.user, parsed.password = s:match('([^:]+):([^@]+)')
-        return ''
-    end)
-
-    url = string.gsub(url, '^([^@]+)@', function(s)
-        parsed.user = s
-        return ''
-    end)
-
-    url = string.gsub(url, '^[^:/?#]+', function(s)
-        parsed.host = s
-        return ''
-    end)
-
-    if not parsed.host then
-        return nil, 'invalid url'
-    end
-
-    url = string.gsub(url, '^:(%d+)', function(s)
-        parsed.port = tonumber(s)
-        return ''
-    end)
-
-    if url:sub(1, 1) ~= '/' then
-        url = '/' .. url
-    end
-
-    parsed.raw_path = url
-
-    url = string.gsub(url, '^/[^;?#]*', function(s)
-        parsed.path = s
-        return ''
-    end)
-
-    url = string.gsub(url, ';([^;?#]*)', function(s)
-        parsed.params = s
-        return ''
-    end)
-
-    url = string.gsub(url, '?([^;?#]*)', function(s)
-        parsed.query = s
-        return ''
-    end)
-
-    url = string.gsub(url, '#([^;?#]*)$', function(s)
-        parsed.frag = s
-        return ''
-    end)
-
-    return parsed
-end
-
 local function http_connect_host(host, port, https)
     local answers, err = dns.query(host)
     if not answers then
@@ -601,12 +531,12 @@ function M.request(req, body)
         req = { url = req }
     end
 
-    local url, err = parse_url(req.url)
-    if not url then
+    local u, err = url.parse(req.url)
+    if not u then
         return nil, err
     end
 
-    local scheme, host, port, path = url.scheme, url.host, url.port, url.raw_path
+    local scheme, host, port, path = u.scheme, u.host, u.port, u.raw_path
 
     if scheme ~= 'http' and scheme ~= 'https' then
         return nil, 'unsupported scheme: ' .. scheme
