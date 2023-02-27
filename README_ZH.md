@@ -29,22 +29,19 @@ Lua-eco 是一个内置了 [libev] 事件循环的 [Lua] 解释器。它使所�
 可以挂起执行 `I/O` 操作的代码，直到数据准备好。这允许您编写代码就好像您在使用阻塞 `I/O` 一样，同时在
 您等待 `I/O` 时仍然允许其它协程中的代码运行。这很像 `Goroutines`。
 
-Lua-eco 还提供了一些有用的模块:
+Lua-eco 还提供了一些有用的模块，方便您快速构建应用程序:
 
-* time - 显示当前时间; 睡眠; 定时器
-* file - open/close/read/write; access; readlink; stat; statvfs; chown; 遍历目录
-* sys - exec; signal
-* socket - tcp/tcp6; udp/udp6; unix
-* ssl - openssl, mbedtls, CyaSSl(wolfssl)
-* http/https - 包括客户端和服务器
-* websocket - 服务器
-* mqtt - 客户端，使用 [lua-mosquitto]
-* dns
-* termios
-* ubus - 对 [ubus] 的 Lua 绑定
-* encoding - hex, base64
-* crypto - sha1
-* log
+* `log`: 为 lua-eco 应用程序提供日志功能，允许您以不同的级别打印日志并将其输出到各种目的地。
+* `time`: 提供了一个 Lua 接口，用于获取系统时间，休眠，执行定时器操作。
+* `file`: 提供了一个 Lua 接口，允许您读写入文件，遍历目录以及执行其他与文件相关的操作。
+* `sys`: 提供了对各种系统级功能的访问，例如进程ID，系统信息，同时允许您执行shell命令并获取其退出状态以及标准输出和标准错误输出。
+* `socket`: 提供了一组网络套接字接口，允许您创建和管理网络连接。包括 tcp，tcp6，udp，udp6 和 unix。
+* `ssl`: 为 Lua-eco 应用程序提供了 SSL/TLS 支持，允许您建立与远程服务器的安全连接。
+* `http/https`: 为 Lua-eco 应用程序提供了 HTTP(S) 客户端和服务器实现。
+* `websocket`: 为 Lua-eco 应用程序提供了一个 WebSocket 服务器实现，允许您构建实时 Web 应用程序。
+* `mqtt`: 提供了一个 MQTT 协议的 Lua-eco 实现，使用 [lua-mosquitto]，允许您构建物联网和消息应用程序。
+* `dns`: 为 Lua-eco 应用程序提供了一个 DNS 客户端实现，允许您执行 DNS 查找和解析域名。
+* `ubus` - 提供了一个 Lua 接口，用于 OpenWrt 中的 [ubus] 系统，允许您与系统服务和守护程序交互。
 
 想试试吗？很有趣的!
 
