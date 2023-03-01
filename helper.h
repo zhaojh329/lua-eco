@@ -39,6 +39,14 @@
 #define unlikely(x) (__builtin_expect(((x) != 0), 0))
 #endif
 
+#ifndef container_of
+#define container_of(ptr, type, member)                             \
+    ({                                                              \
+        const __typeof__(((type *) NULL)->member) *__mptr = (ptr);	\
+        (type *) ((char *) __mptr - offsetof(type, member));        \
+    })
+#endif
+
 #define stack_dump(L)                                           \
     do {                                                        \
         int top = lua_gettop(L);                                \

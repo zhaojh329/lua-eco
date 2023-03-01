@@ -29,7 +29,6 @@
 #include <time.h>
 
 #include "config.h"
-#include "list.h"
 #include "eco.h"
 
 #ifndef ev_io_modify
