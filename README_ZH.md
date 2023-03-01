@@ -25,9 +25,7 @@
 [lua-mosquitto]: https://github.com/flukso/lua-mosquitto
 [ubus]: https://openwrt.org/docs/techref/ubus
 
-Lua-eco 是一个内置了 [libev] 事件循环的 [Lua] 解释器。它使所有的 [Lua] 代码在 `Lua协程` 中运行，它
-可以挂起执行 `I/O` 操作的代码，直到数据准备好。这允许您编写代码就好像您在使用阻塞 `I/O` 一样，同时在
-您等待 `I/O` 时仍然允许其它协程中的代码运行。这很像 `Goroutines`。
+Lua-eco 是一个内置了事件循环的 Lua 解释器。它能够自动调度轻量级 `Lua协程`, 从而实现了在 Lua 中的高效并发。使用 Lua-eco 可以构建高性能、可扩展的应用程序。
 
 Lua-eco 还提供了一些有用的模块，方便您快速构建应用程序:
 

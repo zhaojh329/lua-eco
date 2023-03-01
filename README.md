@@ -22,11 +22,7 @@
 [lua-mosquitto]: https://github.com/flukso/lua-mosquitto
 [ubus]: https://openwrt.org/docs/techref/ubus
 
-Lua-eco is a [Lua] interpreter with a built-in [libev] event loop. It makes
-all [Lua] code running in `Lua coroutines` so code that does I/O can be
-suspended until data is ready. This allows you write code as if you're using
-blocking I/O, while still allowing code in other coroutines to run when you'd
-otherwise wait for I/O. It's kind of like `Goroutines`.
+Lua-eco is a Lua interpreter with a built-in event loop for scheduling lightweight coroutines automatically, enabling efficient concurrency in Lua. Build high-performance, scalable applications.
 
 Lua-eco also provides some modules for you to build applications quickly:
 
