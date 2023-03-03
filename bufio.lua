@@ -154,7 +154,12 @@ function methods:readfull(n, timeout)
         if err then
             local chunk = b:read(n)
             data[#data + 1] = chunk
-            return nil, err, concat(data)
+
+            local partial = concat(data)
+            if #partial > 0 then
+                return nil, err, partial
+            end
+            return nil, err
         end
 
         local blen = b:length()

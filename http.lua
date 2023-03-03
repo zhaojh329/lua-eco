@@ -416,7 +416,7 @@ local function body_reader(s, headers)
             end
 
             if not body then
-                if partial and #partial > 0 then
+                if partial then
                     log.err(string.format('with %d bytes remaining to read: ' .. err, content_length - #partial))
                     return partial
                 end
@@ -841,9 +841,13 @@ function con_methods:read_body(count, timeout)
         return ''
     end
 
-    local data, err = sock:recv(count, timeout)
+    local data, err, partial = sock:recvfull(count, timeout)
     if not data then
         sock:close()
+
+        if partial then
+            return nil, err, partial
+        end
         return nil, err
     end
 
