@@ -659,6 +659,10 @@ function con_methods:send_error(code, status, content)
         return false, 'closed'
     end
 
+    if type(code) ~= 'number' then
+        error('invalid code: ' .. tostring(code))
+    end
+
     self:set_status(code, status)
     self:add_header('connection', 'close')
 
