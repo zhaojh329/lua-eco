@@ -834,6 +834,10 @@ function con_methods:read_body(count, timeout)
         return nil, 'closed'
     end
 
+    if body_remain == 0 then
+        return nil
+    end
+
     timeout = timeout or 3.0
 
     count = count or body_remain
