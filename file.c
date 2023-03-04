@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <libgen.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -391,6 +392,34 @@ static int eco_file_chown(lua_State *L)
     return 1;
 }
 
+static int eco_file_dirname(lua_State *L)
+{
+    const char *path = luaL_checkstring(L, 1);
+    char *buf = strdup(path);
+
+    lua_pushstring(L, dirname(buf));
+    free(buf);
+
+    return 1;
+}
+
+static int eco_file_basename(lua_State *L)
+{
+    const char *path = luaL_checkstring(L, 1);
+    char *buf = strdup(path);
+
+    lua_pushstring(L, basename(buf));
+    free(buf);
+
+    return 1;
+}
+
+static int eco_file_sync(lua_State *L)
+{
+    sync();
+    return 0;
+}
+
 int luaopen_eco_core_file(lua_State *L)
 {
     lua_newtable(L);
@@ -459,6 +488,15 @@ int luaopen_eco_core_file(lua_State *L)
 
     lua_pushcfunction(L, eco_file_chown);
     lua_setfield(L, -2, "chown");
+
+    lua_pushcfunction(L, eco_file_dirname);
+    lua_setfield(L, -2, "dirname");
+
+    lua_pushcfunction(L, eco_file_basename);
+    lua_setfield(L, -2, "basename");
+
+    lua_pushcfunction(L, eco_file_sync);
+    lua_setfield(L, -2, "sync");
 
     return 1;
 }
