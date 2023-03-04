@@ -27,6 +27,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "eco.h"
 
