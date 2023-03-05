@@ -58,20 +58,61 @@ function M.sleep(delay)
     return w:wait(delay)
 end
 
---[[
-    waits for the delay seconds to elapse and then calls cb with any arguments you passed in its own coroutine.
-    It returns a TIMER watcher that can be used to cancel the call using its cancel method.
---]]
-function M.at(delay, cb, ...)
-    local w = new_timer()
+local timer_methods = {}
+
+function timer_methods:cancel()
+    local mt = getmetatable(self)
+    mt.w:cancel()
+end
+
+function timer_methods:set(delay)
+    local mt = getmetatable(self)
+    local w = mt.w
+
+    w:cancel()
+
+    mt.delay = delay
 
     eco.run(function(...)
         if w:wait(delay) then
-            cb(...)
+            mt.cb(...)
         end
-    end, ...)
+    end, self, unpack(mt.arguments))
+end
 
-    return w
+function timer_methods:again()
+    local mt = getmetatable(self)
+    self:set(mt.delay)
+end
+
+--[[
+    The at function is used to create a timer that will execute a given callback function after a specified delay time.
+
+    To use the at function, you need to provide three parameters:
+
+    delay: The amount of time to wait before executing the callback function, in seconds.
+    cb: The callback function that will be executed after the specified delay time.
+    ...: Optional arguments to pass to the callback function.
+
+    The at function returns a timer object with three methods:
+    set: Sets the timer to execute the callback function after the specified delay time.
+    cancel: Cancels the timer so that the callback function will not be executed.
+    again: Resets the timer to execute the callback function again after the same delay time.
+
+    The callback function will receive the timer object as its first parameter, and the rest of
+    the parameters will be the ones passed to the at function.
+--]]
+function M.at(delay, cb, ...)
+    local tmr = setmetatable({}, {
+        w = new_timer(),
+        cb = cb,
+        arguments = { ... },
+        __index = timer_methods
+    })
+
+    tmr:set(delay)
+
+    return tmr
 end
 
 return setmetatable(M, { __index = time })
