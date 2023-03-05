@@ -44,15 +44,24 @@ local function new_timer()
     return w
 end
 
+-- returns the Unix time, the number of seconds elapsed since January 1, 1970 UTC.
 function M.now()
     return time.now(eco.context())
 end
 
+--[[
+    pauses the current coroutine for at least the delay seconds.
+    A negative or zero delay causes sleep to return immediately.
+--]]
 function M.sleep(delay)
     local w = new_timer()
     return w:wait(delay)
 end
 
+--[[
+    waits for the delay seconds to elapse and then calls cb with any arguments you passed in its own coroutine.
+    It returns a TIMER watcher that can be used to cancel the call using its cancel method.
+--]]
 function M.at(delay, cb, ...)
     local w = new_timer()
 
