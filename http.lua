@@ -1231,7 +1231,7 @@ function M.listen(ipaddr, port, options, handler)
                 end
             end, c)
         else
-            log.err('accept fail: ' .. err)
+            log.err('accept fail: ' .. peer)
         end
     end
 end
