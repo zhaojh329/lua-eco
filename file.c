@@ -188,6 +188,23 @@ static int eco_file_sendfile(lua_State *L)
     return 2;
 }
 
+static int eco_file_lseek(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    off_t offset = luaL_checkinteger(L, 2);
+    size_t where = luaL_checkinteger(L, 3);
+
+    offset = lseek(fd, offset, where);
+    if (offset == -1) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, offset);
+    return 1;
+}
+
 static int eco_file_access(lua_State *L)
 {
     const char *file = luaL_checkstring(L, 1);
@@ -226,16 +243,11 @@ static int eco_file_readlink(lua_State *L)
     return 1;
 }
 
-static int __eco_file_stat(lua_State *L, const char *path)
+static int __eco_file_stat(lua_State *L, struct stat *st)
 {
-    struct stat st;
-
-    if (stat(path, &st))
-        return -1;
-
     lua_newtable(L);
 
-    switch (st.st_mode & S_IFMT) {
+    switch (st->st_mode & S_IFMT) {
     case S_IFBLK: lua_pushliteral(L, "BLK");  break;
     case S_IFCHR: lua_pushliteral(L, "CHR");  break;
     case S_IFDIR: lua_pushliteral(L, "DIR");  break;
@@ -247,44 +259,59 @@ static int __eco_file_stat(lua_State *L, const char *path)
     }
     lua_setfield(L, -2, "type");
 
-    lua_pushint(L, st.st_atime);
+    lua_pushint(L, st->st_atime);
     lua_setfield(L, -2, "atime");
 
-    lua_pushint(L, st.st_mtime);
+    lua_pushint(L, st->st_mtime);
     lua_setfield(L, -2, "mtime");
 
-    lua_pushint(L, st.st_ctime);
+    lua_pushint(L, st->st_ctime);
     lua_setfield(L, -2, "ctime");
 
-    lua_pushuint(L, st.st_nlink);
+    lua_pushuint(L, st->st_nlink);
     lua_setfield(L, -2, "nlink");
 
-    lua_pushuint(L, st.st_uid);
+    lua_pushuint(L, st->st_uid);
     lua_setfield(L, -2, "uid");
 
-    lua_pushuint(L, st.st_gid);
+    lua_pushuint(L, st->st_gid);
     lua_setfield(L, -2, "gid");
 
-    lua_pushuint(L, st.st_size);
+    lua_pushuint(L, st->st_size);
     lua_setfield(L, -2, "size");
 
-    lua_pushuint(L, st.st_ino);
+    lua_pushuint(L, st->st_ino);
     lua_setfield(L, -2, "ino");
 
-    return 0;
+    return 1;
 }
 
 static int eco_file_stat(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
+    struct stat st;
 
-    if (__eco_file_stat(L, path)) {
+    if (stat(path, &st)) {
         lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
         return 2;
     }
 
-    return 1;
+    return __eco_file_stat(L, &st);
+}
+
+static int eco_file_fstat(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    struct stat st;
+
+    if (fstat(fd, &st)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    return __eco_file_stat(L, &st);
 }
 
 /* get filesystem statistics in kibibytes */
@@ -325,9 +352,14 @@ static int eco_file_dir_iter(lua_State *L)
     path = lua_tostring(L, -1);
 
     if ((e = readdir(*d))) {
+        struct stat st;
+
         lua_pushstring(L, e->d_name);
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, e->d_name);
-        __eco_file_stat(L, fullpath);
+
+        stat(fullpath, &st);
+        __eco_file_stat(L, &st);
+
         return 2;
     }
 
@@ -453,6 +485,10 @@ int luaopen_eco_core_file(lua_State *L)
     lua_add_constant(L, "S_ISGID", S_ISGID);
     lua_add_constant(L, "S_ISVTX", S_ISVTX);
 
+    lua_add_constant(L, "SEEK_SET", SEEK_SET);
+    lua_add_constant(L, "SEEK_CUR", SEEK_CUR);
+    lua_add_constant(L, "SEEK_END", SEEK_END);
+
     lua_pushcfunction(L, eco_file_open);
     lua_setfield(L, -2, "open");
 
@@ -471,6 +507,9 @@ int luaopen_eco_core_file(lua_State *L)
     lua_pushcfunction(L, eco_file_sendfile);
     lua_setfield(L, -2, "sendfile");
 
+    lua_pushcfunction(L, eco_file_lseek);
+    lua_setfield(L, -2, "lseek");
+
     lua_pushcfunction(L, eco_file_access);
     lua_setfield(L, -2, "access");
 
@@ -479,6 +518,9 @@ int luaopen_eco_core_file(lua_State *L)
 
     lua_pushcfunction(L, eco_file_stat);
     lua_setfield(L, -2, "stat");
+
+    lua_pushcfunction(L, eco_file_fstat);
+    lua_setfield(L, -2, "fstat");
 
     lua_pushcfunction(L, eco_file_statvfs);
     lua_setfield(L, -2, "statvfs");
