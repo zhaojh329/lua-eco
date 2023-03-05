@@ -287,6 +287,7 @@ static int eco_file_stat(lua_State *L)
     return 1;
 }
 
+/* get filesystem statistics in kibibytes */
 static int eco_file_statvfs(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
@@ -299,13 +300,13 @@ static int eco_file_statvfs(lua_State *L)
     }
 
     /* total bytes */
-    lua_pushuint(L, s.f_blocks * s.f_frsize);
+    lua_pushnumber(L, s.f_blocks * s.f_frsize / 1024.0);
 
     /* available bytes */
-    lua_pushuint(L, s.f_bavail * s.f_frsize);
+    lua_pushnumber(L, s.f_bavail * s.f_frsize / 1024.0);
 
     /* used bytes */
-    lua_pushuint(L, (s.f_blocks - s.f_bfree) * s.f_frsize);
+    lua_pushnumber(L, (s.f_blocks - s.f_bfree) * s.f_frsize / 1024.0);
 
     return 3;
 }
