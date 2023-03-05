@@ -22,6 +22,7 @@
  * SOFTWARE.
 --]]
 
+local file = require 'eco.core.file'
 local socket = require 'eco.socket'
 local ssl = require 'eco.core.ssl'
 local bufio = require 'eco.bufio'
@@ -99,6 +100,58 @@ function client_methods:send(data)
             end
         end
         sent = sent + n
+    end
+
+    return sent
+end
+
+function client_methods:sendfile(fd, count, offset)
+    local mt = getmetatable(self)
+
+    if mt.closed then
+        return nil, 'closed'
+    end
+
+    local st, err = file.fstat(fd)
+    if not st then
+        return false, err
+    end
+
+    count = count or st.size
+
+    if offset then
+        local err
+        offset, err = file.lseek(fd, offset, file.SEEK_SET)
+        if not offset then
+            return nil, err
+        end
+    end
+
+    local chunk = 4096
+    local sent = 0
+    local data
+
+    while count > 0 do
+        data, err = file.read(fd, chunk > count and count or chunk)
+        if not data then
+            break
+        end
+
+        if #data == 0 then
+            break
+        end
+
+        _, err = self:send(data)
+        if err then
+            break
+        end
+
+        sent = sent + #data
+        count = count - #data
+    end
+
+    if err then
+        return nil, err
     end
 
     return sent

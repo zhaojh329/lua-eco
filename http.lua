@@ -736,11 +736,8 @@ end
 
 function con_methods:send_file_fd(fd, size, count, offset)
     local mt = getmetatable(self)
-    local options = mt.options
     local resp = mt.resp
     local sock = mt.sock
-
-    assert(not options.ssl, 'not support sendfile for https')
 
     if count and count < 1 then
         return true
@@ -768,9 +765,6 @@ end
 
 function con_methods:send_file(path, count, offset)
     local mt = getmetatable(self)
-    local options = mt.options
-
-    assert(not options.ssl, 'not support sendfile for https')
 
     if mt.sock:closed() then
         return false, 'closed'
@@ -794,10 +788,14 @@ function con_methods:send_file(path, count, offset)
         return false, err
     end
 
-    local ok, err = self:send_file_fd(fd, st.size, count, offset)
+    local _, err = self:send_file_fd(fd, st.size, count, offset)
     file.close(fd)
 
-    return ok, err
+    if err then
+        return false, err
+    end
+
+    return true
 end
 
 function con_methods:flush()
@@ -965,29 +963,14 @@ function con_methods:serve_file(req)
         return self:send_error(M.STATUS_INTERNAL_SERVER_ERROR, nil, string.format('open "%s" fail: %s', phy_path, err))
     end
 
-    local ok, err, data
-
-    if options.ssl then
-        while true do
-            data, err = file.read(fd, 4096)
-            if not data then
-                break
-            end
-
-            if #data == 0 then
-                ok = true
-                break
-            end
-
-            self:send(data)
-        end
-    else
-        ok, err = self:send_file_fd(fd, st.size)
-    end
-
+    local _, err = self:send_file_fd(fd, st.size)
     file.close(fd)
 
-    return ok, err
+    if err then
+        return false, err
+    end
+
+    return true
 end
 
 local function handle_connection(con, peer, handler)
