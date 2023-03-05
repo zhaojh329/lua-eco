@@ -601,6 +601,10 @@ local function listen_tcp_common(create, ipaddr, port, options)
         sock:setoption('reuseport', true)
     end
 
+    if options.ipv6_v6only then
+        sock:setoption('ipv6_v6only', true)
+    end
+
     local ok, err = sock:bind(ipaddr, port)
     if not ok then
         return nil, 'bind: ' .. err

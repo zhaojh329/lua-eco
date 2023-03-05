@@ -1147,10 +1147,6 @@ local function set_socket_options(sock, options)
         sock:setoption('tcp_keepintvl', tcp_keepalive)
         sock:setoption('tcp_fastopen', 5)
     end
-
-    if options.ipv6 then
-        sock:setoption('ipv6_v6only', true)
-    end
 end
 
 function M.listen(ipaddr, port, options, handler)
@@ -1170,12 +1166,14 @@ function M.listen(ipaddr, port, options, handler)
     if options.cert and options.key then
         options.ssl = true
         if options.ipv6 then
+            options.ipv6_v6only = true
             listen = ssl.listen6
         else
             listen = ssl.listen
         end
     else
         if options.ipv6 then
+            options.ipv6_v6only = true
             listen = socket.listen_tcp6
         else
             listen = socket.listen_tcp

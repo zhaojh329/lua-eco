@@ -39,7 +39,6 @@ local options = {
     http_keepalive = 30,
     tcp_keepalive = 5,
     tcp_nodelay = true,
-    ipv6 = false,
     docroot = '.',
     index = 'index.html',
     gzip = false
