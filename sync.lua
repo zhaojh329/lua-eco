@@ -67,4 +67,43 @@ function M.cond()
     })
 end
 
+local waitgroup_methods = {}
+
+function waitgroup_methods:add(delta)
+   local mt = getmetatable(self)
+   mt.counter = mt.counter + delta
+end
+
+function waitgroup_methods:done()
+    local mt = getmetatable(self)
+
+    mt.counter = mt.counter - 1
+
+    if mt.counter < 0 then
+        error('negative wait group counter')
+    end
+
+    if mt.counter == 0 then
+        mt.cond:broadcast()
+    end
+end
+
+function waitgroup_methods:wait(timeout)
+    local mt = getmetatable(self)
+
+    if mt.counter == 0 then
+        return true
+    end
+
+    return mt.cond:wait(timeout)
+end
+
+function M.waitgroup()
+    return setmetatable({}, {
+        counter = 0,
+        cond = M.cond(),
+        __index = waitgroup_methods
+    })
+end
+
 return M
