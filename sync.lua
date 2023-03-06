@@ -60,6 +60,7 @@ function cond_methods:broadcast()
     mt.watchers = {}
 end
 
+-- implements a condition variable, a rendezvous point for coroutines waiting for or announcing the occurrence of an event.
 function M.cond()
     return setmetatable({}, {
         watchers = {},
@@ -98,6 +99,12 @@ function waitgroup_methods:wait(timeout)
     return mt.cond:wait(timeout)
 end
 
+--[[
+    A waitgroup waits for a collection of coroutines to finish.
+    One coroutine calls add to set the number of coroutines to wait for.
+    Then each of the coroutines runs and calls done when finished.
+    At the same time, wait can be used to block until all coroutines have finished.
+--]]
 function M.waitgroup()
     return setmetatable({}, {
         counter = 0,
