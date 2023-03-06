@@ -39,7 +39,8 @@ Lua-eco 还提供了一些有用的模块，方便您快速构建应用程序:
 * `websocket`: 为 Lua-eco 应用程序提供了一个 WebSocket 服务器实现，允许您构建实时 Web 应用程序。
 * `mqtt`: 提供了一个 MQTT 协议的 Lua-eco 实现，使用 [lua-mosquitto]，允许您构建物联网和消息应用程序。
 * `dns`: 为 Lua-eco 应用程序提供了一个 DNS 客户端实现，允许您执行 DNS 查找和解析域名。
-* `ubus` - 提供了一个 Lua 接口，用于 OpenWrt 中的 [ubus] 系统，允许您与系统服务和守护程序交互。
+* `ubus`: 提供了一个 Lua 接口，用于 OpenWrt 中的 [ubus] 系统，允许您与系统服务和守护程序交互。
+* `sync`: 提供了协程间同步的操作。
 
 想试试吗？很有趣的!
 

@@ -36,7 +36,8 @@ Lua-eco also provides some modules for you to build applications quickly:
 * `websocket`: Provides a WebSocket server implementation for Lua-eco applications, allowing you to build real-time web applications.
 * `mqtt`: Provides an implementation of the MQTT protocol for Lua-eco applications using [lua-mosquitto], allowing you to build IoT and messaging applications.
 * `dns`: Provides a DNS client implementation for Lua-eco applications, allowing you to perform DNS lookups and resolve domain names.
-* `ubus` - Provides a Lua interface to the [ubus] system in OpenWrt, allowing you to interact with system services and daemons.
+* `ubus`: Provides a Lua interface to the [ubus] system in OpenWrt, allowing you to interact with system services and daemons.
+* `sync`: Provides operations for synchronization between coroutines.
 
 Would you like to try it? Kinda interesting.
 
