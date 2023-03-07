@@ -6,7 +6,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=359a691b1fda06f4f638d30c051c9c8d8d21356c
+PKG_SOURCE_VERSION:=aed905b5a9233e45160a4b890c1e4b6399e7db11
 PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
@@ -65,7 +65,7 @@ Package/lua-eco-websocket=$(call Package/lua-eco/Module,websocket,+lua-eco-http 
 define Package/lua-eco-ssl/config
 	choice
 		prompt "SSL Library"
-		default LUA_ECO_WOLFSSL
+		default LUA_ECO_MBEDTLS
 
 		config LUA_ECO_OPENSSL
 			bool "OpenSSL"
