@@ -81,13 +81,18 @@ function timer_methods:set(delay)
     end, self, unpack(mt.arguments))
 end
 
-function timer_methods:again()
+function timer_methods:start()
     local mt = getmetatable(self)
     self:set(mt.delay)
 end
 
 --[[
-    The at function is used to create a timer that will execute a given callback function after a specified delay time.
+    The at function is used to create a timer that will execute a given callback function after
+    a specified delay time.
+    After a timer is created, it will not start automatically. You need to manually execute
+    'start' to activate it.
+    The callback function will receive the timer object as its first parameter, and the rest of
+    the parameters will be the ones passed to the at function.
 
     To use the at function, you need to provide three parameters:
 
@@ -98,20 +103,16 @@ end
     The at function returns a timer object with three methods:
     set: Sets the timer to execute the callback function after the specified delay time.
     cancel: Cancels the timer so that the callback function will not be executed.
-    again: Resets the timer to execute the callback function again after the same delay time.
-
-    The callback function will receive the timer object as its first parameter, and the rest of
-    the parameters will be the ones passed to the at function.
+    start: Starts or resets the timer to execute the callback function again after the same delay time.
 --]]
 function M.at(delay, cb, ...)
     local tmr = setmetatable({}, {
         w = new_timer(),
         cb = cb,
+        delay = delay,
         arguments = { ... },
         __index = timer_methods
     })
-
-    tmr:set(delay)
 
     return tmr
 end
