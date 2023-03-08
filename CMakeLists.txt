@@ -70,12 +70,12 @@ set_target_properties(network PROPERTIES OUTPUT_NAME network PREFIX "")
 if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
-        add_library(ssl MODULE ssl.c)
-        target_link_libraries(ssl PRIVATE ${SSL_TARGET})
-        set_target_properties(ssl PROPERTIES OUTPUT_NAME ssl PREFIX "")
+        add_library(essl MODULE ssl.c)
+        target_link_libraries(essl PRIVATE ${SSL_TARGET})
+        set_target_properties(essl PROPERTIES OUTPUT_NAME ssl PREFIX "")
 
         install(
-            TARGETS ssl
+            TARGETS essl
             DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
         )
 
