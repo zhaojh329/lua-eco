@@ -70,7 +70,3 @@ end, 'eco2')
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
-
-## Contributing
-If you would like to help making [lua-eco](https://github.com/zhaojh329/lua-eco) better,
-see the [CONTRIBUTING.md](https://github.com/zhaojh329/lua-eco/blob/master/CONTRIBUTING.md) file.
