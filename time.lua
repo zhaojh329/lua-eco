@@ -84,6 +84,7 @@ end
 function timer_methods:start()
     local mt = getmetatable(self)
     self:set(mt.delay)
+    return self
 end
 
 --[[
