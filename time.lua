@@ -23,6 +23,7 @@
 --]]
 
 local time = require 'eco.core.time'
+local unpack = unpack or table.unpack
 
 local M = {}
 
