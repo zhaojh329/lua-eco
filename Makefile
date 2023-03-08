@@ -6,7 +6,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=0f1ff3ffab5a02e8ab5f754e8f7e5dda3c5ac0c9
+PKG_SOURCE_VERSION:=718da25040a96415c24c63f03ef9fba7f06385eb
 PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
@@ -31,10 +31,9 @@ define Package/lua-eco
 endef
 
 define Package/lua-eco/description
-  Lua-eco is a Lua interpreter with a built-in libev event loop. It makes all Lua code
-  running in Lua coroutines so code that does I/O can be suspended until data is ready.
-  This allows you write code as if you're using blocking I/O, while still allowing code
-  in other coroutines to run when you'd otherwise wait for I/O. It's kind of like Goroutines.
+  Lua-eco is a Lua interpreter with a built-in event loop for scheduling
+  lightweight coroutines automatically, enabling efficient concurrency in
+  Lua. Build high-performance, scalable applications.
 endef
 
 define Package/lua-eco/Module
@@ -57,10 +56,11 @@ Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
   +LUA_ECO_OPENSSL:libopenssl +LUA_ECO_WOLFSSL:libwolfssl \
   +LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
 Package/lua-eco-ubus=$(call Package/lua-eco/Module,ubus,+libubus)
-Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
 Package/lua-eco-http=$(call Package/lua-eco/Module,http/https,+lua-eco-dns +lua-eco-ssl +lua-eco-log)
 Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco-dns +lua-mosquitto)
 Package/lua-eco-websocket=$(call Package/lua-eco/Module,websocket,+lua-eco-http +lua-eco-base64 +lua-eco-sha1)
+Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
+Package/lua-eco-network=$(call Package/lua-eco/Module,network)
 
 define Package/lua-eco-ssl/config
 	choice
@@ -185,3 +185,4 @@ $(eval $(call BuildPackage,lua-eco-http))
 $(eval $(call BuildPackage,lua-eco-mqtt))
 $(eval $(call BuildPackage,lua-eco-websocket))
 $(eval $(call BuildPackage,lua-eco-termios))
+$(eval $(call BuildPackage,lua-eco-network))
