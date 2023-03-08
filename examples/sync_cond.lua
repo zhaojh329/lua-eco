@@ -16,9 +16,9 @@ end
 -- wakes one coroutine waiting on the cond
 time.at(1, function()
     cond:signal()
-end)
+end):start()
 
 -- wakes all coroutines waiting on the cond
 time.at(3, function()
     cond:broadcast()
-end)
+end):start()

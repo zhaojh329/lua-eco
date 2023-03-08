@@ -48,7 +48,7 @@ time.at(1, function()
     local res1, res2 = ubus.call('eco', 'defer')
     print(cjson.encode(res1))
     print(cjson.encode(res2))
-end)
+end):start()
 
 while true do
     time.sleep(1)
