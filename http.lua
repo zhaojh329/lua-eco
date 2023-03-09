@@ -608,6 +608,11 @@ end
 
 function con_methods:add_header(name, value)
     local resp = getmetatable(self).resp
+
+    if resp.head_sent then
+        error('http head has been sent')
+    end
+
     resp.headers[name:lower()] = value
 end
 
