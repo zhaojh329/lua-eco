@@ -10,7 +10,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # The version number.
 set(ECO_VERSION_MAJOR 2)
-set(ECO_VERSION_MINOR 1)
+set(ECO_VERSION_MINOR 2)
 set(ECO_VERSION_PATCH 0)
 
 find_package(Lua REQUIRED)
