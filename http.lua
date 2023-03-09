@@ -674,7 +674,6 @@ function con_methods:send_error(code, status, content)
     if content then
         self:send(content)
     else
-        self:add_header('content-length', 0)
         send_http_head(mt.resp)
     end
 
@@ -696,7 +695,6 @@ function con_methods:send(...)
     end
 
     if not resp.head_sent then
-        self:add_header('transfer-encoding', 'chunked')
         send_http_head(resp)
     end
 
@@ -706,7 +704,6 @@ function con_methods:send(...)
     rdata[#rdata + 1] = data
     rdata[#rdata + 1] = '\r\n'
 
-    resp.has_body = true
     return true
 end
 
@@ -749,7 +746,6 @@ function con_methods:send_file_fd(fd, size, count, offset)
     end
 
     if not resp.head_sent then
-        self:add_header('transfer-encoding', 'chunked')
         send_http_head(resp)
     end
 
@@ -764,7 +760,6 @@ function con_methods:send_file_fd(fd, size, count, offset)
         return false, err
     end
 
-    resp.has_body = true
     return true
 end
 
@@ -1071,7 +1066,8 @@ local function handle_connection(con, peer, handler)
         code = 200,
         headers = {
             server = 'Lua-eco/' .. eco.VERSION,
-            date = os.date('!%a, %d %b %Y %H:%M:%S GMT')
+            date = os.date('!%a, %d %b %Y %H:%M:%S GMT'),
+            ['transfer-encoding'] = 'chunked'
         },
         data = {}
     }
@@ -1100,11 +1096,14 @@ local function handle_connection(con, peer, handler)
         return false
     end
 
-    if resp.has_body then
-        local data = resp.data
-        data[#data + 1] = '0\r\n'
-        data[#data + 1] = '\r\n'
+    if not resp.head_sent then
+        send_http_head(resp)
     end
+
+    -- append chunk end
+    local data = resp.data
+    data[#data + 1] = '0\r\n'
+    data[#data + 1] = '\r\n'
 
     local ok, err = con:flush()
     if not ok then
