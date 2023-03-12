@@ -96,8 +96,11 @@ static void eco_resume(lua_State *L, lua_State *co, int narg)
 {
 #if LUA_VERSION_NUM < 502
     int status = lua_resume(co, narg);
-#else
+#elif LUA_VERSION_NUM < 504
     int status = lua_resume(co, L, narg);
+#else
+    int nres;
+    int status = lua_resume(co, L, narg, &nres);
 #endif
     switch (status) {
     case 0: /* dead */
