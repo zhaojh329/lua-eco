@@ -31,7 +31,7 @@ static int lua_log_set_level(lua_State *L)
 {
     int level = luaL_checkinteger(L, 1);
 
-    log_level(level);
+    set_log_level(level);
 
     return 0;
 }
@@ -39,7 +39,7 @@ static int lua_log_set_level(lua_State *L)
 static void __lua_log(lua_State *L, int priority)
 {
     static char buf[BUFSIZ];
-    size_t room = BUFSIZ - 2;
+    size_t room = BUFSIZ - 1;
     const char *filename = "";
     int line = -1;
     char *pos = buf;
@@ -93,7 +93,6 @@ static void __lua_log(lua_State *L, int priority)
         room -= len;
     }
 
-    *pos++ = '\n';
     *pos = '\0';
 
     if (lua_getstack(L, 1, &ar)) {
