@@ -147,7 +147,7 @@ static int eco_count(lua_State *L)
     lua_rawget(L,            LUA_REGISTRYINDEX);
 
     lua_pushnil(L);
-    while ( lua_next(L, -2) != 0 ) {
+    while (lua_next(L, -2) != 0) {
         count++;
         lua_pop(L, 1);
     }
