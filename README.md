@@ -66,7 +66,30 @@ end, 'eco2')
 
 ## Build
 
+### Ubuntu
+
     sudo apt install -y liblua5.3-dev lua5.3 libev-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
+
+### OpenWrt
+
+    Languages  --->
+        Lua  --->
+            -*- lua-eco............... A Lua interpreter with a built-in libev event loop
+            -*- lua-eco-base64................................ base64 support for lua-eco
+             -*- lua-eco-dns...................................... dns support for lua-eco
+             -*- lua-eco-file.............................. file utils support for lua-eco
+             -*- lua-eco-http.............................. http/https support for lua-eco
+             -*- lua-eco-log................................ log utils support for lua-eco
+             <*> lua-eco-mqtt.................................... mqtt support for lua-eco
+             <*> lua-eco-network.............................. network support for lua-eco
+             -*- lua-eco-sha1.................................... sha1 support for lua-eco
+             -*- lua-eco-socket................................ socket support for lua-eco
+             -*- lua-eco-ssl...................................... ssl support for lua-eco
+                SSL Library (mbedTLS)  --->
+            -*- lua-eco-sys............................. system utils support for lua-eco
+            <*> lua-eco-termios.............................. termios support for lua-eco
+            -*- lua-eco-ubus.................................... ubus support for lua-eco
+            <*> lua-eco-websocket.......................... websocket support for lua-eco
