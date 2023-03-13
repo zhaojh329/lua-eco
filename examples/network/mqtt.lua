@@ -35,6 +35,7 @@ con:set_callback('ON_DISCONNECT', function(success, rc, str)
     log.info('ON_DISCONNECT:', success, rc, str)
 
     if auto_reconnect then
+        time.sleep(5)
         reconnect(con)
     end
 end)
