@@ -6,6 +6,8 @@
 local socket = require 'eco.socket'
 local bit = require 'eco.bit'
 
+local char = string.char
+
 local rshift = bit.rshift
 local lshift = bit.lshift
 local band = bit.band
@@ -84,8 +86,8 @@ local function gen_id()
 end
 
 local function build_request(qname, id, opts)
-    local ident_hi = string.char(rshift(id, 8))
-    local ident_lo = string.char(band(id, 0xff))
+    local ident_hi = char(rshift(id, 8))
+    local ident_lo = char(band(id, 0xff))
 
     opts = opts or {}
 
@@ -102,7 +104,7 @@ local function build_request(qname, id, opts)
     local nan = '\0\0'
     local nns = '\0\0'
     local nar = '\0\0'
-    local typ = string.char(rshift(qtype, 8), band(qtype, 0xff))
+    local typ = char(rshift(qtype, 8), band(qtype, 0xff))
     local class = '\0\1'
 
     if string.byte(qname, 1) == string.byte('.') then
@@ -110,7 +112,7 @@ local function build_request(qname, id, opts)
     end
 
     local name = qname:gsub('([^.]+)%.?', function(s)
-        return string.char(#s) .. s
+        return char(#s) .. s
     end) .. '\0'
 
     return table.concat({
