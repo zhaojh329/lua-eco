@@ -310,7 +310,7 @@ function M.upgrade(con, req, opts)
     local mt = getmetatable(con)
     local resp = mt.resp
 
-    if req.http_version ~= 1.1 then
+    if req.major_version ~= 1 or req.minor_version ~= 1 then
         return nil, 'bad http version'
     end
 

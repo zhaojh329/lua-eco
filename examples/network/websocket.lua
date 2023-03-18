@@ -104,7 +104,7 @@ local function handler(con, req)
     end
 end
 
-local srv, err = http.listen(nil, 8080, nil, handler)
+local srv, err = http.listen(nil, 8080, { reuseaddr = true }, handler)
 if not srv then
     print(err)
     return
