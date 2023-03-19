@@ -11,8 +11,8 @@ local bit = require 'eco.bit'
 local tostring = tostring
 local concat = table.concat
 local rand = math.random
-local char = string.char
-local byte = string.byte
+local str_char = string.char
+local str_byte = string.byte
 local str_lower = string.lower
 local str_sub = string.sub
 local type = type
@@ -48,7 +48,7 @@ function  methods:recv_frame(timeout)
 
     timeout = 1.0
 
-    local fst, snd = byte(data, 1, 2)
+    local fst, snd = str_byte(data, 1, 2)
 
     local fin = band(fst, 0x80) ~= 0
 
@@ -76,7 +76,7 @@ function  methods:recv_frame(timeout)
             return nil, nil, 'failed to receive the 2 byte payload length: ' .. err
         end
 
-        payload_len = bor(lshift(byte(data, 1), 8), byte(data, 2))
+        payload_len = bor(lshift(str_byte(data, 1), 8), str_byte(data, 2))
 
     elseif payload_len == 127 then
         local data, err = sock:recvfull(8, timeout)
@@ -84,17 +84,17 @@ function  methods:recv_frame(timeout)
             return nil, nil, 'failed to receive the 8 byte payload length: ' .. err
         end
 
-        if byte(data, 1) ~= 0 or byte(data, 2) ~= 0 or byte(data, 3) ~= 0 or byte(data, 4) ~= 0
+        if str_byte(data, 1) ~= 0 or str_byte(data, 2) ~= 0 or str_byte(data, 3) ~= 0 or str_byte(data, 4) ~= 0
         then
             return nil, nil, 'payload len too large'
         end
 
-        local fifth = byte(data, 5)
+        local fifth = str_byte(data, 5)
         if band(fifth, 0x80) ~= 0 then
             return nil, nil, 'payload len too large'
         end
 
-        payload_len = bor(lshift(fifth, 24), lshift(byte(data, 6), 16), lshift(byte(data, 7), 8), byte(data, 8))
+        payload_len = bor(lshift(fifth, 24), lshift(str_byte(data, 6), 16), lshift(str_byte(data, 7), 8), str_byte(data, 8))
     end
 
     if band(opcode, 0x8) ~= 0 then
@@ -139,14 +139,14 @@ function  methods:recv_frame(timeout)
 
             local msg, code
             if mask then
-                local fst = bxor(byte(data, 4 + 1), byte(data, 1))
-                local snd = bxor(byte(data, 4 + 2), byte(data, 2))
+                local fst = bxor(str_byte(data, 4 + 1), str_byte(data, 1))
+                local snd = bxor(str_byte(data, 4 + 2), str_byte(data, 2))
                 code = bor(lshift(fst, 8), snd)
 
                 if payload_len > 2 then
                     msg = {}
                     for i = 3, payload_len do
-                        msg[i - 2] = char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+                        msg[i - 2] = str_char(bxor(str_byte(data, 4 + i), str_byte(data, (i - 1) % 4 + 1)))
                     end
 
                     msg = concat(msg)
@@ -154,8 +154,8 @@ function  methods:recv_frame(timeout)
                     msg = ''
                 end
             else
-                local fst = byte(data, 1)
-                local snd = byte(data, 2)
+                local fst = str_byte(data, 1)
+                local snd = str_byte(data, 2)
                 code = bor(lshift(fst, 8), snd)
 
                 if payload_len > 2 then
@@ -175,7 +175,7 @@ function  methods:recv_frame(timeout)
     if mask then
         msg = {}
         for i = 1, payload_len do
-            msg[i] = char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+            msg[i] = str_char(bxor(str_byte(data, 4 + i), str_byte(data, (i - 1) % 4 + 1)))
         end
         msg = concat(msg)
     else
@@ -200,7 +200,7 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
 
     elseif payload_len <= 65535 then
         snd = 126
-        extra_len_bytes = char(band(rshift(payload_len, 8), 0xff), band(payload_len, 0xff))
+        extra_len_bytes = str_char(band(rshift(payload_len, 8), 0xff), band(payload_len, 0xff))
 
     else
         if band(payload_len, 0x7fffffff) < payload_len then
@@ -209,7 +209,7 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
 
         snd = 127
         -- XXX we only support 31-bit length here
-        extra_len_bytes = char(0, 0, 0, 0, band(rshift(payload_len, 24), 0xff),
+        extra_len_bytes = str_char(0, 0, 0, 0, band(rshift(payload_len, 24), 0xff),
                                band(rshift(payload_len, 16), 0xff),
                                band(rshift(payload_len, 8), 0xff),
                                band(payload_len, 0xff))
@@ -220,14 +220,14 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
         -- set the mask bit
         snd = bor(snd, 0x80)
         local key = rand(0xffffffff)
-        masking_key = char(band(rshift(key, 24), 0xff),
+        masking_key = str_char(band(rshift(key, 24), 0xff),
                            band(rshift(key, 16), 0xff),
                            band(rshift(key, 8), 0xff),
                            band(key, 0xff))
 
         local masked = {}
         for i = 1, payload_len do
-            masked[i] = char(bxor(byte(payload, i), byte(masking_key, (i - 1) % 4 + 1)))
+            masked[i] = str_char(bxor(str_byte(payload, i), str_byte(masking_key, (i - 1) % 4 + 1)))
         end
         payload = concat(masked)
 
@@ -235,7 +235,7 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
         masking_key = ''
     end
 
-    return char(fst, snd) .. extra_len_bytes .. masking_key .. payload
+    return str_char(fst, snd) .. extra_len_bytes .. masking_key .. payload
 end
 
 function methods:send_frame(fin, opcode, payload)
@@ -292,7 +292,7 @@ function methods:send_close(code, msg)
         if type(code) ~= 'number' or code > 0x7fff then
             return nil, 'bad status code'
         end
-        payload = char(band(rshift(code, 8), 0xff), band(code, 0xff)) .. (msg or '')
+        payload = str_char(band(rshift(code, 8), 0xff), band(code, 0xff)) .. (msg or '')
     end
     return self:send_frame(true, 0x8, payload)
 end
