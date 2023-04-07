@@ -31,6 +31,10 @@ local function mqtt_io_loop(mt)
             break
         end
 
+        if done.v then
+            return
+        end
+
         if bit.band(ev, eco.READ) > 0 then
             if not con:loop_read(1) then
                 break
@@ -39,10 +43,12 @@ local function mqtt_io_loop(mt)
 
         if bit.band(ev, eco.WRITE) > 0 then
             if not con:loop_write(1) then
-                return false
+                break
             end
         end
     end
+
+    done.v = true
 end
 
 local function check_keepalive_loop(mt)
@@ -55,6 +61,8 @@ local function check_keepalive_loop(mt)
         end
         time.sleep(1)
     end
+
+    done.v = true
 end
 
 local methods = {}
