@@ -201,18 +201,6 @@ function methods:connect(host, port, keepalive)
     return false, err
 end
 
-function methods:reconnect()
-    local mt = getmetatable(self)
-    local con = mt.con
-
-    local ok, _, err = con:reconnect_async()
-    if not ok then
-        return false, err
-    end
-
-    return wait_connected(mt, con)
-end
-
 function M.new(id, clean_session)
     local con = mosq.new(id, clean_session)
 
