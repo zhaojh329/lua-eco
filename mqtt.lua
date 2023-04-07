@@ -154,8 +154,9 @@ function methods:set_callback(typ, func)
     end)
 end
 
-local function try_connect(mt, address, port, keepalive)
-    local con = mt.con
+local function try_connect(con, address, port, keepalive)
+    local mt = getmetatable(con)
+    local __con = mt.con
 
     local s, err = socket.connect_tcp(address, port)
     if not s then
@@ -165,12 +166,12 @@ local function try_connect(mt, address, port, keepalive)
     s:close()
 
     local ok
-    ok, _, err = con:connect(address, port, keepalive)
+    ok, _, err = __con:connect(address, port, keepalive)
     if not ok then
         return false, err
     end
 
-    mt.iow = eco.watcher(eco.IO, con:socket(), eco.WRITE)
+    mt.iow = eco.watcher(eco.IO, __con:socket(), eco.WRITE)
     mt.done.v = false
 
     eco.run(mqtt_io_loop, mt)
@@ -180,9 +181,6 @@ local function try_connect(mt, address, port, keepalive)
 end
 
 function methods:connect(host, port, keepalive)
-    local mt = getmetatable(self)
-    local con = mt.con
-
     local answers, err = dns.query(host or 'localhost')
     if not answers then
         return false, err
@@ -192,7 +190,7 @@ function methods:connect(host, port, keepalive)
 
     for _, a in ipairs(answers) do
         if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
-            ok, err = try_connect(mt, a.address, port, keepalive)
+            ok, err = try_connect(self, a.address, port, keepalive)
             if ok then
                 return true
             end
