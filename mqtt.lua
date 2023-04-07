@@ -154,20 +154,24 @@ function methods:set_callback(typ, func)
     end)
 end
 
-local function wait_connected(mt, con)
-    local fd = con:socket()
-    local w = eco.watcher(eco.IO, fd, eco.WRITE)
-    if not w:wait(3.0) then
-        return false, 'timeout'
+local function try_connect(mt, address, port, keepalive)
+    local con = mt.con
+
+    local s, err = socket.connect_tcp(address, port)
+    if not s then
+        return false, err
     end
 
-    local err = socket.getoption(fd, 'error')
-    if err ~= 0 then
-        return false, sys.strerror(err)
+    s:close()
+
+    local ok
+    ok, _, err = con:connect(address, port, keepalive)
+    if not ok then
+        return false, err
     end
 
+    mt.iow = eco.watcher(eco.IO, con:socket(), eco.WRITE)
     mt.done.v = false
-    mt.iow = w
 
     eco.run(mqtt_io_loop, mt)
     eco.run(check_keepalive_loop, mt)
@@ -184,16 +188,13 @@ function methods:connect(host, port, keepalive)
         return false, err
     end
 
-    local ok, err
+    local ok
 
     for _, a in ipairs(answers) do
         if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
-            ok, _, err = con:connect_async(a.address, port, keepalive)
+            ok, err = try_connect(mt, a.address, port, keepalive)
             if ok then
-                ok, err = wait_connected(mt, con)
-                if ok then
-                    return true
-                end
+                return true
             end
         end
     end
