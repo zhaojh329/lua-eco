@@ -282,7 +282,7 @@ static int lua_hex6addr(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_log(lua_State *L)
+int luaopen_eco_network(lua_State *L)
 {
     lua_newtable(L);
 
