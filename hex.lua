@@ -4,9 +4,18 @@
 local M = {}
 
 -- returns the hexadecimal encoding of src
-function M.encode(bin)
+function M.encode(bin, sep)
+    local first = true
+
+    sep = sep or ''
+
     local s = bin:gsub('.', function(c)
-        return string.format('%02x', c:byte(1))
+        if first then
+            first = false
+            return string.format('%02x', c:byte(1))
+        else
+            return string.format('%s%02x', sep, c:byte(1))
+        end
     end)
 
     return s
