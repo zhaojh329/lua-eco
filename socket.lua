@@ -251,18 +251,21 @@ local function sock_sendto(sock, data, ...)
 
     local mt = getmetatable(sock)
     local family = mt.family
-    local arg = {...}
+    local send
 
     if family == socket.AF_INET then
-        local ip, port = arg[1], arg[2]
-        return socket.sendto(mt.fd, data, ip, port)
+        send = socket.sendto
     elseif family == socket.AF_INET6 then
-        local ip, port = arg[1], arg[2]
-        return socket.sendto6(mt.fd, data, ip, port)
+        send = socket.sendto6
+    elseif family == socket.AF_UNIX then
+        send = socket.sendto_unix
+    elseif family == socket.AF_NETLINK then
+        send = socket.sendto_nl
     else
-        local path = arg[1]
-        return socket.sendto_unix(mt.fd, data, path)
+        error('invalid family: ' .. family)
     end
+
+    return send(mt.fd, data, ...)
 end
 
 local client_methods = {
@@ -283,21 +286,21 @@ local client_methods = {
 local function sock_bind(sock, ...)
     local mt = getmetatable(sock)
     local family = mt.family
-    local arg = {...}
-
-    local ok, err
+    local bind
 
     if family == socket.AF_INET then
-        local ip, port = arg[1], arg[2]
-        ok, err = socket.bind(mt.fd, ip, port)
+        bind = socket.bind
     elseif family == socket.AF_INET6 then
-        local ip, port = arg[1], arg[2]
-        ok, err = socket.bind6(mt.fd, ip, port)
+        bind = socket.bind6
+    elseif family == socket.AF_UNIX then
+        bind = socket.bind_unix
+    elseif family == socket.AF_NETLINK then
+        bind = socket.bind_nl
     else
-        local path = arg[1]
-        ok, err = socket.bind_unix(mt.fd, path)
+        error('invalid family: ' .. family)
     end
 
+    local ok, err = bind(mt.fd, ...)
     if not ok then
         return nil, sys.strerror(err)
     end
@@ -451,16 +454,21 @@ local function sock_connect(sock, ...)
 
     local mt = getmetatable(sock)
     local family = mt.family
-    local ok, err
+    local connect
 
     if family == socket.AF_INET then
-        ok, err = socket.connect(mt.fd, ...)
+        connect = socket.connect
     elseif family == socket.AF_INET6 then
-        ok, err = socket.connect6(mt.fd, ...)
+        connect = socket.connect6
+    elseif family == socket.AF_UNIX then
+        connect = socket.connect_unix
+    elseif family == socket.AF_NETLINK then
+        connect = socket.connect_nl
     else
-        ok, err = socket.connect_unix(mt.fd, ...)
+        error('invalid family: ' .. family)
     end
 
+    local ok, err = connect(mt.fd, ...)
     if not ok then
         if err == sys.EINPROGRESS then
             if not mt.iow:wait(3.0) then
@@ -541,6 +549,10 @@ end
 
 function M.unix_dgram()
     return create_socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
+end
+
+function M.netlink(protocol)
+    return create_socket(socket.AF_NETLINK, socket.SOCK_RAW, protocol, dgram_methods, SOCK_MT_DGRAM)
 end
 
 function M.listen_unix(path, options)

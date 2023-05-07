@@ -3,6 +3,7 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <linux/netlink.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -30,7 +31,11 @@ static void push_socket_addr(lua_State *L, struct sockaddr *addr)
     lua_pushinteger(L, family);
     lua_setfield(L, -2, "family");
 
-    if (family == AF_UNIX) {
+    if (family == AF_NETLINK) {
+        struct sockaddr_nl *nl = (struct sockaddr_nl *)addr;
+        lua_pushinteger(L, nl->nl_pid);
+        lua_setfield(L, -2, "pid");
+    } if (family == AF_UNIX) {
         lua_pushstring(L, ((struct sockaddr_un *)addr)->sun_path);
         lua_setfield(L, -2, "path");
     } else if (family == AF_INET) {
@@ -128,6 +133,18 @@ static int eco_socket_bind_unix(lua_State *L)
     strcpy(addr.sun_path, path);
 
     return eco_socket_bind_common(L, fd, (struct sockaddr *)&addr, SUN_LEN(&addr));
+}
+
+static int eco_socket_bind_nl(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    struct sockaddr_nl addr = {
+        .nl_family = AF_NETLINK,
+        .nl_groups = luaL_optinteger(L, 2, 0),
+        .nl_pid = luaL_optinteger(L, 3, 0)
+    };
+
+    return eco_socket_bind_common(L, fd, (struct sockaddr *)&addr, sizeof(struct sockaddr_nl));
 }
 
 static int eco_socket_listen(lua_State *L)
@@ -231,6 +248,18 @@ static int eco_socket_connect_unix(lua_State *L)
     strcpy(addr.sun_path, path);
 
     return eco_socket_connect_common(L, fd, (struct sockaddr *)&addr, SUN_LEN(&addr));
+}
+
+static int eco_socket_connect_nl(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    int pid = luaL_checkinteger(L, 2);
+    struct sockaddr_nl addr = {
+        .nl_family = AF_NETLINK,
+        .nl_pid = pid
+    };
+
+    return eco_socket_connect_common(L, fd, (struct sockaddr *)&addr, sizeof(struct sockaddr_nl));
 }
 
 static int eco_socket_send(lua_State *L)
@@ -366,12 +395,28 @@ static int eco_socket_sendto_unix(lua_State *L)
     return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, SUN_LEN(&addr), flags);
 }
 
+static int eco_socket_sendto_nl(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    size_t len;
+    const char *data = luaL_checklstring(L, 2, &len);
+    int pid = luaL_optinteger(L, 3, 0);
+    int flags = luaL_optinteger(L, 4, 0);
+    struct sockaddr_nl addr = {
+        .nl_family = AF_NETLINK,
+        .nl_pid = pid
+    };
+
+    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, sizeof(struct sockaddr_nl), flags);
+}
+
 static int eco_socket_recvfrom(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     size_t n = luaL_checkinteger(L, 2);
     int flags = luaL_optinteger(L, 3, 0);
     union {
+        struct sockaddr_nl nl;
         struct sockaddr_un un;
         struct sockaddr_in in;
         struct sockaddr_in6 in6;
@@ -595,6 +640,16 @@ static int opt_set_bindtodevice(lua_State *L, int fd)
     return opt_set(L, fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
 }
 
+static int opt_set_netlink_add_membership(lua_State *L, int fd)
+{
+    return opt_setint(L, fd, SOL_NETLINK, NETLINK_ADD_MEMBERSHIP);
+}
+
+static int opt_set_netlink_drop_membership(lua_State *L, int fd)
+{
+    return opt_setint(L, fd, SOL_NETLINK, NETLINK_DROP_MEMBERSHIP);
+}
+
 static struct sock_opt optset[] = {
     {"reuseaddr", opt_set_reuseaddr},
     {"reuseport", opt_set_reuseport},
@@ -606,6 +661,8 @@ static struct sock_opt optset[] = {
     {"tcp_nodelay", opt_set_tcp_nodelay},
     {"ipv6_v6only", opt_set_ipv6_v6only},
     {"bindtodevice", opt_set_bindtodevice},
+    {"netlink_add_membership", opt_set_netlink_add_membership},
+    {"netlink_drop_membership", opt_set_netlink_drop_membership},
     {NULL, NULL}
 };
 
@@ -666,9 +723,11 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_add_constant(L, "AF_INET", AF_INET);
     lua_add_constant(L, "AF_INET6", AF_INET6);
     lua_add_constant(L, "AF_UNIX", AF_UNIX);
+    lua_add_constant(L, "AF_NETLINK", AF_NETLINK);
 
     lua_add_constant(L, "SOCK_DGRAM", SOCK_DGRAM);
     lua_add_constant(L, "SOCK_STREAM", SOCK_STREAM);
+    lua_add_constant(L, "SOCK_RAW", SOCK_RAW);
 
     /* Bits in the FLAGS argument to `send', `recv' */
     lua_add_constant(L, "MSG_OOB", MSG_OOB);
@@ -696,6 +755,9 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_pushcfunction(L, eco_socket_bind_unix);
     lua_setfield(L, -2, "bind_unix");
 
+    lua_pushcfunction(L, eco_socket_bind_nl);
+    lua_setfield(L, -2, "bind_nl");
+
     lua_pushcfunction(L, eco_socket_listen);
     lua_setfield(L, -2, "listen");
 
@@ -711,6 +773,9 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_pushcfunction(L, eco_socket_connect_unix);
     lua_setfield(L, -2, "connect_unix");
 
+    lua_pushcfunction(L, eco_socket_connect_nl);
+    lua_setfield(L, -2, "connect_nl");
+
     lua_pushcfunction(L, eco_socket_send);
     lua_setfield(L, -2, "send");
 
@@ -725,6 +790,9 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_pushcfunction(L, eco_socket_sendto_unix);
     lua_setfield(L, -2, "sendto_unix");
+
+    lua_pushcfunction(L, eco_socket_sendto_nl);
+    lua_setfield(L, -2, "sendto_nl");
 
     lua_pushcfunction(L, eco_socket_recvfrom);
     lua_setfield(L, -2, "recvfrom");
