@@ -720,9 +720,11 @@ int luaopen_eco_core_socket(lua_State *L)
 {
     lua_newtable(L);
 
+    lua_add_constant(L, "AF_UNSPEC", AF_UNSPEC);
     lua_add_constant(L, "AF_INET", AF_INET);
     lua_add_constant(L, "AF_INET6", AF_INET6);
     lua_add_constant(L, "AF_UNIX", AF_UNIX);
+    lua_add_constant(L, "AF_PACKET", AF_PACKET);
     lua_add_constant(L, "AF_NETLINK", AF_NETLINK);
 
     lua_add_constant(L, "SOCK_DGRAM", SOCK_DGRAM);
