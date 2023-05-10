@@ -27,13 +27,12 @@
 
 #endif
 
-
-#if LONG_BIT == 64
-#define lua_pushint lua_pushinteger
-#define lua_pushuint lua_pushinteger
-#else
-#define lua_pushint lua_pushnumber
-#define lua_pushuint lua_pushinteger
-#endif
+static inline void lua_pushint(lua_State *L, int64_t val)
+{
+    if (sizeof(lua_Integer) < 8)
+        lua_pushnumber(L, val);
+    else
+        lua_pushinteger(L, val);
+}
 
 #endif

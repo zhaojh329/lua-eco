@@ -249,19 +249,19 @@ static int __eco_file_stat(lua_State *L, struct stat *st)
     lua_pushint(L, st->st_ctime);
     lua_setfield(L, -2, "ctime");
 
-    lua_pushuint(L, st->st_nlink);
+    lua_pushint(L, st->st_nlink);
     lua_setfield(L, -2, "nlink");
 
-    lua_pushuint(L, st->st_uid);
+    lua_pushint(L, st->st_uid);
     lua_setfield(L, -2, "uid");
 
-    lua_pushuint(L, st->st_gid);
+    lua_pushint(L, st->st_gid);
     lua_setfield(L, -2, "gid");
 
-    lua_pushuint(L, st->st_size);
+    lua_pushint(L, st->st_size);
     lua_setfield(L, -2, "size");
 
-    lua_pushuint(L, st->st_ino);
+    lua_pushint(L, st->st_ino);
     lua_setfield(L, -2, "ino");
 
     return 1;
