@@ -70,6 +70,15 @@ set_target_properties(sha1 PROPERTIES OUTPUT_NAME sha1 PREFIX "")
 add_library(network MODULE network.c)
 set_target_properties(network PROPERTIES OUTPUT_NAME network PREFIX "")
 
+add_library(nl MODULE nl.c)
+set_target_properties(nl PROPERTIES OUTPUT_NAME nl PREFIX "")
+
+add_library(rtnl MODULE rtnl.c)
+set_target_properties(rtnl PROPERTIES OUTPUT_NAME rtnl PREFIX "")
+
+add_library(genl MODULE genl.c)
+set_target_properties(genl PROPERTIES OUTPUT_NAME genl PREFIX "")
+
 if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
@@ -118,12 +127,12 @@ install(
 )
 
 install(
-    TARGETS log termios struct network
+    TARGETS log termios struct network rtnl genl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
-    TARGETS sys file time bufio socket
+    TARGETS sys file time bufio socket nl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
@@ -143,6 +152,7 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua
+    FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
+        url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua nl.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
