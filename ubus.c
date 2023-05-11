@@ -129,7 +129,7 @@ static int __blob_to_lua_table(lua_State *L, struct blob_attr *attr, bool is_arr
         break;
 
     case BLOBMSG_TYPE_INT64:
-        lua_pushuint(L, (double) be64_to_cpu(*(uint64_t *)data));
+        lua_pushint(L, (double) be64_to_cpu(*(uint64_t *)data));
         break;
 
     case BLOBMSG_TYPE_DOUBLE: {
