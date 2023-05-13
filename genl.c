@@ -54,7 +54,7 @@ static int eco_genl_parse_genlmsghdr(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_genl(lua_State *L)
+int luaopen_eco_core_genl(lua_State *L)
 {
     lua_newtable(L);
 

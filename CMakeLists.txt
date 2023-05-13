@@ -127,12 +127,12 @@ install(
 )
 
 install(
-    TARGETS log termios struct network rtnl genl
+    TARGETS log termios struct network rtnl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
-    TARGETS sys file time bufio socket nl
+    TARGETS sys file time bufio socket nl genl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
@@ -153,6 +153,6 @@ install(
 
 install(
     FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
-        url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua nl.lua
+        url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua nl.lua genl.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
