@@ -37,7 +37,7 @@ end
 
 local msg = nl.nlmsg(genl.GENL_ID_CTRL, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_DUMP))
 
-msg:put(genl.genlmsghdr({ cmd = genl.CTRL_CMD_GETFAMILY, version = 1 }))
+msg:put(genl.genlmsghdr({ cmd = genl.CTRL_CMD_GETFAMILY }))
 
 local ok, err = sock:send(msg)
 if not ok then

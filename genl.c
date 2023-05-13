@@ -17,7 +17,7 @@ static int eco_genl_new_genlmsghdr(lua_State *L)
     genl.cmd = lua_tointeger(L, -1);
 
     lua_getfield(L, 1, "version");
-    genl.version = lua_tointeger(L, -1);
+    genl.version = luaL_optinteger(L, -1, 1);
 
     lua_pushlstring(L, (const char *)&genl, sizeof(genl));
     return 1;
