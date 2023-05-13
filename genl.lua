@@ -16,26 +16,6 @@ local function parse_grps(nest, groups)
     end
 end
 
-local function parse_family(msg)
-    local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-    local info = {groups = {}}
-
-    info.name = nl.attr_get_str(attrs[genl.CTRL_ATTR_FAMILY_NAME])
-    info.id = nl.attr_get_u16(attrs[genl.CTRL_ATTR_FAMILY_ID])
-    info.version = nl.attr_get_u32(attrs[genl.CTRL_ATTR_VERSION])
-    info.hdrsize = nl.attr_get_u32(attrs[genl.CTRL_ATTR_HDRSIZE])
-    info.maxattr = nl.attr_get_u32(attrs[genl.CTRL_ATTR_MAXATTR])
-
-    if attrs[genl.CTRL_ATTR_MCAST_GROUPS] then
-        parse_grps(attrs[genl.CTRL_ATTR_MCAST_GROUPS], info.groups)
-    end
-
-    cache[info.id] = info
-    cache[info.name] = info
-
-    return info
-end
-
 local function get_family_by(params)
     local sock, err = nl.open(nl.NETLINK_GENERIC)
     if not sock then
@@ -72,7 +52,23 @@ local function get_family_by(params)
         return nil, sys.strerror(-err)
     end
 
-    return parse_family(msg)
+    local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+    local info = {groups = {}}
+
+    info.name = nl.attr_get_str(attrs[genl.CTRL_ATTR_FAMILY_NAME])
+    info.id = nl.attr_get_u16(attrs[genl.CTRL_ATTR_FAMILY_ID])
+    info.version = nl.attr_get_u32(attrs[genl.CTRL_ATTR_VERSION])
+    info.hdrsize = nl.attr_get_u32(attrs[genl.CTRL_ATTR_HDRSIZE])
+    info.maxattr = nl.attr_get_u32(attrs[genl.CTRL_ATTR_MAXATTR])
+
+    if attrs[genl.CTRL_ATTR_MCAST_GROUPS] then
+        parse_grps(attrs[genl.CTRL_ATTR_MCAST_GROUPS], info.groups)
+    end
+
+    cache[info.id] = info
+    cache[info.name] = info
+
+    return info
 end
 
 function M.get_family_byid(id)
