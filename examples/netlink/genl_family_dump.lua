@@ -38,7 +38,6 @@ end
 local msg = nl.nlmsg(genl.GENL_ID_CTRL, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_DUMP))
 
 msg:put(genl.genlmsghdr({ cmd = genl.CTRL_CMD_GETFAMILY, version = 1 }))
-msg:put_attr_u32(genl.CTRL_ATTR_FAMILY_ID, genl.GENL_ID_CTRL)
 
 local ok, err = sock:send(msg)
 if not ok then
