@@ -59,45 +59,46 @@ while true do
         end
 
         if nlh.type == genl.GENL_ID_CTRL then
-            --local info = genl.parse_genlmsghdr(msg)
+            local hdr = genl.parse_genlmsghdr(msg)
+            if hdr.cmd == genl.CTRL_CMD_NEWFAMILY then
+                local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
 
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+                if attrs[genl.CTRL_ATTR_FAMILY_NAME] then
+                    print('family name:', nl.attr_get_str(attrs[genl.CTRL_ATTR_FAMILY_NAME]))
+                end
 
-            if attrs[genl.CTRL_ATTR_FAMILY_NAME] then
-                print('family name:', nl.attr_get_str(attrs[genl.CTRL_ATTR_FAMILY_NAME]))
+                if attrs[genl.CTRL_ATTR_FAMILY_ID] then
+                    local family_id = nl.attr_get_u16(attrs[genl.CTRL_ATTR_FAMILY_ID])
+                    print('family id:', family_id)
+                end
+
+                if attrs[genl.CTRL_ATTR_VERSION] then
+                    local version = nl.attr_get_u32(attrs[genl.CTRL_ATTR_VERSION])
+                    print('version:', version)
+                end
+
+                if attrs[genl.CTRL_ATTR_HDRSIZE] then
+                    local hdrsize = nl.attr_get_u32(attrs[genl.CTRL_ATTR_HDRSIZE])
+                    print('hdrsize:', hdrsize)
+                end
+
+                if attrs[genl.CTRL_ATTR_MAXATTR] then
+                    local maxattr = nl.attr_get_u32(attrs[genl.CTRL_ATTR_MAXATTR])
+                    print('maxattr:', maxattr)
+                end
+
+                if attrs[genl.CTRL_ATTR_OPS] then
+                    print('ops:')
+                    parse_ops(attrs[genl.CTRL_ATTR_OPS])
+                end
+
+                if attrs[genl.CTRL_ATTR_MCAST_GROUPS] then
+                    print('grps:')
+                    parse_grps(attrs[genl.CTRL_ATTR_MCAST_GROUPS])
+                end
+
+                print()
             end
-
-            if attrs[genl.CTRL_ATTR_FAMILY_ID] then
-                local family_id = nl.attr_get_u16(attrs[genl.CTRL_ATTR_FAMILY_ID])
-                print('family id:', family_id)
-            end
-
-            if attrs[genl.CTRL_ATTR_VERSION] then
-                local version = nl.attr_get_u32(attrs[genl.CTRL_ATTR_VERSION])
-                print('version:', version)
-            end
-
-            if attrs[genl.CTRL_ATTR_HDRSIZE] then
-                local hdrsize = nl.attr_get_u32(attrs[genl.CTRL_ATTR_HDRSIZE])
-                print('hdrsize:', hdrsize)
-            end
-
-            if attrs[genl.CTRL_ATTR_MAXATTR] then
-                local maxattr = nl.attr_get_u32(attrs[genl.CTRL_ATTR_MAXATTR])
-                print('maxattr:', maxattr)
-            end
-
-            if attrs[genl.CTRL_ATTR_OPS] then
-                print('ops:')
-                parse_ops(attrs[genl.CTRL_ATTR_OPS])
-            end
-
-            if attrs[genl.CTRL_ATTR_MCAST_GROUPS] then
-                print('grps:')
-                parse_grps(attrs[genl.CTRL_ATTR_MCAST_GROUPS])
-            end
-
-            print()
         elseif nlh.type == nl.NLMSG_ERROR then
             err = msg:parse_error()
             if err < 0 then
