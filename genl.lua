@@ -7,6 +7,8 @@ local nl = require 'eco.nl'
 
 local M = {}
 
+local cache = {}
+
 local function parse_grps(nest, groups)
     for _, grp in pairs(nl.parse_attr_nested(nest) or {}) do
         local attrs = nl.parse_attr_nested(grp)
@@ -18,29 +20,18 @@ local function parse_family(msg)
     local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
     local info = {groups = {}}
 
-    if attrs[genl.CTRL_ATTR_FAMILY_NAME] then
-        info.name = nl.attr_get_str(attrs[genl.CTRL_ATTR_FAMILY_NAME])
-    end
-
-    if attrs[genl.CTRL_ATTR_FAMILY_ID] then
-        info.id = nl.attr_get_u16(attrs[genl.CTRL_ATTR_FAMILY_ID])
-    end
-
-    if attrs[genl.CTRL_ATTR_VERSION] then
-        info.version = nl.attr_get_u32(attrs[genl.CTRL_ATTR_VERSION])
-    end
-
-    if attrs[genl.CTRL_ATTR_HDRSIZE] then
-        info.hdrsize = nl.attr_get_u32(attrs[genl.CTRL_ATTR_HDRSIZE])
-    end
-
-    if attrs[genl.CTRL_ATTR_MAXATTR] then
-        info.maxattr = nl.attr_get_u32(attrs[genl.CTRL_ATTR_MAXATTR])
-    end
+    info.name = nl.attr_get_str(attrs[genl.CTRL_ATTR_FAMILY_NAME])
+    info.id = nl.attr_get_u16(attrs[genl.CTRL_ATTR_FAMILY_ID])
+    info.version = nl.attr_get_u32(attrs[genl.CTRL_ATTR_VERSION])
+    info.hdrsize = nl.attr_get_u32(attrs[genl.CTRL_ATTR_HDRSIZE])
+    info.maxattr = nl.attr_get_u32(attrs[genl.CTRL_ATTR_MAXATTR])
 
     if attrs[genl.CTRL_ATTR_MCAST_GROUPS] then
         parse_grps(attrs[genl.CTRL_ATTR_MCAST_GROUPS], info.groups)
     end
+
+    cache[info.id] = info
+    cache[info.name] = info
 
     return info
 end
@@ -89,12 +80,20 @@ function M.get_family_byid(id)
         error('invalid id')
     end
 
+    if cache[id] then
+        return cache[id]
+    end
+
     return get_family_by({ id = id })
 end
 
 function M.get_family_byname(name)
     if type(name) ~= 'string' then
         error('invalid name')
+    end
+
+    if cache[name] then
+        return cache[name]
     end
 
     return get_family_by({ name = name })
