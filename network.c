@@ -285,7 +285,13 @@ static int lua_hex6addr(lua_State *L)
 static int lua_if_nametoindex(lua_State *L)
 {
     const char *ifname = luaL_checkstring(L, 1);
-    lua_pushinteger(L, if_nametoindex(ifname));
+    unsigned int ifidx = if_nametoindex(ifname);
+
+    if (ifidx == 0)
+        lua_pushnil(L);
+    else
+        lua_pushint(L, ifidx);
+
     return 1;
 }
 
