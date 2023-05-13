@@ -99,4 +99,42 @@ function M.get_family_byname(name)
     return get_family_by({ name = name })
 end
 
+function M.get_family_id(name)
+    if type(name) ~= 'string' then
+        error('invalid name')
+    end
+
+    if cache[name] then
+        return cache[name].id
+    end
+
+    local info, err = get_family_by({ name = name })
+    if not info then
+        return nil, err
+    end
+
+    return info.id
+end
+
+function M.get_group_id(family, group)
+    if type(family) ~= 'string' then
+        error('invalid family name')
+    end
+
+    if type(group) ~= 'string' then
+        error('invalid group name')
+    end
+
+    if cache[family] then
+        return cache[family].groups[group]
+    end
+
+    local info, err = get_family_by({ name = family })
+    if not info then
+        return nil, err
+    end
+
+    return info.groups[group]
+end
+
 return setmetatable(M, { __index = genl })
