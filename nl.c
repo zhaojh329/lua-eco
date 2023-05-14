@@ -243,7 +243,7 @@ static int eco_nlmsg_put_attr_u32(lua_State *L)
     if (sizeof(lua_Integer) < 8)
         value = (uint32_t)luaL_checknumber(L, 3);
     else
-        value = (uint32_t)luaL_checkinteger(L, 2);
+        value = (uint32_t)luaL_checkinteger(L, 3);
 
     return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, sizeof(uint32_t), &value);
 }
@@ -257,7 +257,7 @@ static int eco_nlmsg_put_attr_u64(lua_State *L)
     if (sizeof(lua_Integer) < 8)
         value = (uint64_t)luaL_checknumber(L, 3);
     else
-        value = (uint64_t)luaL_checkinteger(L, 2);
+        value = (uint64_t)luaL_checkinteger(L, 3);
 
     return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, sizeof(uint64_t), &value);
 }
