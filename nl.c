@@ -332,10 +332,26 @@ static int eco_nl_attr_get_u8(lua_State *L)
     return 1;
 }
 
+static int eco_nl_attr_get_s8(lua_State *L)
+{
+    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
+    int8_t value = *((int8_t *)nla_data(attr));
+    lua_pushinteger(L, value);
+    return 1;
+}
+
 static int eco_nl_attr_get_u16(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
     int value = *((uint16_t *)nla_data(attr));
+    lua_pushinteger(L, value);
+    return 1;
+}
+
+static int eco_nl_attr_get_s16(lua_State *L)
+{
+    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
+    int16_t value = *((int16_t *)nla_data(attr));
     lua_pushinteger(L, value);
     return 1;
 }
@@ -348,6 +364,14 @@ static int eco_nl_attr_get_u32(lua_State *L)
     return 1;
 }
 
+static int eco_nl_attr_get_s32(lua_State *L)
+{
+    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
+    int32_t value = *((int32_t *)nla_data(attr));
+    lua_pushint(L, value);
+    return 1;
+}
+
 static int eco_nl_attr_get_u64(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -355,7 +379,16 @@ static int eco_nl_attr_get_u64(lua_State *L)
 
     /* overflow */
     if (value > INT64_MAX)
-        value = 0;
+        value = INT64_MAX;
+
+    lua_pushint(L, value);
+    return 1;
+}
+
+static int eco_nl_attr_get_s64(lua_State *L)
+{
+    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
+    int64_t value = *((int64_t *)nla_data(attr));
 
     lua_pushint(L, value);
     return 1;
@@ -457,14 +490,26 @@ int luaopen_eco_core_nl(lua_State *L)
     lua_pushcfunction(L, eco_nl_attr_get_u8);
     lua_setfield(L, -2, "attr_get_u8");
 
+    lua_pushcfunction(L, eco_nl_attr_get_s8);
+    lua_setfield(L, -2, "attr_get_s8");
+
     lua_pushcfunction(L, eco_nl_attr_get_u16);
     lua_setfield(L, -2, "attr_get_u16");
+
+    lua_pushcfunction(L, eco_nl_attr_get_s16);
+    lua_setfield(L, -2, "attr_get_s16");
 
     lua_pushcfunction(L, eco_nl_attr_get_u32);
     lua_setfield(L, -2, "attr_get_u32");
 
+    lua_pushcfunction(L, eco_nl_attr_get_s32);
+    lua_setfield(L, -2, "attr_get_s32");
+
     lua_pushcfunction(L, eco_nl_attr_get_u64);
     lua_setfield(L, -2, "attr_get_u64");
+
+    lua_pushcfunction(L, eco_nl_attr_get_s64);
+    lua_setfield(L, -2, "attr_get_s64");
 
     lua_pushcfunction(L, eco_nl_attr_get_str);
     lua_setfield(L, -2, "attr_get_str");
