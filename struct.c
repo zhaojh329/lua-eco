@@ -17,7 +17,7 @@ static size_t max_buf_size = 4096;
 static void pack_single(lua_State *L, char *buf, void *val, size_t type_size,
         size_t *len, size_t *max_align)
 {
-    size_t align_size = MIN(__WORDSIZE / 8, type_size);
+    size_t align_size = MIN(sizeof(long), type_size);
 
     if (align_size > *max_align)
         *max_align = align_size;
