@@ -6,7 +6,6 @@
 local socket = require 'eco.socket'
 local mosq  = require 'mosquitto'
 local time = require 'eco.time'
-local sys = require 'eco.sys'
 local dns = require 'eco.dns'
 local bit = require 'eco.bit'
 
