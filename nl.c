@@ -139,6 +139,7 @@ static int eco_new_nlmsg_ker(lua_State *L)
 
     msg->size = len;
     msg->nlh = NULL;
+    msg->nest = NULL;
 
     return 1;
 }
@@ -171,14 +172,15 @@ static int eco_nlmsg_put(lua_State *L)
     return 1;
 }
 
-static int __eco_nlmsg_put_attr(lua_State *L, struct nlmsghdr *nlh, size_t buflen,
+static int __eco_nlmsg_put_attr(lua_State *L, struct eco_nlmsg *msg,
         uint16_t type, size_t len, const void *data)
 {
+    struct nlmsghdr *nlh = msg->nlh;
 	struct nlattr *attr = (void *)nlh + NLMSG_ALIGN(nlh->nlmsg_len);
 	uint16_t payload_len = NLMSG_ALIGN(sizeof(struct nlattr)) + len;
 	int pad;
 
-    if (nlh->nlmsg_len + NLA_HDRLEN + NLMSG_ALIGN(len) > buflen) {
+    if (nlh->nlmsg_len + NLA_HDRLEN + NLMSG_ALIGN(len) > msg->size) {
         lua_pushnil(L);
         lua_pushliteral(L, "buf is full");
 		return 2;
@@ -194,7 +196,13 @@ static int __eco_nlmsg_put_attr(lua_State *L, struct nlmsghdr *nlh, size_t bufle
 
 	nlh->nlmsg_len += NLMSG_ALIGN(payload_len);
 
+    if (type & NLA_F_NESTED)
+        msg->nest = attr;
+    else if (msg->nest)
+        msg->nest->nla_len += NLMSG_ALIGN(payload_len);
+
     lua_settop(L, 1);
+
     return 1;
 }
 
@@ -205,7 +213,7 @@ static int eco_nlmsg_put_attr(lua_State *L)
     size_t len;
     const char *value = luaL_checklstring(L, 3, &len);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, len, value);
+    return __eco_nlmsg_put_attr(L, msg, type, len, value);
 }
 
 static int eco_nlmsg_put_attr_flag(lua_State *L)
@@ -213,7 +221,7 @@ static int eco_nlmsg_put_attr_flag(lua_State *L)
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, ECO_NLMSG_USER_MT);
     int type = luaL_checkinteger(L, 2);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, 0, NULL);
+    return __eco_nlmsg_put_attr(L, msg, type, 0, NULL);
 }
 
 static int eco_nlmsg_put_attr_u8(lua_State *L)
@@ -222,7 +230,7 @@ static int eco_nlmsg_put_attr_u8(lua_State *L)
     int type = luaL_checkinteger(L, 2);
     int value = luaL_checkinteger(L, 3);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, sizeof(uint8_t), &value);
+    return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint8_t), &value);
 }
 
 static int eco_nlmsg_put_attr_u16(lua_State *L)
@@ -231,7 +239,7 @@ static int eco_nlmsg_put_attr_u16(lua_State *L)
     int type = luaL_checkinteger(L, 2);
     int value = luaL_checkinteger(L, 3);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, sizeof(uint16_t), &value);
+    return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint16_t), &value);
 }
 
 static int eco_nlmsg_put_attr_u32(lua_State *L)
@@ -245,7 +253,7 @@ static int eco_nlmsg_put_attr_u32(lua_State *L)
     else
         value = (uint32_t)luaL_checkinteger(L, 3);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, sizeof(uint32_t), &value);
+    return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint32_t), &value);
 }
 
 static int eco_nlmsg_put_attr_u64(lua_State *L)
@@ -259,7 +267,7 @@ static int eco_nlmsg_put_attr_u64(lua_State *L)
     else
         value = (uint64_t)luaL_checkinteger(L, 3);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, sizeof(uint64_t), &value);
+    return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint64_t), &value);
 }
 
 static int eco_nlmsg_put_attr_str(lua_State *L)
@@ -268,7 +276,7 @@ static int eco_nlmsg_put_attr_str(lua_State *L)
     int type = luaL_checkinteger(L, 2);
     const char *value = lua_tostring(L, 3);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, strlen(value), value);
+    return __eco_nlmsg_put_attr(L, msg, type, strlen(value), value);
 }
 
 static int eco_nlmsg_put_attr_strz(lua_State *L)
@@ -277,7 +285,25 @@ static int eco_nlmsg_put_attr_strz(lua_State *L)
     int type = luaL_checkinteger(L, 2);
     const char *value = lua_tostring(L, 3);
 
-    return __eco_nlmsg_put_attr(L, msg->nlh, msg->size, type, strlen(value) + 1, value);
+    return __eco_nlmsg_put_attr(L, msg, type, strlen(value) + 1, value);
+}
+
+static int eco_nlmsg_put_attr_nest_start(lua_State *L)
+{
+    struct eco_nlmsg *msg = luaL_checkudata(L, 1, ECO_NLMSG_USER_MT);
+    int type = luaL_checkinteger(L, 2);
+
+    return __eco_nlmsg_put_attr(L, msg, type | NLA_F_NESTED, 0, NULL);
+}
+
+static int eco_nlmsg_put_attr_nest_end(lua_State *L)
+{
+    struct eco_nlmsg *msg = luaL_checkudata(L, 1, ECO_NLMSG_USER_MT);
+
+    msg->nest = NULL;
+    lua_settop(L, 1);
+
+    return 1;
 }
 
 static const struct luaL_Reg nlmsg_user_methods[] = {
@@ -291,6 +317,8 @@ static const struct luaL_Reg nlmsg_user_methods[] = {
     {"put_attr_u64", eco_nlmsg_put_attr_u64},
     {"put_attr_str", eco_nlmsg_put_attr_str},
     {"put_attr_strz", eco_nlmsg_put_attr_strz},
+    {"put_attr_nest_start", eco_nlmsg_put_attr_nest_start},
+    {"put_attr_nest_end", eco_nlmsg_put_attr_nest_end},
     {NULL, NULL}
 };
 
@@ -320,6 +348,7 @@ static int eco_new_nlmsg_user(lua_State *L)
 
     msg->nlh = nlh;
     msg->size = size;
+    msg->nest = NULL;
 
     return 1;
 }

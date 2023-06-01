@@ -15,6 +15,7 @@
 
 struct eco_nlmsg {
     struct nlmsghdr *nlh;
+    struct nlattr *nest;
     int size;
     uint8_t buf[0];
 };
