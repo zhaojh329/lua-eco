@@ -93,7 +93,9 @@ end, 'eco2')
              -*- lua-eco-socket................................ socket support for lua-eco
              -*- lua-eco-ssl...................................... ssl support for lua-eco
                 SSL Library (mbedTLS)  --->
-            -*- lua-eco-sys............................. system utils support for lua-eco
-            <*> lua-eco-termios.............................. termios support for lua-eco
-            -*- lua-eco-ubus.................................... ubus support for lua-eco
-            <*> lua-eco-websocket.......................... websocket support for lua-eco
+            -*- lua-eco-sys.............................. system utils support for lua-eco
+            <*> lua-eco-termios............................... termios support for lua-eco
+            -*- lua-eco-ubus..................................... ubus support for lua-eco
+            <*> lua-eco-websocket........................... websocket support for lua-eco
+            <*> lua-eco-netlink............................... netlink support for lua-eco
+            <*> lua-eco-nl80211............................... nl80211 support for lua-eco
