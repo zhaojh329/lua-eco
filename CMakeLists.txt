@@ -79,6 +79,9 @@ set_target_properties(rtnl PROPERTIES OUTPUT_NAME rtnl PREFIX "")
 add_library(genl MODULE genl.c)
 set_target_properties(genl PROPERTIES OUTPUT_NAME genl PREFIX "")
 
+add_library(nl80211 MODULE nl80211.c)
+set_target_properties(nl80211 PROPERTIES OUTPUT_NAME nl80211 PREFIX "")
+
 if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
@@ -132,7 +135,7 @@ install(
 )
 
 install(
-    TARGETS sys file time bufio socket nl genl
+    TARGETS sys file time bufio socket nl genl nl80211
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
@@ -153,6 +156,7 @@ install(
 
 install(
     FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
-        url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua nl.lua genl.lua
+        url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua
+        nl.lua genl.lua nl80211.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
