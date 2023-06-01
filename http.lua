@@ -2,8 +2,8 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local socket = require 'eco.socket'
+local sys = require 'eco.core.sys'
 local file = require 'eco.file'
-local time = require 'eco.time'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 local log = require 'eco.log'
@@ -253,7 +253,7 @@ local function send_http_request(s, method, path, headers, body)
 end
 
 local function recv_status_line(s, deadtime)
-    local data, err = s:recv('*l', deadtime - time.now())
+    local data, err = s:recv('*l', deadtime - sys.uptime())
     if not data then
         return nil, err
     end
@@ -270,7 +270,7 @@ local function recv_http_headers(s, deadtime)
     local headers = {}
 
     while true do
-        local data, err = s:recv('*l', deadtime - time.now())
+        local data, err = s:recv('*l', deadtime - sys.uptime())
         if not data then
             return nil, err
         end
@@ -307,7 +307,7 @@ local function body_reader(s, headers)
             local deadtime
 
             if timeout then
-                deadtime = time.now() + timeout
+                deadtime = sys.uptime() + timeout
             end
 
             local body = {}
@@ -315,7 +315,7 @@ local function body_reader(s, headers)
 
             while true do
                 if state == 0 then
-                    local data, err = s:recv('*l', deadtime and deadtime - time.now())
+                    local data, err = s:recv('*l', deadtime and deadtime - sys.uptime())
                     if not data then
                         s:close()
                         return nil, err
@@ -340,7 +340,7 @@ local function body_reader(s, headers)
                         n = content_length
                     end
 
-                    local data, err, partial = s:recvfull(n, deadtime and deadtime - time.now())
+                    local data, err, partial = s:recvfull(n, deadtime and deadtime - sys.uptime())
                     if not data then
                         s:close()
                         if partial then
@@ -359,7 +359,7 @@ local function body_reader(s, headers)
                     body[#body + 1] = data
 
                     if content_length == 0 then
-                        data, err = s:recv('*l', deadtime and deadtime - time.now())
+                        data, err = s:recv('*l', deadtime and deadtime - sys.uptime())
                         if err or data ~= '' then
                             s:close()
                             return concat(body)
@@ -422,7 +422,7 @@ local function do_http_request(s, method, path, headers, body, timeout)
         timeout = 30
     end
 
-    local deadtime = time.now() + timeout
+    local deadtime = sys.uptime() + timeout
 
     local code, status = recv_status_line(s, deadtime)
     if not code then

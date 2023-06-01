@@ -2,7 +2,7 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local buffer = require 'eco.core.bufio'
-local time = require 'eco.time'
+local sys = require 'eco.core.sys'
 local concat = table.concat
 local str_sub = string.sub
 
@@ -64,11 +64,11 @@ function methods:discard(n, timeout)
     local deadtime
 
     if timeout then
-        deadtime = time.now() + timeout
+        deadtime = sys.uptime() + timeout
     end
 
     while skiped < n do
-        local _, err = reader:read2b(b, deadtime and (deadtime - time.now()))
+        local _, err = reader:read2b(b, deadtime and (deadtime - sys.uptime()))
         if err then
             return nil, err, skiped
         end
@@ -123,13 +123,13 @@ function methods:readfull(n, timeout)
     local deadtime
 
     if timeout then
-        deadtime = time.now() + timeout
+        deadtime = sys.uptime() + timeout
     end
 
     local size = b:size()
 
     while n > 0 do
-        local _, err = reader:read2b(b, deadtime and (deadtime - time.now()))
+        local _, err = reader:read2b(b, deadtime and (deadtime - sys.uptime()))
         if err then
             local chunk = b:read(n)
             data[#data + 1] = chunk
@@ -161,7 +161,7 @@ function methods:readline(timeout)
     local deadtime
 
     if timeout then
-        deadtime = time.now() + timeout
+        deadtime = sys.uptime() + timeout
     end
 
     local data = {}
@@ -192,7 +192,7 @@ function methods:readline(timeout)
             data[#data + 1] = b:read()
         end
 
-        local _, err = reader:read2b(b, deadtime and (deadtime - time.now()))
+        local _, err = reader:read2b(b, deadtime and (deadtime - sys.uptime()))
         if err then
             data[#data + 1] = b:read()
             return nil, err, concat(data)

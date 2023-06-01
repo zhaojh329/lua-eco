@@ -4,8 +4,8 @@
 local file = require 'eco.core.file'
 local socket = require 'eco.socket'
 local ssl = require 'eco.core.ssl'
+local sys = require 'eco.core.sys'
 local bufio = require 'eco.bufio'
-local time = require 'eco.time'
 
 local str_sub = string.sub
 local concat = table.concat
@@ -218,7 +218,7 @@ local function ssl_negotiate(mt, deadtime)
             w = iow
         end
 
-        if not w:wait(deadtime - time.now()) then
+        if not w:wait(deadtime - sys.uptime()) then
             return nil, 'handshake timeout'
         end
     end
@@ -339,7 +339,7 @@ local function ssl_setmetatable(ctx, sock, methods, name)
         mt.b = create_bufio(mt)
     end
 
-    local ok, err = ssl_negotiate(mt, time.now() + 3.0)
+    local ok, err = ssl_negotiate(mt, sys.uptime() + 3.0)
     if not ok then
         return nil, err
     end
