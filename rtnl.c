@@ -219,9 +219,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTM_NEWVLAN", RTM_NEWVLAN);
     lua_add_constant(L, "RTM_DELVLAN", RTM_DELVLAN);
     lua_add_constant(L, "RTM_GETVLAN", RTM_GETVLAN);
-    lua_add_constant(L, "RTM_NEWNEXTHOPBUCKET", RTM_NEWNEXTHOPBUCKET);
-    lua_add_constant(L, "RTM_DELNEXTHOPBUCKET", RTM_DELNEXTHOPBUCKET);
-    lua_add_constant(L, "RTM_GETNEXTHOPBUCKET", RTM_GETNEXTHOPBUCKET);
 
     lua_add_constant(L, "IFF_UP", IFF_UP);
     lua_add_constant(L, "IFF_BROADCAST", IFF_BROADCAST);
@@ -296,8 +293,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "IFLA_ALT_IFNAME", IFLA_ALT_IFNAME);
     lua_add_constant(L, "IFLA_PERM_ADDRESS", IFLA_PERM_ADDRESS);
     lua_add_constant(L, "IFLA_PROTO_DOWN_REASON", IFLA_PROTO_DOWN_REASON);
-    lua_add_constant(L, "IFLA_PARENT_DEV_NAME", IFLA_PARENT_DEV_NAME);
-    lua_add_constant(L, "IFLA_PARENT_DEV_BUS_NAME", IFLA_PARENT_DEV_BUS_NAME);
 
     lua_add_constant(L, "IFA_UNSPEC", IFA_UNSPEC);
     lua_add_constant(L, "IFA_ADDRESS", IFA_ADDRESS);
