@@ -3,11 +3,11 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=lua-eco
 PKG_RELEASE:=1
 
-
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_VERSION:=718da25040a96415c24c63f03ef9fba7f06385eb
-PKG_MIRROR_HASH:=skip
+PKG_MIRROR_HASH:=112bfd77e1bcef1bb8f7dfdcf6bc00575909c5be257d05aee1c52f1c18a8bfc2
+PKG_SOURCE_VERSION:=77fda5536a9d4b41272c3daae7b05a71af1e5e2e
+PKG_HASH:=skip
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -60,7 +60,10 @@ Package/lua-eco-http=$(call Package/lua-eco/Module,http/https,+lua-eco-dns +lua-
 Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco-dns +lua-mosquitto)
 Package/lua-eco-websocket=$(call Package/lua-eco/Module,websocket,+lua-eco-http +lua-eco-base64 +lua-eco-sha1)
 Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
-Package/lua-eco-network=$(call Package/lua-eco/Module,network)
+Package/lua-eco-struct=$(call Package/lua-eco/Module,struct pack)
+Package/lua-eco-network=$(call Package/lua-eco/Module,network utils)
+Package/lua-eco-netlink=$(call Package/lua-eco/Module,netlink)
+Package/lua-eco-nl80211=$(call Package/lua-eco/Module,nl80211,+lua-eco-netlink)
 
 define Package/lua-eco-ssl/config
 	choice
@@ -171,6 +174,29 @@ define Package/lua-eco-termios/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/termios.so $(1)/usr/lib/lua/eco
 endef
 
+define Package/lua-eco-struct/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/struct.so $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-network/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/network.so $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-netlink/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/{nl,genl}.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/{nl,genl}.so $(1)/usr/lib/lua/eco/core
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/rtnl.so $(1)/usr/lib/lua/eco
+endef
+
+define Package/lua-eco-nl80211/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/nl80211.lua $(1)/usr/lib/lua/eco
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/core/nl80211.so $(1)/usr/lib/lua/eco/core
+endef
+
 $(eval $(call BuildPackage,lua-eco))
 $(eval $(call BuildPackage,lua-eco-log))
 $(eval $(call BuildPackage,lua-eco-sys))
@@ -186,3 +212,5 @@ $(eval $(call BuildPackage,lua-eco-mqtt))
 $(eval $(call BuildPackage,lua-eco-websocket))
 $(eval $(call BuildPackage,lua-eco-termios))
 $(eval $(call BuildPackage,lua-eco-network))
+$(eval $(call BuildPackage,lua-eco-netlink))
+$(eval $(call BuildPackage,lua-eco-nl80211))
