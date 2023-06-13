@@ -7,7 +7,7 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
 PKG_MIRROR_HASH:=112bfd77e1bcef1bb8f7dfdcf6bc00575909c5be257d05aee1c52f1c18a8bfc2
 PKG_SOURCE_VERSION:=77fda5536a9d4b41272c3daae7b05a71af1e5e2e
-PKG_HASH:=skip
+PKG_MIRROR_HASH:=112bfd77e1bcef1bb8f7dfdcf6bc00575909c5be257d05aee1c52f1c18a8bfc2
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
