@@ -738,6 +738,17 @@ int main(int argc, char const *argv[])
 
     luaL_openlibs(L);
 
+    luaL_loadstring(L,
+        "table.keys = function(t)"
+        "local keys = {}"
+        "for key in pairs(t) do "
+        "keys[#keys + 1] = key "
+        "end "
+        "return keys "
+        "end"
+    );
+    lua_pcall(L, 0, 0, 0);
+
     luaopen_eco(L);
     lua_setglobal(L, "eco");
 
