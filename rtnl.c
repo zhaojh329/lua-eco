@@ -213,12 +213,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTM_NEWNEXTHOP", RTM_NEWNEXTHOP);
     lua_add_constant(L, "RTM_DELNEXTHOP", RTM_DELNEXTHOP);
     lua_add_constant(L, "RTM_GETNEXTHOP", RTM_GETNEXTHOP);
-    lua_add_constant(L, "RTM_NEWLINKPROP", RTM_NEWLINKPROP);
-    lua_add_constant(L, "RTM_DELLINKPROP", RTM_DELLINKPROP);
-    lua_add_constant(L, "RTM_GETLINKPROP", RTM_GETLINKPROP);
-    lua_add_constant(L, "RTM_NEWVLAN", RTM_NEWVLAN);
-    lua_add_constant(L, "RTM_DELVLAN", RTM_DELVLAN);
-    lua_add_constant(L, "RTM_GETVLAN", RTM_GETVLAN);
 
     lua_add_constant(L, "IFF_UP", IFF_UP);
     lua_add_constant(L, "IFF_BROADCAST", IFF_BROADCAST);
@@ -289,10 +283,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "IFLA_NEW_IFINDEX", IFLA_NEW_IFINDEX);
     lua_add_constant(L, "IFLA_MIN_MTU", IFLA_MIN_MTU);
     lua_add_constant(L, "IFLA_MAX_MTU", IFLA_MAX_MTU);
-    lua_add_constant(L, "IFLA_PROP_LIST", IFLA_PROP_LIST);
-    lua_add_constant(L, "IFLA_ALT_IFNAME", IFLA_ALT_IFNAME);
-    lua_add_constant(L, "IFLA_PERM_ADDRESS", IFLA_PERM_ADDRESS);
-    lua_add_constant(L, "IFLA_PROTO_DOWN_REASON", IFLA_PROTO_DOWN_REASON);
 
     lua_add_constant(L, "IFA_UNSPEC", IFA_UNSPEC);
     lua_add_constant(L, "IFA_ADDRESS", IFA_ADDRESS);
@@ -338,7 +328,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTNLGRP_IPV4_MROUTE_R", RTNLGRP_IPV4_MROUTE_R);
     lua_add_constant(L, "RTNLGRP_IPV6_MROUTE_R", RTNLGRP_IPV6_MROUTE_R);
     lua_add_constant(L, "RTNLGRP_NEXTHOP", RTNLGRP_NEXTHOP);
-    lua_add_constant(L, "RTNLGRP_BRVLAN", RTNLGRP_BRVLAN);
 
     lua_add_constant(L, "IFINFOMSG_SIZE", sizeof(struct ifinfomsg));
     lua_add_constant(L, "IFADDRMSG_SIZE", sizeof(struct ifaddrmsg));

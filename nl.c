@@ -486,7 +486,6 @@ int luaopen_eco_core_nl(lua_State *L)
     lua_add_constant(L, "NLMSGERR_ATTR_MSG", NLMSGERR_ATTR_MSG);
     lua_add_constant(L, "NLMSGERR_ATTR_OFFS", NLMSGERR_ATTR_OFFS);
     lua_add_constant(L, "NLMSGERR_ATTR_COOKIE", NLMSGERR_ATTR_COOKIE);
-    lua_add_constant(L, "NLMSGERR_ATTR_POLICY", NLMSGERR_ATTR_POLICY);
 
     lua_add_constant(L, "NLMSGERR_SIZE", sizeof(struct nlmsgerr));
 

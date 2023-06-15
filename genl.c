@@ -70,7 +70,6 @@ int luaopen_eco_core_genl(lua_State *L)
     lua_add_constant(L, "CTRL_CMD_NEWMCAST_GRP", CTRL_CMD_NEWMCAST_GRP);
     lua_add_constant(L, "CTRL_CMD_DELMCAST_GRP", CTRL_CMD_DELMCAST_GRP);
     lua_add_constant(L, "CTRL_CMD_GETMCAST_GRP", CTRL_CMD_GETMCAST_GRP);
-    lua_add_constant(L, "CTRL_CMD_GETPOLICY", CTRL_CMD_GETPOLICY);
 
     lua_add_constant(L, "CTRL_ATTR_UNSPEC", CTRL_ATTR_UNSPEC);
     lua_add_constant(L, "CTRL_ATTR_FAMILY_ID", CTRL_ATTR_FAMILY_ID);
@@ -80,9 +79,6 @@ int luaopen_eco_core_genl(lua_State *L)
     lua_add_constant(L, "CTRL_ATTR_MAXATTR", CTRL_ATTR_MAXATTR);
     lua_add_constant(L, "CTRL_ATTR_OPS", CTRL_ATTR_OPS);
     lua_add_constant(L, "CTRL_ATTR_MCAST_GROUPS", CTRL_ATTR_MCAST_GROUPS);
-    lua_add_constant(L, "CTRL_ATTR_POLICY", CTRL_ATTR_POLICY);
-    lua_add_constant(L, "CTRL_ATTR_OP_POLICY", CTRL_ATTR_OP_POLICY);
-    lua_add_constant(L, "CTRL_ATTR_OP", CTRL_ATTR_OP);
 
     lua_add_constant(L, "CTRL_ATTR_OP_ID", CTRL_ATTR_OP_ID);
     lua_add_constant(L, "CTRL_ATTR_OP_FLAGS", CTRL_ATTR_OP_FLAGS);
