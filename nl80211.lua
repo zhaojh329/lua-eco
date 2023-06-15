@@ -314,12 +314,16 @@ local function parse_rsn(data, defcipher, defauth)
     local res = {
         version = bit.bor(str_byte(data, 1),  lshift(str_byte(data, 2), 8)),
         group_cipher = defcipher,
-        pair_ciphers = { defcipher },
+        pair_ciphers = {},
         auth_suites = {}
     }
 
+    local pair_ciphers = res.pair_ciphers
+    local auth_suites = res.auth_suites
+
     data = data:sub(3)
     if #data < 4 then
+        pair_ciphers[defcipher] = true
         return res
     end
 
@@ -327,51 +331,47 @@ local function parse_rsn(data, defcipher, defauth)
 
     data = data:sub(5)
     if #data < 2 then
+        pair_ciphers[defcipher] = true
         return res
     end
 
     local count = bit.bor(str_byte(data, 1),  lshift(str_byte(data, 2), 8))
     if 2 + count * 4 > #data then
+        pair_ciphers[defcipher] = true
         return res
     end
 
     data = data:sub(3)
 
-    res.pair_ciphers = {}
-
-    local pair_ciphers = res.pair_ciphers
-
     while count > 0 do
-        pair_ciphers[#pair_ciphers + 1] = parse_cipher(data)
+        pair_ciphers[parse_cipher(data)] = true
         count = count - 1
         data = data:sub(5)
     end
 
     if #data < 2 then
-        res.auth_suites = { defauth }
+        auth_suites[defauth] = true
         return res
     end
 
     count = bit.bor(str_byte(data, 1),  lshift(str_byte(data, 2), 8))
     if 2 + count * 4 > #data then
-        res.auth_suites = { defauth }
+        auth_suites[defauth] = true
         return res
     end
 
     data = data:sub(3)
-
-    local auth_suites = res.auth_suites
 
     while count > 0 do
         local id = str_byte(data, 4)
 
         if data:sub(1, 3) == ms_oui then
             if id < 3 then
-                auth_suites[#auth_suites + 1] = auth_suite_names[id]
+                auth_suites[auth_suite_names[id]] = true
             end
         elseif data:sub(1, 3) == ieee80211_oui then
             if id < 19 then
-                auth_suites[#auth_suites + 1] = auth_suite_names[id]
+                auth_suites[auth_suite_names[id]] = true
             end
         end
 
@@ -408,7 +408,7 @@ end
 
 local function parse_bss(nest)
     local attrs = nl.parse_attr_nested(nest)
-    local info = {}
+    local info = { caps = {} }
 
     if not attrs[nl80211.BSS_BSSID] or not attrs[nl80211.BSS_CAPABILITY] then
         return nil
@@ -417,11 +417,15 @@ local function parse_bss(nest)
     local caps = nl.attr_get_u16(attrs[nl80211.BSS_CAPABILITY])
 
     if bit.band(caps, lshift(1, 0)) > 0 then
-        info.mode = 'ESS'
-    elseif bit.band(caps, lshift(1, 1)) > 0 then
-        info.mode = 'IBSS'
-    else
-        return nil
+        info.caps['ESS'] = true
+    end
+
+    if bit.band(caps, lshift(1, 1)) > 0 then
+        info.cap['IBSS'] = true
+    end
+
+    if bit.band(caps, lshift(1, 4)) > 0 then
+        info.caps['PRIVACY'] = true
     end
 
     local bssid = nl.attr_get_payload(attrs[nl80211.BSS_BSSID])
