@@ -9,12 +9,20 @@ else
     bit = load([[
         local M = {}
 
-        function M.band(a, b)
-            return a & b
+        function M.band(...)
+            local r
+            for _, v in ipairs({...}) do
+                r = r and r & v or v
+            end
+            return r
         end
 
-        function M.bor(a, b)
-            return a | b
+        function M.bor(...)
+            local r
+            for _, v in ipairs({...}) do
+                r = r and r | v or v
+            end
+            return r
         end
 
         function M.bxor(a, b)
