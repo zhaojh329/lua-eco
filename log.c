@@ -76,11 +76,13 @@ static void __lua_log(lua_State *L, int priority)
 
     *pos = '\0';
 
-    if (lua_getstack(L, 1, &ar)) {
-        lua_getinfo(L, "Sl", &ar);
-        if (ar.currentline > 0) {
-            filename = ar.short_src;
-            line = ar.currentline;
+    if (__log_flags__ & LOG_FLAG_FILE || __log_flags__ & LOG_FLAG_PATH) {
+        if (lua_getstack(L, 1, &ar)) {
+            lua_getinfo(L, "Sl", &ar);
+            if (ar.currentline > 0) {
+                filename = ar.short_src;
+                line = ar.currentline;
+            }
         }
     }
 
@@ -128,6 +130,15 @@ static int lua_log_set_path(lua_State *L)
     return 0;
 }
 
+static int lua_log_set_flags(lua_State *L)
+{
+    int flags = lua_tointeger(L, 1);
+
+    set_log_flags(flags);
+
+    return 0;
+}
+
 int luaopen_eco_log(lua_State *L)
 {
     lua_newtable(L);
@@ -140,6 +151,10 @@ int luaopen_eco_log(lua_State *L)
     lua_add_constant(L, "NOTICE", LOG_NOTICE);
     lua_add_constant(L, "INFO", LOG_INFO);
     lua_add_constant(L, "DEBUG", LOG_DEBUG);
+
+    lua_add_constant(L, "FLAG_LF", LOG_FLAG_LF);
+    lua_add_constant(L, "FLAG_FILE", LOG_FLAG_FILE);
+    lua_add_constant(L, "FLAG_PATH", LOG_FLAG_PATH);
 
     lua_pushcfunction(L, lua_log_set_level);
     lua_setfield(L, -2, "set_level");
@@ -158,6 +173,9 @@ int luaopen_eco_log(lua_State *L)
 
     lua_pushcfunction(L, lua_log_set_path);
     lua_setfield(L, -2, "set_path");
+
+    lua_pushcfunction(L, lua_log_set_flags);
+    lua_setfield(L, -2, "set_flags");
 
     return 1;
 }
