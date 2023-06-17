@@ -111,6 +111,24 @@ function M.freq_to_band(freq)
 	return 'Unknown'
 end
 
+local function prepare_send_cmd(cmd, flags)
+    local nl80211_id, err = genl.get_family_id('nl80211')
+    if not nl80211_id then
+        return nil, err
+    end
+
+    local msg = nl.nlmsg(nl80211_id, bit.bor(nl.NLM_F_REQUEST, flags or 0))
+
+    msg:put(genl.genlmsghdr({ cmd = cmd }))
+
+    local sock, err = nl.open(nl.NETLINK_GENERIC)
+    if not sock then
+        return nil, err
+    end
+
+    return sock, msg
+end
+
 local function parse_interface(msg)
     local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
     local info = {}
@@ -164,20 +182,12 @@ function M.get_interface(ifname)
         return nil, 'no dev'
     end
 
-    local nl80211_id, err = genl.get_family_id('nl80211')
-    if not nl80211_id then
-        return nil, err
-    end
-
-    local msg = nl.nlmsg(nl80211_id, nl.NLM_F_REQUEST)
-
-    msg:put(genl.genlmsghdr({ cmd = nl80211.CMD_GET_INTERFACE }))
-    msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
-
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE)
     if not sock then
-        return nil, err
+        return nil, msg
     end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
     local ok, err = sock:send(msg)
     if not ok then
@@ -203,26 +213,17 @@ function M.get_interface(ifname)
 end
 
 function M.get_interfaces(phy)
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
     if phy and type(phy) ~= 'number' then
         error('invalid phy index')
     end
 
-    local nl80211_id, err = genl.get_family_id('nl80211')
-    if not nl80211_id then
-        return nil, err
-    end
-
-    local msg = nl.nlmsg(nl80211_id, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_DUMP))
-
-    msg:put(genl.genlmsghdr({ cmd = nl80211.CMD_GET_INTERFACE }))
-
     if phy then
         msg:put_attr_u32(nl80211.ATTR_WIPHY, phy)
-    end
-
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
-    if not sock then
-        return nil, err
     end
 
     local ok, err = sock:send(msg)
@@ -451,22 +452,17 @@ local function parse_bss(nest)
 end
 
 function M.scan(action, params)
-    local nl80211_id, err = genl.get_family_id('nl80211')
-    if not nl80211_id then
-        return nil, err
-    end
-
-    local flags = nl.NLM_F_REQUEST
+    local flags = 0
     local cmd
 
     if action == 'trigger' then
-        flags = bit.bor(flags, nl.NLM_F_ACK)
+        flags = nl.NLM_F_ACK
         cmd = nl80211.CMD_TRIGGER_SCAN
     elseif action == 'dump' then
-        flags = bit.bor(flags, nl.NLM_F_DUMP)
+        flags = nl.NLM_F_DUMP
         cmd = nl80211.CMD_GET_SCAN
     elseif action == 'abort' then
-        flags = bit.bor(flags, nl.NLM_F_ACK)
+        flags = nl.NLM_F_ACK
         cmd = nl80211.CMD_ABORT_SCAN
     else
         error('invalid scan action')
@@ -483,9 +479,11 @@ function M.scan(action, params)
         return nil, 'no such device'
     end
 
-    local msg = nl.nlmsg(nl80211_id, flags)
+    local sock, msg = prepare_send_cmd(cmd, flags)
+    if not sock then
+        return nil, msg
+    end
 
-    msg:put(genl.genlmsghdr({ cmd = cmd }))
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
     if action == 'trigger' then
@@ -509,11 +507,6 @@ function M.scan(action, params)
             end
             msg:put_attr_nest_end()
         end
-    end
-
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
-    if not sock then
-        return nil, err
     end
 
     local ok, err = sock:send(msg)
@@ -578,19 +571,15 @@ function M.scan(action, params)
     end
 end
 
-function M.wait_scan_done(ifname, timeout)
-    local grp = genl.get_group_id('nl80211', 'scan')
+--[[
+    The callback function "cb" must return a boolean value to stop waiting event.
+    Return true or return false following a error message.
+    The callback will get three params: cmd, attrs, data.
+--]]
+function M.wait_event(grp_name, timeout, cb, data)
+    local grp = genl.get_group_id('nl80211', grp_name)
     if not grp then
         return nil, 'not support'
-    end
-
-    if type(ifname) ~= 'string' then
-        error('invalid ifname')
-    end
-
-    local ifindex = network.if_nametoindex(ifname)
-    if not ifindex then
-        return nil, 'no such device'
     end
 
     local sock, err = nl.open(nl.NETLINK_GENERIC)
@@ -628,20 +617,13 @@ function M.wait_scan_done(ifname, timeout)
         end
 
         local hdr = genl.parse_genlmsghdr(msg)
-        local cmd = hdr.cmd
+        local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
 
-        if cmd == nl80211.CMD_SCAN_ABORTED or cmd == nl80211.CMD_NEW_SCAN_RESULTS then
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-
-            if nl.attr_get_u32(attrs[nl80211.ATTR_IFINDEX]) == ifindex then
-                if cmd == nl80211.CMD_SCAN_ABORTED then
-                    return 'aborted'
-                end
-
-                if cmd == nl80211.CMD_NEW_SCAN_RESULTS then
-                    return 'done'
-                end
-            end
+        ok, err = cb(hdr.cmd, attrs, data)
+        if ok == true then
+            return true
+        elseif ok == false then
+            return false, err
         end
     end
 end

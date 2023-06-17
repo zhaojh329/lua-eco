@@ -1,6 +1,8 @@
 #!/usr/bin/env eco
 
 local nl80211 = require 'eco.nl80211'
+local network = require 'eco.network'
+local nl = require 'eco.nl'
 
 local ifname = 'wlan0'
 
@@ -10,7 +12,21 @@ if not ok then
     return
 end
 
-ok, err = nl80211.wait_scan_done(ifname, 15.0)
+local ifindex = network.if_nametoindex(ifname)
+
+ok, err = nl80211.wait_event('scan', 15.0, function(cmd, attrs)
+    if cmd == nl80211.CMD_SCAN_ABORTED or cmd == nl80211.CMD_NEW_SCAN_RESULTS then
+        if nl.attr_get_u32(attrs[nl80211.ATTR_IFINDEX]) == ifindex then
+            if cmd == nl80211.CMD_SCAN_ABORTED then
+                return false, 'aborted'
+            end
+
+            if cmd == nl80211.CMD_NEW_SCAN_RESULTS then
+                return true
+            end
+        end
+    end
+end)
 if not ok then
     print(err)
     return
