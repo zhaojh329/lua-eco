@@ -7,6 +7,50 @@
 
 #include "nl.h"
 
+#define BIT(x) (1ULL<<(x))
+
+static int parse_sta_flag_update(lua_State *L)
+{
+    struct nl80211_sta_flag_update *flags = (struct nl80211_sta_flag_update *)luaL_checkstring(L, 1);
+
+    lua_newtable(L);
+
+    if (flags->mask & BIT(NL80211_STA_FLAG_AUTHORIZED)) {
+        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_AUTHORIZED));
+        lua_setfield(L, -2, "authorized");
+    }
+
+    if (flags->mask & BIT(NL80211_STA_FLAG_AUTHENTICATED)) {
+        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_AUTHENTICATED));
+        lua_setfield(L, -2, "authenticated");
+    }
+
+    if (flags->mask & BIT(NL80211_STA_FLAG_ASSOCIATED)) {
+        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_ASSOCIATED));
+        lua_setfield(L, -2, "associated");
+    }
+
+    if (flags->mask & BIT(NL80211_STA_FLAG_SHORT_PREAMBLE)) {
+        if (flags->set & BIT(NL80211_STA_FLAG_SHORT_PREAMBLE))
+            lua_pushliteral(L, "short");
+        else
+            lua_pushliteral(L, "long");
+        lua_setfield(L, -2, "preamble");
+    }
+
+    if (flags->mask & BIT(NL80211_STA_FLAG_WME)) {
+        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_WME));
+        lua_setfield(L, -2, "WMM/WME");
+    }
+
+    if (flags->mask & BIT(NL80211_STA_FLAG_MFP)) {
+        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_MFP));
+        lua_setfield(L, -2, "MFP");
+    }
+
+    return 1;
+}
+
 int luaopen_eco_core_nl80211(lua_State *L)
 {
     lua_newtable(L);
@@ -428,6 +472,53 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "BSS_CHAN_WIDTH", NL80211_BSS_CHAN_WIDTH);
     lua_add_constant(L, "BSS_BEACON_TSF", NL80211_BSS_BEACON_TSF);
     lua_add_constant(L, "BSS_PRESP_DATA", NL80211_BSS_PRESP_DATA);
+
+    lua_add_constant(L, "STA_INFO_INACTIVE_TIME", NL80211_STA_INFO_INACTIVE_TIME);
+    lua_add_constant(L, "STA_INFO_RX_BYTES", NL80211_STA_INFO_RX_BYTES);
+    lua_add_constant(L, "STA_INFO_TX_BYTES", NL80211_STA_INFO_TX_BYTES);
+    lua_add_constant(L, "STA_INFO_LLID", NL80211_STA_INFO_LLID);
+    lua_add_constant(L, "STA_INFO_PLID", NL80211_STA_INFO_PLID);
+    lua_add_constant(L, "STA_INFO_PLINK_STATE", NL80211_STA_INFO_PLINK_STATE);
+    lua_add_constant(L, "STA_INFO_SIGNAL", NL80211_STA_INFO_SIGNAL);
+    lua_add_constant(L, "STA_INFO_TX_BITRATE", NL80211_STA_INFO_TX_BITRATE);
+    lua_add_constant(L, "STA_INFO_RX_PACKETS", NL80211_STA_INFO_RX_PACKETS);
+    lua_add_constant(L, "STA_INFO_TX_PACKETS", NL80211_STA_INFO_TX_PACKETS);
+    lua_add_constant(L, "STA_INFO_TX_RETRIES", NL80211_STA_INFO_TX_RETRIES);
+    lua_add_constant(L, "STA_INFO_TX_FAILED", NL80211_STA_INFO_TX_FAILED);
+    lua_add_constant(L, "STA_INFO_SIGNAL_AVG", NL80211_STA_INFO_SIGNAL_AVG);
+    lua_add_constant(L, "STA_INFO_RX_BITRATE", NL80211_STA_INFO_RX_BITRATE);
+    lua_add_constant(L, "STA_INFO_BSS_PARAM", NL80211_STA_INFO_BSS_PARAM);
+    lua_add_constant(L, "STA_INFO_CONNECTED_TIME", NL80211_STA_INFO_CONNECTED_TIME);
+    lua_add_constant(L, "STA_INFO_STA_FLAGS", NL80211_STA_INFO_STA_FLAGS);
+    lua_add_constant(L, "STA_INFO_BEACON_LOSS", NL80211_STA_INFO_BEACON_LOSS);
+    lua_add_constant(L, "STA_INFO_T_OFFSET", NL80211_STA_INFO_T_OFFSET);
+    lua_add_constant(L, "STA_INFO_LOCAL_PM", NL80211_STA_INFO_LOCAL_PM);
+    lua_add_constant(L, "STA_INFO_PEER_PM", NL80211_STA_INFO_PEER_PM);
+    lua_add_constant(L, "STA_INFO_NONPEER_PM", NL80211_STA_INFO_NONPEER_PM);
+    lua_add_constant(L, "STA_INFO_RX_BYTES64", NL80211_STA_INFO_RX_BYTES64);
+    lua_add_constant(L, "STA_INFO_TX_BYTES64", NL80211_STA_INFO_TX_BYTES64);
+    lua_add_constant(L, "STA_INFO_CHAIN_SIGNAL", NL80211_STA_INFO_CHAIN_SIGNAL);
+    lua_add_constant(L, "STA_INFO_CHAIN_SIGNAL_AVG", NL80211_STA_INFO_CHAIN_SIGNAL_AVG);
+    lua_add_constant(L, "STA_INFO_EXPECTED_THROUGHPUT", NL80211_STA_INFO_EXPECTED_THROUGHPUT);
+    lua_add_constant(L, "STA_INFO_RX_DROP_MISC", NL80211_STA_INFO_RX_DROP_MISC);
+    lua_add_constant(L, "STA_INFO_BEACON_RX", NL80211_STA_INFO_BEACON_RX);
+    lua_add_constant(L, "STA_INFO_BEACON_SIGNAL_AVG", NL80211_STA_INFO_BEACON_SIGNAL_AVG);
+    lua_add_constant(L, "STA_INFO_TID_STATS", NL80211_STA_INFO_TID_STATS);
+    lua_add_constant(L, "STA_INFO_RX_DURATION", NL80211_STA_INFO_RX_DURATION);
+    lua_add_constant(L, "STA_INFO_PAD", NL80211_STA_INFO_PAD);
+    lua_add_constant(L, "STA_INFO_ACK_SIGNAL", NL80211_STA_INFO_ACK_SIGNAL);
+    lua_add_constant(L, "STA_INFO_ACK_SIGNAL_AVG", NL80211_STA_INFO_ACK_SIGNAL_AVG);
+    lua_add_constant(L, "STA_INFO_RX_MPDUS", NL80211_STA_INFO_RX_MPDUS);
+    lua_add_constant(L, "STA_INFO_FCS_ERROR_COUNT", NL80211_STA_INFO_FCS_ERROR_COUNT);
+    lua_add_constant(L, "STA_INFO_CONNECTED_TO_GATE", NL80211_STA_INFO_CONNECTED_TO_GATE);
+    lua_add_constant(L, "STA_INFO_TX_DURATION", NL80211_STA_INFO_TX_DURATION);
+    lua_add_constant(L, "STA_INFO_AIRTIME_WEIGHT", NL80211_STA_INFO_AIRTIME_WEIGHT);
+    lua_add_constant(L, "STA_INFO_AIRTIME_LINK_METRIC", NL80211_STA_INFO_AIRTIME_LINK_METRIC);
+    lua_add_constant(L, "STA_INFO_ASSOC_AT_BOOTTIME", NL80211_STA_INFO_ASSOC_AT_BOOTTIME);
+    lua_add_constant(L, "STA_INFO_CONNECTED_TO_AS", NL80211_STA_INFO_CONNECTED_TO_AS);
+
+    lua_pushcfunction(L, parse_sta_flag_update);
+    lua_setfield(L, -2, "parse_sta_flag_update");
 
     return 1;
 }

@@ -628,4 +628,192 @@ function M.wait_event(grp_name, timeout, cb, data)
     end
 end
 
+local function parse_station(attrs, sinfo)
+    local info = {}
+
+    local mac = nl.attr_get_payload(attrs[nl80211.ATTR_MAC])
+    info.mac = hex.encode(mac, ':')
+
+    if sinfo[nl80211.STA_INFO_INACTIVE_TIME] then
+        info.inactive_time = nl.attr_get_u32(sinfo[nl80211.STA_INFO_INACTIVE_TIME])
+    end
+
+    if sinfo[nl80211.STA_INFO_CONNECTED_TIME] then
+        info.connected_time = nl.attr_get_u32(sinfo[nl80211.STA_INFO_CONNECTED_TIME])
+    end
+
+    if sinfo[nl80211.STA_INFO_BEACON_LOSS] then
+        info.beacon_loss = nl.attr_get_u32(sinfo[nl80211.STA_INFO_BEACON_LOSS])
+    end
+
+    if sinfo[nl80211.STA_INFO_BEACON_RX] then
+        info.beacon_rx = nl.attr_get_u64(sinfo[nl80211.STA_INFO_BEACON_RX])
+    end
+
+    if sinfo[nl80211.STA_INFO_RX_BYTES64] then
+        info.rx_bytes = nl.attr_get_u64(sinfo[nl80211.STA_INFO_RX_BYTES64])
+    elseif sinfo[nl80211.STA_INFO_RX_BYTES] then
+        info.rx_bytes = nl.attr_get_u32(sinfo[nl80211.STA_INFO_RX_BYTES])
+    end
+
+    if sinfo[nl80211.STA_INFO_TX_BYTES64] then
+        info.tx_bytes = nl.attr_get_u64(sinfo[nl80211.STA_INFO_TX_BYTES64])
+    elseif sinfo[nl80211.STA_INFO_TX_BYTES] then
+        info.tx_bytes = nl.attr_get_u32(sinfo[nl80211.STA_INFO_TX_BYTES])
+    end
+
+    if sinfo[nl80211.STA_INFO_RX_PACKETS] then
+        info.rx_packets = nl.attr_get_u32(sinfo[nl80211.STA_INFO_RX_PACKETS])
+    end
+
+    if sinfo[nl80211.STA_INFO_TX_PACKETS] then
+        info.tx_packets = nl.attr_get_u32(sinfo[nl80211.STA_INFO_TX_PACKETS])
+    end
+
+    if sinfo[nl80211.STA_INFO_TX_RETRIES] then
+        info.tx_retries = nl.attr_get_u32(sinfo[nl80211.STA_INFO_TX_RETRIES])
+    end
+
+    if sinfo[nl80211.STA_INFO_TX_FAILED] then
+        info.tx_failed = nl.attr_get_u32(sinfo[nl80211.STA_INFO_TX_FAILED])
+    end
+
+    if sinfo[nl80211.STA_INFO_SIGNAL] then
+        info.signal = nl.attr_get_s8(sinfo[nl80211.STA_INFO_SIGNAL])
+    end
+
+    if sinfo[nl80211.STA_INFO_SIGNAL_AVG] then
+        info.signal_avg = nl.attr_get_s8(sinfo[nl80211.STA_INFO_SIGNAL_AVG])
+    end
+
+    if sinfo[nl80211.STA_INFO_BEACON_SIGNAL_AVG] then
+        info.beacon_signal_avg = nl.attr_get_s8(sinfo[nl80211.STA_INFO_BEACON_SIGNAL_AVG])
+    end
+
+    if sinfo[nl80211.STA_INFO_ACK_SIGNAL] then
+        info.ack_signal = nl.attr_get_s8(sinfo[nl80211.STA_INFO_ACK_SIGNAL])
+    end
+
+    if sinfo[nl80211.STA_INFO_ACK_SIGNAL_AVG] then
+        info.ack_signal_avg = nl.attr_get_s8(sinfo[nl80211.STA_INFO_ACK_SIGNAL_AVG])
+    end
+
+    if sinfo[nl80211.STA_INFO_STA_FLAGS] then
+        local flags = nl80211.parse_sta_flag_update(nl.attr_get_payload(sinfo[nl80211.STA_INFO_STA_FLAGS]))
+        for k, v in pairs(flags) do
+            info[k] = v
+        end
+    end
+
+    return info
+end
+
+function M.get_station(ifname, mac)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    if type(mac) ~= 'string' then
+        error('invalid mac')
+    end
+
+    local ifidx = network.if_nametoindex(ifname)
+    if not ifidx then
+        return nil, 'no dev'
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
+    msg:put_attr(nl80211.ATTR_MAC, hex.decode(mac:gsub(':', '')))
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    msg, err = sock:recv()
+    if not msg then
+        return nil, err
+    end
+
+    local nlh = msg:next()
+    if not nlh then
+        return nil, 'no msg responsed'
+    end
+
+    if nlh.type == nl.NLMSG_ERROR then
+        err = msg:parse_error()
+        return nil, sys.strerror(-err)
+    end
+
+    local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+    if not attrs[nl80211.ATTR_STA_INFO] then
+        return nil, 'invalid received'
+    end
+
+    local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
+    return parse_station(attrs, sinfo)
+end
+
+function M.get_stations(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local ifidx = network.if_nametoindex(ifname)
+    if not ifidx then
+        return nil, 'no dev'
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    local stations = {}
+
+    while true do
+        msg, err = sock:recv()
+        if not msg then
+            return nil, err
+        end
+
+        while true do
+            local nlh = msg:next()
+            if not nlh then
+                break
+            end
+
+            if nlh.type == nl.NLMSG_ERROR then
+                err = msg:parse_error()
+                return nil, sys.strerror(-err)
+            end
+
+            if nlh.type == nl.NLMSG_DONE then
+                return stations
+            end
+
+            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+            if attrs[nl80211.ATTR_STA_INFO] then
+                local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
+                local res = parse_station(attrs, sinfo)
+                if res then
+                    stations[#stations + 1] = res
+                end
+            end
+        end
+    end
+end
+
 return setmetatable(M, { __index = nl80211 })
