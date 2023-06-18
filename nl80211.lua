@@ -628,6 +628,86 @@ function M.wait_event(grp_name, timeout, cb, data)
     end
 end
 
+local function parse_bitrate(attrs)
+    local r = {}
+    local rate = 0
+    local mcs
+
+    if attrs[nl80211.RATE_INFO_BITRATE32] then
+        rate = nl.attr_get_u32(attrs[nl80211.RATE_INFO_BITRATE32])
+    elseif attrs[nl80211.RATE_INFO_BITRATE] then
+        rate = nl.attr_get_u16(attrs[nl80211.RATE_INFO_BITRATE32])
+    end
+
+    r.rate = rate / 10
+
+    if attrs[nl80211.RATE_INFO_EHT_MCS] then
+        r.eht = true
+
+        mcs = nl.attr_get_u8(attrs[nl80211.RATE_INFO_EHT_MCS])
+
+        if attrs[nl80211.RATE_INFO_EHT_NSS] then
+            r.nss = nl.attr_get_u8(attrs[nl80211.RATE_INFO_EHT_NSS])
+        end
+
+        if attrs[nl80211.RATE_INFO_EHT_GI] then
+            r.eht_gi = nl.attr_get_u8(attrs[nl80211.RATE_INFO_EHT_GI])
+        end
+    elseif attrs[nl80211.RATE_INFO_HE_MCS] then
+        r.he = true
+
+        mcs = nl.attr_get_u8(attrs[nl80211.RATE_INFO_HE_MCS])
+
+        if attrs[nl80211.RATE_INFO_HE_NSS] then
+            r.nss = nl.attr_get_u8(attrs[nl80211.RATE_INFO_HE_NSS])
+        end
+
+        if attrs[nl80211.RATE_INFO_HE_GI] then
+            r.he_gi = nl.attr_get_u8(attrs[nl80211.RATE_INFO_HE_GI])
+        end
+
+        if attrs[nl80211.RATE_INFO_HE_RU_ALLOC] then
+            r.he_ru_alloc = nl.attr_get_u8(attrs[nl80211.RATE_INFO_HE_RU_ALLOC])
+        end
+
+        if attrs[nl80211.RATE_INFO_HE_DCM] then
+            r.he_dcm = nl.attr_get_u8(attrs[nl80211.RATE_INFO_HE_DCM])
+        end
+    elseif attrs[nl80211.RATE_INFO_VHT_MCS] then
+        r.vht = true
+
+        mcs = nl.attr_get_u8(attrs[nl80211.RATE_INFO_VHT_MCS])
+
+        if attrs[nl80211.RATE_INFO_VHT_NSS] then
+            r.nss = nl.attr_get_u8(attrs[nl80211.RATE_INFO_VHT_NSS])
+        end
+    elseif attrs[nl80211.RATE_INFO_MCS] then
+        mcs = nl.attr_get_u8(attrs[nl80211.RATE_INFO_MCS])
+    end
+
+    r.mcs = mcs
+
+    if attrs[nl80211.RATE_INFO_5_MHZ_WIDTH] then
+        r.width = 5
+    elseif attrs[nl80211.RATE_INFO_10_MHZ_WIDTH] then
+        r.width = 10
+    elseif attrs[nl80211.RATE_INFO_40_MHZ_WIDTH] then
+        r.width = 40
+    elseif attrs[nl80211.RATE_INFO_80_MHZ_WIDTH] then
+        r.width = 80
+    elseif attrs[nl80211.RATE_INFO_80P80_MHZ_WIDTH] or attrs[nl80211.RATE_INFO_160_MHZ_WIDTH] then
+        r.width = 160
+    else
+        r.width = 20
+    end
+
+    if attrs[nl80211.RATE_INFO_SHORT_GI] then
+        r.short_gi = true
+    end
+
+    return r
+end
+
 local function parse_station(attrs, sinfo)
     local info = {}
 
@@ -703,6 +783,14 @@ local function parse_station(attrs, sinfo)
         for k, v in pairs(flags) do
             info[k] = v
         end
+    end
+
+    if sinfo[nl80211.STA_INFO_RX_BITRATE] then
+        info.rx_rate = parse_bitrate(nl.parse_attr_nested(sinfo[nl80211.STA_INFO_RX_BITRATE]))
+    end
+
+    if sinfo[nl80211.STA_INFO_TX_BITRATE] then
+        info.tx_rate = parse_bitrate(nl.parse_attr_nested(sinfo[nl80211.STA_INFO_TX_BITRATE]))
     end
 
     return info
