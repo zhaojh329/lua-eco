@@ -9,5 +9,5 @@ ctx:update('1234')
 local hash = ctx:final()
 print(hex.encode(hash))
 
-local hash = sha1.sum('1234')
+hash = sha1.sum('1234')
 print(hex.encode(hash))
