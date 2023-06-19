@@ -5,9 +5,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_DATE:=2023-06-15
-PKG_SOURCE_VERSION:=34f429667a2324bd721dea24ca0f725ca6122ceb
-PKG_MIRROR_HASH:=dc22d8476911143249758f3d332291d39c8b84c4efa91e50738167b44f1fbdbe
+PKG_SOURCE_DATE:=2023-06-19
+PKG_SOURCE_VERSION:=950923fe10a3de6ce6a671a444a02c8a708bb282
+PKG_MIRROR_HASH:=2d67481be43d2aceb20a6e8d844a099cfebfcf2277fe0d08aeb8c9322d070484
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -50,6 +50,7 @@ Package/lua-eco-sys=$(call Package/lua-eco/Module,system utils)
 Package/lua-eco-file=$(call Package/lua-eco/Module,file utils)
 Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
 Package/lua-eco-sha1=$(call Package/lua-eco/Module,sha1)
+Package/lua-eco-md5=$(call Package/lua-eco/Module,md5)
 Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
 Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket +luabitop)
 Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
@@ -131,6 +132,11 @@ define Package/lua-eco-sha1/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/crypto/sha1.so $(1)/usr/lib/lua/eco/crypto
 endef
 
+define Package/lua-eco-md5/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/crypto
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/crypto/md5.so $(1)/usr/lib/lua/eco/crypto
+endef
+
 define Package/lua-eco-socket/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/socket.lua $(1)/usr/lib/lua/eco
@@ -203,6 +209,7 @@ $(eval $(call BuildPackage,lua-eco-sys))
 $(eval $(call BuildPackage,lua-eco-file))
 $(eval $(call BuildPackage,lua-eco-base64))
 $(eval $(call BuildPackage,lua-eco-sha1))
+$(eval $(call BuildPackage,lua-eco-md5))
 $(eval $(call BuildPackage,lua-eco-socket))
 $(eval $(call BuildPackage,lua-eco-dns))
 $(eval $(call BuildPackage,lua-eco-ssl))
