@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
+ *
+ * Referenced from https://git.openwrt.org/?p=project/libubox.git;a=blob;f=md5.c
  */
 
 #include <arpa/inet.h>
