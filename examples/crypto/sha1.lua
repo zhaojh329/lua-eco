@@ -1,7 +1,7 @@
 #!/usr/bin/env eco
 
 local sha1 = require 'eco.crypto.sha1'
-local hex = require 'eco.hex'
+local hex = require 'eco.encoding.hex'
 
 local ctx = sha1.new()
 ctx:update('1234')
