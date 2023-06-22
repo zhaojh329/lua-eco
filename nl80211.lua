@@ -3,7 +3,7 @@
 
 local nl80211 = require 'eco.core.nl80211'
 local hex = require 'eco.encoding.hex'
-local network = require 'eco.network'
+local socket = require 'eco.socket'
 local sys = require 'eco.core.sys'
 local genl = require 'eco.genl'
 local bit = require 'eco.bit'
@@ -177,7 +177,7 @@ function M.get_interface(ifname)
         error('invalid ifname')
     end
 
-    local ifidx = network.if_nametoindex(ifname)
+    local ifidx = socket.if_nametoindex(ifname)
     if not ifidx then
         return nil, 'no dev'
     end
@@ -474,7 +474,7 @@ function M.scan(action, params)
         error('invalid ifname')
     end
 
-    local ifidx = network.if_nametoindex(params.ifname)
+    local ifidx = socket.if_nametoindex(params.ifname)
     if not ifidx then
         return nil, 'no such device'
     end
@@ -805,7 +805,7 @@ function M.get_station(ifname, mac)
         error('invalid mac')
     end
 
-    local ifidx = network.if_nametoindex(ifname)
+    local ifidx = socket.if_nametoindex(ifname)
     if not ifidx then
         return nil, 'no dev'
     end
@@ -852,7 +852,7 @@ function M.get_stations(ifname)
         error('invalid ifname')
     end
 
-    local ifidx = network.if_nametoindex(ifname)
+    local ifidx = socket.if_nametoindex(ifname)
     if not ifidx then
         return nil, 'no dev'
     end

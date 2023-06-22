@@ -7,7 +7,7 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <linux/if.h>
+#include <net/if.h>
 #include <stdlib.h>
 #include <sys/un.h>
 #include <string.h>
@@ -716,6 +716,30 @@ static int eco_socket_inet_ntop(lua_State *L)
     return 1;
 }
 
+static int eco_socket_if_nametoindex(lua_State *L)
+{
+    const char *ifname = luaL_checkstring(L, 1);
+    unsigned int ifidx = if_nametoindex(ifname);
+
+    if (ifidx == 0)
+        lua_pushnil(L);
+    else
+        lua_pushint(L, ifidx);
+
+    return 1;
+}
+
+static int eco_socket_if_indextoname(lua_State *L)
+{
+    int index = luaL_checkinteger(L, 1);
+    char ifname[IF_NAMESIZE] = "";
+
+    if_indextoname(index, ifname);
+    lua_pushstring(L, ifname);
+
+    return 1;
+}
+
 int luaopen_eco_core_socket(lua_State *L)
 {
     lua_newtable(L);
@@ -819,6 +843,12 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_pushcfunction(L, eco_socket_inet_ntop);
     lua_setfield(L, -2, "inet_ntop");
+
+    lua_pushcfunction(L, eco_socket_if_nametoindex);
+    lua_setfield(L, -2, "if_nametoindex");
+
+    lua_pushcfunction(L, eco_socket_if_indextoname);
+    lua_setfield(L, -2, "if_indextoname");
 
     return 1;
 }

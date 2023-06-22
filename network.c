@@ -282,29 +282,6 @@ static int lua_hex6addr(lua_State *L)
     return 1;
 }
 
-static int lua_if_nametoindex(lua_State *L)
-{
-    const char *ifname = luaL_checkstring(L, 1);
-    unsigned int ifidx = if_nametoindex(ifname);
-
-    if (ifidx == 0)
-        lua_pushnil(L);
-    else
-        lua_pushint(L, ifidx);
-
-    return 1;
-}
-
-static int lua_if_indextoname(lua_State *L)
-{
-    int index = luaL_checkinteger(L, 1);
-    char ifname[IF_NAMESIZE] = "";
-
-    if_indextoname(index, ifname);
-    lua_pushstring(L, ifname);
-    return 1;
-}
-
 int luaopen_eco_network(lua_State *L)
 {
     lua_newtable(L);
@@ -323,12 +300,6 @@ int luaopen_eco_network(lua_State *L)
 
     lua_pushcfunction(L, lua_hex6addr);
     lua_setfield(L, -2, "hex6addr");
-
-    lua_pushcfunction(L, lua_if_nametoindex);
-    lua_setfield(L, -2, "if_nametoindex");
-
-    lua_pushcfunction(L, lua_if_indextoname);
-    lua_setfield(L, -2, "if_indextoname");
 
     return 1;
 }

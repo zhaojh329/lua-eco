@@ -1,6 +1,5 @@
 #!/usr/bin/env eco
 
-local network = require 'eco.network'
 local socket = require 'eco.socket'
 local rtnl = require 'eco.rtnl'
 local bit = require 'eco.bit'
@@ -46,7 +45,7 @@ while true do
                 end
 
                 if k == 'index' then
-                    print('ifname:', network.if_indextoname(v))
+                    print('ifname:', socket.if_indextoname(v))
                 end
             end
 
