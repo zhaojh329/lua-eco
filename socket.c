@@ -716,6 +716,20 @@ static int eco_socket_inet_ntop(lua_State *L)
     return 1;
 }
 
+static int eco_socket_inet_pton(lua_State *L)
+{
+    int family = luaL_checkinteger(L, 1);
+    const void *src = luaL_checkstring(L, 2);
+    char dst[sizeof(struct in6_addr)];
+
+    if (inet_pton(family, src, dst))
+        lua_pushlstring(L, dst, sizeof(dst));
+    else
+        lua_pushnil(L);
+
+    return 1;
+}
+
 static int eco_socket_if_nametoindex(lua_State *L)
 {
     const char *ifname = luaL_checkstring(L, 1);
@@ -843,6 +857,9 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_pushcfunction(L, eco_socket_inet_ntop);
     lua_setfield(L, -2, "inet_ntop");
+
+    lua_pushcfunction(L, eco_socket_inet_pton);
+    lua_setfield(L, -2, "inet_pton");
 
     lua_pushcfunction(L, eco_socket_if_nametoindex);
     lua_setfield(L, -2, "if_nametoindex");
