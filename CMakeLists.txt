@@ -70,9 +70,6 @@ set_target_properties(sha1 PROPERTIES OUTPUT_NAME sha1 PREFIX "")
 add_library(md5 MODULE md5.c)
 set_target_properties(md5 PROPERTIES OUTPUT_NAME md5 PREFIX "")
 
-add_library(network MODULE network.c)
-set_target_properties(network PROPERTIES OUTPUT_NAME network PREFIX "")
-
 add_library(nl MODULE nl.c)
 set_target_properties(nl PROPERTIES OUTPUT_NAME nl PREFIX "")
 
@@ -133,7 +130,7 @@ install(
 )
 
 install(
-    TARGETS log termios struct network rtnl
+    TARGETS log termios struct rtnl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
