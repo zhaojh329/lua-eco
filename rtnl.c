@@ -329,6 +329,12 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTNLGRP_IPV6_MROUTE_R", RTNLGRP_IPV6_MROUTE_R);
     lua_add_constant(L, "RTNLGRP_NEXTHOP", RTNLGRP_NEXTHOP);
 
+    lua_add_constant(L, "RT_SCOPE_UNIVERSE", RT_SCOPE_UNIVERSE);
+    lua_add_constant(L, "RT_SCOPE_SITE", RT_SCOPE_SITE);
+    lua_add_constant(L, "RT_SCOPE_LINK", RT_SCOPE_LINK);
+    lua_add_constant(L, "RT_SCOPE_HOST", RT_SCOPE_HOST);
+    lua_add_constant(L, "RT_SCOPE_NOWHERE", RT_SCOPE_NOWHERE);
+
     lua_add_constant(L, "IFINFOMSG_SIZE", sizeof(struct ifinfomsg));
     lua_add_constant(L, "IFADDRMSG_SIZE", sizeof(struct ifaddrmsg));
 

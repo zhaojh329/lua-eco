@@ -160,6 +160,6 @@ install(
 install(
     FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
         url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua
-        nl.lua genl.lua nl80211.lua
+        nl.lua genl.lua ip.lua nl80211.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
