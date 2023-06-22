@@ -14,7 +14,7 @@ end
 
 local msg = nl.nlmsg(rtnl.RTM_SETLINK, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_ACK))
 
-msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, change = nl.IFF_UP, flags = nl.IFF_UP }))
+msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, change = rtnl.IFF_UP, flags = rtnl.IFF_UP }))
 msg:put_attr_str(rtnl.IFLA_IFNAME, 'eth0')
 
 local ok, err = sock:send(msg)
