@@ -5,52 +5,9 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "eco.h"
-
-static int ifup(const char *ifname, bool up)
-{
-    struct ifreq ifr;
-    int sock;
-    int ret;
-
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0)
-        return -1;
-
-    strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
-
-    ioctl(sock, SIOCGIFFLAGS, &ifr);
-
-    if (up)
-        ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
-    else
-        ifr.ifr_flags &= ~(IFF_UP | IFF_RUNNING);
-
-    ret = ioctl(sock, SIOCSIFFLAGS, &ifr);
-
-    close(sock);
-
-    return ret;
-}
-
-static int lua_ifup(lua_State *L)
-{
-    const char *ifname = luaL_checkstring(L, 1);
-    lua_pushboolean(L, !ifup(ifname, true));
-    return 1;
-}
-
-static int lua_ifdown(lua_State *L)
-{
-    const char *ifname = luaL_checkstring(L, 1);
-    lua_pushboolean(L, !ifup(ifname, false));
-    return 1;
-}
 
 static int calc_ip_prefix(uint32_t n)
 {
@@ -285,12 +242,6 @@ static int lua_hex6addr(lua_State *L)
 int luaopen_eco_network(lua_State *L)
 {
     lua_newtable(L);
-
-    lua_pushcfunction(L, lua_ifup);
-    lua_setfield(L, -2, "ifup");
-
-    lua_pushcfunction(L, lua_ifdown);
-    lua_setfield(L, -2, "ifdown");
 
     lua_pushcfunction(L, lua_ipcalc);
     lua_setfield(L, -2, "ipcalc");
