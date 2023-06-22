@@ -5,9 +5,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_DATE:=2023-06-19
-PKG_SOURCE_VERSION:=950923fe10a3de6ce6a671a444a02c8a708bb282
-PKG_MIRROR_HASH:=2d67481be43d2aceb20a6e8d844a099cfebfcf2277fe0d08aeb8c9322d070484
+PKG_SOURCE_DATE:=2023-06-22
+PKG_SOURCE_VERSION:=636ac89c5fedb8302bc6e370f8631781579a8d61
+PKG_MIRROR_HASH:=66833e181f36f327322755fb0a4d85276fdbaf7e3ff53b54ecfa9151a0898270
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -64,6 +64,7 @@ Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
 Package/lua-eco-struct=$(call Package/lua-eco/Module,struct pack)
 Package/lua-eco-network=$(call Package/lua-eco/Module,network utils)
 Package/lua-eco-netlink=$(call Package/lua-eco/Module,netlink)
+Package/lua-eco-ip=$(call Package/lua-eco/Module,ip utils,+lua-eco-netlink)
 Package/lua-eco-nl80211=$(call Package/lua-eco/Module,nl80211,+lua-eco-netlink)
 
 define Package/lua-eco-ssl/config
@@ -197,6 +198,11 @@ define Package/lua-eco-netlink/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/rtnl.so $(1)/usr/lib/lua/eco
 endef
 
+define Package/lua-eco-ip/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/eco
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/ip.lua $(1)/usr/lib/lua/eco
+endef
+
 define Package/lua-eco-nl80211/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/eco/core
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lua/eco/nl80211.lua $(1)/usr/lib/lua/eco
@@ -220,4 +226,5 @@ $(eval $(call BuildPackage,lua-eco-websocket))
 $(eval $(call BuildPackage,lua-eco-termios))
 $(eval $(call BuildPackage,lua-eco-network))
 $(eval $(call BuildPackage,lua-eco-netlink))
+$(eval $(call BuildPackage,lua-eco-ip))
 $(eval $(call BuildPackage,lua-eco-nl80211))
