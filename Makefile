@@ -5,9 +5,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/zhaojh329/lua-eco.git
-PKG_SOURCE_DATE:=2023-06-22
-PKG_SOURCE_VERSION:=2c1475eb0c8cff0accc041a1a2cf78175bd85a93
-PKG_MIRROR_HASH:=bcef1baa46cdd0aa2e556c2e2367abfb9a367358df13d85855377e3881b6222a
+PKG_SOURCE_DATE:=2023-06-25
+PKG_SOURCE_VERSION:=e08cac48f5eb5649b1aa5db1f95e73faae900cb6
+PKG_MIRROR_HASH:=319bb6db6aa8ee8650d723b349f1e635140e7bb520a80a994611be15ed02e8d2
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -27,7 +27,7 @@ define Package/lua-eco
   CATEGORY:=Languages
   SUBMENU:=Lua
   URL:=https://github.com/zhaojh329/lua-eco
-  DEPENDS:=+libev +liblua
+  DEPENDS:=+libev +liblua +luabitop
 endef
 
 define Package/lua-eco/description
@@ -52,7 +52,7 @@ Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
 Package/lua-eco-sha1=$(call Package/lua-eco/Module,sha1)
 Package/lua-eco-md5=$(call Package/lua-eco/Module,md5)
 Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
-Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket +luabitop)
+Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket)
 Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
   +LUA_ECO_OPENSSL:libopenssl +LUA_ECO_WOLFSSL:libwolfssl \
   +LUA_ECO_MBEDTLS:libmbedtls +LUA_ECO_MBEDTLS:zlib +lua-eco-socket)
@@ -62,7 +62,7 @@ Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco
 Package/lua-eco-websocket=$(call Package/lua-eco/Module,websocket,+lua-eco-http +lua-eco-base64 +lua-eco-sha1)
 Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
 Package/lua-eco-struct=$(call Package/lua-eco/Module,struct pack)
-Package/lua-eco-netlink=$(call Package/lua-eco/Module,netlink)
+Package/lua-eco-netlink=$(call Package/lua-eco/Module,netlink,+lua-eco-socket)
 Package/lua-eco-ip=$(call Package/lua-eco/Module,ip utils,+lua-eco-netlink)
 Package/lua-eco-nl80211=$(call Package/lua-eco/Module,nl80211,+lua-eco-netlink)
 
