@@ -3,8 +3,6 @@
 
 local socket = require 'eco.socket'
 local nl = require 'eco.core.nl'
-local file = require 'eco.file'
-local sys = require 'eco.sys'
 
 local M = {}
 
