@@ -18,8 +18,7 @@ struct eco_ubus_request {
     struct ubus_context *ctx;
     struct ubus_request req;
     lua_State *co;
-    int ref;
-    int fd[2];
+    int ref[2];
 };
 
 struct eco_ubus_event {
@@ -214,13 +213,6 @@ static int eco_ubus_close(lua_State *L)
     return 0;
 }
 
-static int eco_ubus_req_wait_fd(lua_State *L)
-{
-    struct eco_ubus_request *req = luaL_checkudata(L, 1, ECO_UBUS_REQ_MT);
-    lua_pushinteger(L, req->fd[0]);
-    return 1;
-}
-
 static int eco_ubus_req_close(lua_State *L)
 {
     struct eco_ubus_request *req = luaL_checkudata(L, 1, ECO_UBUS_REQ_MT);
@@ -228,13 +220,10 @@ static int eco_ubus_req_close(lua_State *L)
     if (!req->co)
         return 0;
 
-    close(req->fd[0]);
-    close(req->fd[1]);
-    req->fd[0] = -1;
-
     req->co = NULL;
 
-    luaL_unref(L, LUA_REGISTRYINDEX, req->ref);
+    luaL_unref(L, LUA_REGISTRYINDEX, req->ref[0]);
+    luaL_unref(L, LUA_REGISTRYINDEX, req->ref[1]);
 
     return 0;
 }
@@ -252,7 +241,6 @@ static int eco_ubus_req_gc(lua_State *L)
 }
 
 static const struct luaL_Reg ubus_req_methods[] = {
-    {"wait_fd", eco_ubus_req_wait_fd},
     {"close", eco_ubus_req_close},
     {"abort", eco_ubus_req_abort},
     {"__gc", eco_ubus_req_gc},
@@ -264,17 +252,19 @@ static void eco_ubus_call_data_cb(struct ubus_request *req, int type, struct blo
     struct eco_ubus_request *ereq = container_of(req, struct eco_ubus_request, req);
     lua_State *co = ereq->co;
 
-    lua_rawgeti (co, LUA_REGISTRYINDEX, ereq->ref);
+    lua_rawgeti(co, LUA_REGISTRYINDEX, ereq->ref[0]);
     blob_to_lua_table(co, blob_data(msg), blob_len(msg), false);
-
     lua_call(co, 1, 0);
 }
 
 static void eco_ubus_call_complete_cb(struct ubus_request *req, int ret)
 {
     struct eco_ubus_request *ereq = container_of(req, struct eco_ubus_request, req);
+    lua_State *co = ereq->co;
 
-    if (write(ereq->fd[1], "q", 1));
+    lua_rawgeti(co, LUA_REGISTRYINDEX, ereq->ref[1]);
+    lua_pushinteger(co, ret);
+    lua_call(co, 1, 0);
 }
 
 static int eco_ubus_call(lua_State *L)
@@ -302,18 +292,13 @@ static int eco_ubus_call(lua_State *L)
     lua_setmetatable(L, -2);
 
     req->ctx = &ctx->ctx;
-    req->fd[0] = -1;
-    req->fd[1] = -1;
     req->co = L;
 
     lua_pushvalue(L, 5);
-    req->ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    req->ref[0] = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    if (pipe2(req->fd, O_CLOEXEC | O_NONBLOCK)) {
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
+    lua_pushvalue(L, 6);
+    req->ref[1] = luaL_ref(L, LUA_REGISTRYINDEX);
 
     ret = ubus_invoke_async(&ctx->ctx, id, func, ctx->buf.head, &req->req);
     if (ret) {
@@ -676,6 +661,15 @@ static const struct luaL_Reg ubus_methods[] =  {
     {NULL, NULL}
 };
 
+static int eco_ubus_strerror(lua_State *L)
+{
+    int ret = luaL_checkinteger(L, 1);
+
+    lua_pushstring(L, ubus_strerror(ret));
+
+    return 1;
+}
+
 int luaopen_eco_core_ubus(lua_State *L)
 {
     lua_pushlightuserdata(L, &obj_registry);
@@ -713,6 +707,9 @@ int luaopen_eco_core_ubus(lua_State *L)
     eco_new_metatable(L, ECO_UBUS_CTX_MT, ubus_methods);
     lua_pushcclosure(L, eco_ubus_connect, 1);
     lua_setfield(L, -2, "connect");
+
+    lua_pushcfunction(L, eco_ubus_strerror);
+    lua_setfield(L, -2, "strerror");
 
     return 1;
 }

@@ -43,22 +43,37 @@ function methods:call(object, method, params)
         return nil, 'closed'
     end
 
-    local msgs = {}
+    local w = eco.watcher(eco.ASYNC)
 
-    local req, err = mt.con:call(object, method, params, function(msg)
-        msgs[#msgs + 1] = msg
-    end)
+    local msgs = {}
+    local req, err
+
+    req, err = mt.con:call(object, method, params,
+        function(msg)
+            msgs[#msgs + 1] = msg
+        end,
+        function(ret)
+            if ret ~= ubus.STATUS_OK then
+                err = ubus.strerror(ret)
+            end
+            w:send()
+        end
+    )
     if not req then
         return nil, err
     end
 
-    local ok = eco.watcher(eco.IO, req:wait_fd()):wait(30)
+    local ok = w:wait(30)
     if not ok then
         req:abort()
         return nil, 'timeout'
     end
 
     req:close()
+
+    if err then
+        return nil, err
+    end
 
     return unpack(msgs)
 end
