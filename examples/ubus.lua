@@ -10,8 +10,10 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local res = ubus.call('system', 'info')
-if res then
+local res, err = ubus.call('system', 'info')
+if not res then
+    print('call system info fail:', err)
+else
     print(cjson.encode(res))
 end
 
@@ -45,9 +47,14 @@ con:add('eco', {
 })
 
 time.at(1, function()
-    local res1, res2 = ubus.call('eco', 'defer')
-    print(cjson.encode(res1))
-    print(cjson.encode(res2))
+    local res, err = ubus.call('eco', 'defer')
+    if not res then
+        print('call fail:', err)
+        return
+    end
+
+    print(cjson.encode(res[1]))
+    print(cjson.encode(res[2]))
 end)
 
 while true do

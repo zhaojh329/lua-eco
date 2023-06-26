@@ -75,7 +75,13 @@ function methods:call(object, method, params)
         return nil, err
     end
 
-    return unpack(msgs)
+    if #msgs == 1 then
+        return msgs[1]
+    elseif #msgs > 1 then
+        return msgs
+    else
+        return {}
+    end
 end
 
 function methods:reply(req, msg)
