@@ -5,6 +5,7 @@ local nl80211 = require 'eco.core.nl80211'
 local hex = require 'eco.encoding.hex'
 local socket = require 'eco.socket'
 local sys = require 'eco.core.sys'
+local file = require 'eco.file'
 local genl = require 'eco.genl'
 local bit = require 'eco.bit'
 local nl = require 'eco.nl'
@@ -170,6 +171,126 @@ local function parse_interface(msg)
     end
 
     return info
+end
+
+function M.phy_lookup(name)
+    local path = string.format('/sys/class/ieee80211/%s/index', name)
+    return file.access(path) and file.readfile(path, '*n')
+end
+
+function M.add_interface(phy, ifname, attrs)
+    local phyid
+
+    if type(phy) == 'string' then
+        phyid = M.phy_lookup(phy)
+        if not phyid then
+            return nil, string.format('"%s" not exists', phy)
+        end
+    elseif type(phy) == 'number' then
+        phyid = phy
+    else
+        error('invalid phy')
+    end
+
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    if socket.if_nametoindex(ifname) then
+        return nil, string.format('"%s" already exists', ifname)
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_NEW_INTERFACE, nl.NLM_F_ACK)
+    if not sock then
+        return nil, msg
+    end
+
+    attrs = attrs or {}
+
+    msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
+    msg:put_attr_strz(nl80211.ATTR_IFNAME, ifname)
+
+    if attrs.type then
+        msg:put_attr_u32(nl80211.ATTR_IFTYPE, attrs.type)
+    end
+
+    if attrs.mac then
+        msg:put_attr(nl80211.ATTR_MAC, hex.decode(attrs.mac:gsub(':', '')))
+    end
+
+    if attrs.use_4addr then
+        msg:put_attr_u8(nl80211.ATTR_IFTYPE, 1)
+    end
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    msg, err = sock:recv()
+    if not msg then
+        return nil, err
+    end
+
+    local nlh = msg:next()
+    if not nlh then
+        return nil, 'no ack'
+    end
+
+    if nlh.type == nl.NLMSG_ERROR then
+        err = msg:parse_error()
+        if err == 0 then
+            return true
+        end
+
+        return nil, sys.strerror(-err)
+    end
+
+    return true
+end
+
+function M.del_interface(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local if_index = socket.if_nametoindex(ifname)
+    if not if_index then
+        return nil, string.format('"%s" not exists', ifname)
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_DEL_INTERFACE, nl.NLM_F_ACK)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, if_index)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    msg, err = sock:recv()
+    if not msg then
+        return nil, err
+    end
+
+    local nlh = msg:next()
+    if not nlh then
+        return nil, 'no ack'
+    end
+
+    if nlh.type == nl.NLMSG_ERROR then
+        err = msg:parse_error()
+        if err == 0 then
+            return true
+        end
+
+        return nil, sys.strerror(-err)
+    end
+
+    return true
 end
 
 function M.get_interface(ifname)
