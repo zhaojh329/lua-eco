@@ -3,8 +3,7 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
-#include <linux/nl80211.h>
-
+#include "nl80211.h"
 #include "nl.h"
 
 #define BIT(x) (1ULL<<(x))
@@ -51,135 +50,33 @@ static int parse_sta_flag_update(lua_State *L)
     return 1;
 }
 
-enum {
-    NL80211_RATE_INFO_320_MHZ_WIDTH = 18,
-    NL80211_RATE_INFO_EHT_MCS,
-    NL80211_RATE_INFO_EHT_NSS,
-    NL80211_RATE_INFO_EHT_GI
-};
-
 int luaopen_eco_core_nl80211(lua_State *L)
 {
     lua_newtable(L);
 
     lua_add_constant(L, "CMD_GET_WIPHY", NL80211_CMD_GET_WIPHY);
     lua_add_constant(L, "CMD_SET_WIPHY", NL80211_CMD_SET_WIPHY);
-    lua_add_constant(L, "CMD_NEW_WIPHY", NL80211_CMD_NEW_WIPHY);
-    lua_add_constant(L, "CMD_DEL_WIPHY", NL80211_CMD_DEL_WIPHY);
+
     lua_add_constant(L, "CMD_GET_INTERFACE", NL80211_CMD_GET_INTERFACE);
     lua_add_constant(L, "CMD_SET_INTERFACE", NL80211_CMD_SET_INTERFACE);
     lua_add_constant(L, "CMD_NEW_INTERFACE", NL80211_CMD_NEW_INTERFACE);
     lua_add_constant(L, "CMD_DEL_INTERFACE", NL80211_CMD_DEL_INTERFACE);
-    lua_add_constant(L, "CMD_GET_KEY", NL80211_CMD_GET_KEY);
-    lua_add_constant(L, "CMD_SET_KEY", NL80211_CMD_SET_KEY);
-    lua_add_constant(L, "CMD_NEW_KEY", NL80211_CMD_NEW_KEY);
-    lua_add_constant(L, "CMD_DEL_KEY", NL80211_CMD_DEL_KEY);
-    lua_add_constant(L, "CMD_GET_BEACON", NL80211_CMD_GET_BEACON);
-    lua_add_constant(L, "CMD_SET_BEACON", NL80211_CMD_SET_BEACON);
-    lua_add_constant(L, "CMD_START_AP", NL80211_CMD_START_AP);
-    lua_add_constant(L, "CMD_NEW_BEACON", NL80211_CMD_NEW_BEACON);
-    lua_add_constant(L, "CMD_STOP_AP", NL80211_CMD_STOP_AP);
-    lua_add_constant(L, "CMD_DEL_BEACON", NL80211_CMD_DEL_BEACON);
+
     lua_add_constant(L, "CMD_GET_STATION", NL80211_CMD_GET_STATION);
     lua_add_constant(L, "CMD_SET_STATION", NL80211_CMD_SET_STATION);
     lua_add_constant(L, "CMD_NEW_STATION", NL80211_CMD_NEW_STATION);
     lua_add_constant(L, "CMD_DEL_STATION", NL80211_CMD_DEL_STATION);
-    lua_add_constant(L, "CMD_GET_MPATH", NL80211_CMD_GET_MPATH);
-    lua_add_constant(L, "CMD_SET_MPATH", NL80211_CMD_SET_MPATH);
-    lua_add_constant(L, "CMD_NEW_MPATH", NL80211_CMD_NEW_MPATH);
-    lua_add_constant(L, "CMD_DEL_MPATH", NL80211_CMD_DEL_MPATH);
-    lua_add_constant(L, "CMD_SET_BSS", NL80211_CMD_SET_BSS);
+
     lua_add_constant(L, "CMD_SET_REG", NL80211_CMD_SET_REG);
     lua_add_constant(L, "CMD_REQ_SET_REG", NL80211_CMD_REQ_SET_REG);
-    lua_add_constant(L, "CMD_GET_MESH_CONFIG", NL80211_CMD_GET_MESH_CONFIG);
-    lua_add_constant(L, "CMD_SET_MESH_CONFIG", NL80211_CMD_SET_MESH_CONFIG);
-    lua_add_constant(L, "CMD_SET_MGMT_EXTRA_IE", NL80211_CMD_SET_MGMT_EXTRA_IE);
     lua_add_constant(L, "CMD_GET_REG", NL80211_CMD_GET_REG);
     lua_add_constant(L, "CMD_GET_SCAN", NL80211_CMD_GET_SCAN);
     lua_add_constant(L, "CMD_TRIGGER_SCAN", NL80211_CMD_TRIGGER_SCAN);
     lua_add_constant(L, "CMD_NEW_SCAN_RESULTS", NL80211_CMD_NEW_SCAN_RESULTS);
     lua_add_constant(L, "CMD_SCAN_ABORTED", NL80211_CMD_SCAN_ABORTED);
-    lua_add_constant(L, "CMD_REG_CHANGE", NL80211_CMD_REG_CHANGE);
-    lua_add_constant(L, "CMD_AUTHENTICATE", NL80211_CMD_AUTHENTICATE);
-    lua_add_constant(L, "CMD_ASSOCIATE", NL80211_CMD_ASSOCIATE);
-    lua_add_constant(L, "CMD_DEAUTHENTICATE", NL80211_CMD_DEAUTHENTICATE);
-    lua_add_constant(L, "CMD_DISASSOCIATE", NL80211_CMD_DISASSOCIATE);
-    lua_add_constant(L, "CMD_MICHAEL_MIC_FAILURE", NL80211_CMD_MICHAEL_MIC_FAILURE);
-    lua_add_constant(L, "CMD_REG_BEACON_HINT", NL80211_CMD_REG_BEACON_HINT);
-    lua_add_constant(L, "CMD_JOIN_IBSS", NL80211_CMD_JOIN_IBSS);
-    lua_add_constant(L, "CMD_LEAVE_IBSS", NL80211_CMD_LEAVE_IBSS);
-    lua_add_constant(L, "CMD_TESTMODE", NL80211_CMD_TESTMODE);
-    lua_add_constant(L, "CMD_CONNECT", NL80211_CMD_CONNECT);
-    lua_add_constant(L, "CMD_ROAM", NL80211_CMD_ROAM);
-    lua_add_constant(L, "CMD_DISCONNECT", NL80211_CMD_DISCONNECT);
-    lua_add_constant(L, "CMD_SET_WIPHY_NETNS", NL80211_CMD_SET_WIPHY_NETNS);
-    lua_add_constant(L, "CMD_GET_SURVEY", NL80211_CMD_GET_SURVEY);
-    lua_add_constant(L, "CMD_NEW_SURVEY_RESULTS", NL80211_CMD_NEW_SURVEY_RESULTS);
-    lua_add_constant(L, "CMD_SET_PMKSA", NL80211_CMD_SET_PMKSA);
-    lua_add_constant(L, "CMD_DEL_PMKSA", NL80211_CMD_DEL_PMKSA);
-    lua_add_constant(L, "CMD_FLUSH_PMKSA", NL80211_CMD_FLUSH_PMKSA);
-    lua_add_constant(L, "CMD_REMAIN_ON_CHANNEL", NL80211_CMD_REMAIN_ON_CHANNEL);
-    lua_add_constant(L, "CMD_CANCEL_REMAIN_ON_CHANNEL", NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL);
-    lua_add_constant(L, "CMD_SET_TX_BITRATE_MASK", NL80211_CMD_SET_TX_BITRATE_MASK);
-    lua_add_constant(L, "CMD_REGISTER_FRAME", NL80211_CMD_REGISTER_FRAME);
-    lua_add_constant(L, "CMD_REGISTER_ACTION", NL80211_CMD_REGISTER_ACTION);
-    lua_add_constant(L, "CMD_FRAME", NL80211_CMD_FRAME);
-    lua_add_constant(L, "CMD_ACTION", NL80211_CMD_ACTION);
-    lua_add_constant(L, "CMD_FRAME_TX_STATUS", NL80211_CMD_FRAME_TX_STATUS);
-    lua_add_constant(L, "CMD_ACTION_TX_STATUS", NL80211_CMD_ACTION_TX_STATUS);
-    lua_add_constant(L, "CMD_SET_POWER_SAVE", NL80211_CMD_SET_POWER_SAVE);
-    lua_add_constant(L, "CMD_GET_POWER_SAVE", NL80211_CMD_GET_POWER_SAVE);
-    lua_add_constant(L, "CMD_SET_CQM", NL80211_CMD_SET_CQM);
-    lua_add_constant(L, "CMD_NOTIFY_CQM", NL80211_CMD_NOTIFY_CQM);
-    lua_add_constant(L, "CMD_SET_CHANNEL", NL80211_CMD_SET_CHANNEL);
-    lua_add_constant(L, "CMD_SET_WDS_PEER", NL80211_CMD_SET_WDS_PEER);
-    lua_add_constant(L, "CMD_FRAME_WAIT_CANCEL", NL80211_CMD_FRAME_WAIT_CANCEL);
-    lua_add_constant(L, "CMD_JOIN_MESH", NL80211_CMD_JOIN_MESH);
-    lua_add_constant(L, "CMD_LEAVE_MESH", NL80211_CMD_LEAVE_MESH);
-    lua_add_constant(L, "CMD_UNPROT_DEAUTHENTICATE", NL80211_CMD_UNPROT_DEAUTHENTICATE);
-    lua_add_constant(L, "CMD_UNPROT_DISASSOCIATE", NL80211_CMD_UNPROT_DISASSOCIATE);
-    lua_add_constant(L, "CMD_NEW_PEER_CANDIDATE", NL80211_CMD_NEW_PEER_CANDIDATE);
-    lua_add_constant(L, "CMD_GET_WOWLAN", NL80211_CMD_GET_WOWLAN);
-    lua_add_constant(L, "CMD_SET_WOWLAN", NL80211_CMD_SET_WOWLAN);
-    lua_add_constant(L, "CMD_START_SCHED_SCAN", NL80211_CMD_START_SCHED_SCAN);
-    lua_add_constant(L, "CMD_STOP_SCHED_SCAN", NL80211_CMD_STOP_SCHED_SCAN);
-    lua_add_constant(L, "CMD_SCHED_SCAN_RESULTS", NL80211_CMD_SCHED_SCAN_RESULTS);
-    lua_add_constant(L, "CMD_SCHED_SCAN_STOPPED", NL80211_CMD_SCHED_SCAN_STOPPED);
-    lua_add_constant(L, "CMD_SET_REKEY_OFFLOAD", NL80211_CMD_SET_REKEY_OFFLOAD);
-    lua_add_constant(L, "CMD_PMKSA_CANDIDATE", NL80211_CMD_PMKSA_CANDIDATE);
-    lua_add_constant(L, "CMD_TDLS_OPER", NL80211_CMD_TDLS_OPER);
-    lua_add_constant(L, "CMD_TDLS_MGMT", NL80211_CMD_TDLS_MGMT);
-    lua_add_constant(L, "CMD_UNEXPECTED_FRAME", NL80211_CMD_UNEXPECTED_FRAME);
-    lua_add_constant(L, "CMD_PROBE_CLIENT", NL80211_CMD_PROBE_CLIENT);
-    lua_add_constant(L, "CMD_REGISTER_BEACONS", NL80211_CMD_REGISTER_BEACONS);
-    lua_add_constant(L, "CMD_UNEXPECTED_4ADDR_FRAME", NL80211_CMD_UNEXPECTED_4ADDR_FRAME);
-    lua_add_constant(L, "CMD_SET_NOACK_MAP", NL80211_CMD_SET_NOACK_MAP);
-    lua_add_constant(L, "CMD_CH_SWITCH_NOTIFY", NL80211_CMD_CH_SWITCH_NOTIFY);
-    lua_add_constant(L, "CMD_START_P2P_DEVICE", NL80211_CMD_START_P2P_DEVICE);
-    lua_add_constant(L, "CMD_STOP_P2P_DEVICE", NL80211_CMD_STOP_P2P_DEVICE);
-    lua_add_constant(L, "CMD_CONN_FAILED", NL80211_CMD_CONN_FAILED);
-    lua_add_constant(L, "CMD_SET_MCAST_RATE", NL80211_CMD_SET_MCAST_RATE);
-    lua_add_constant(L, "CMD_SET_MAC_ACL", NL80211_CMD_SET_MAC_ACL);
+
     lua_add_constant(L, "CMD_RADAR_DETECT", NL80211_CMD_RADAR_DETECT);
-    lua_add_constant(L, "CMD_GET_PROTOCOL_FEATURES", NL80211_CMD_GET_PROTOCOL_FEATURES);
-    lua_add_constant(L, "CMD_UPDATE_FT_IES", NL80211_CMD_UPDATE_FT_IES);
-    lua_add_constant(L, "CMD_FT_EVENT", NL80211_CMD_FT_EVENT);
-    lua_add_constant(L, "CMD_CRIT_PROTOCOL_START", NL80211_CMD_CRIT_PROTOCOL_START);
-    lua_add_constant(L, "CMD_CRIT_PROTOCOL_STOP", NL80211_CMD_CRIT_PROTOCOL_STOP);
-    lua_add_constant(L, "CMD_GET_COALESCE", NL80211_CMD_GET_COALESCE);
-    lua_add_constant(L, "CMD_SET_COALESCE", NL80211_CMD_SET_COALESCE);
-    lua_add_constant(L, "CMD_CHANNEL_SWITCH", NL80211_CMD_CHANNEL_SWITCH);
-    lua_add_constant(L, "CMD_VENDOR", NL80211_CMD_VENDOR);
-    lua_add_constant(L, "CMD_SET_QOS_MAP", NL80211_CMD_SET_QOS_MAP);
-    lua_add_constant(L, "CMD_ADD_TX_TS", NL80211_CMD_ADD_TX_TS);
-    lua_add_constant(L, "CMD_DEL_TX_TS", NL80211_CMD_DEL_TX_TS);
-    lua_add_constant(L, "CMD_GET_MPP", NL80211_CMD_GET_MPP);
-    lua_add_constant(L, "CMD_JOIN_OCB", NL80211_CMD_JOIN_OCB);
-    lua_add_constant(L, "CMD_LEAVE_OCB", NL80211_CMD_LEAVE_OCB);
     lua_add_constant(L, "CMD_CH_SWITCH_STARTED_NOTIFY", NL80211_CMD_CH_SWITCH_STARTED_NOTIFY);
-    lua_add_constant(L, "CMD_TDLS_CHANNEL_SWITCH", NL80211_CMD_TDLS_CHANNEL_SWITCH);
-    lua_add_constant(L, "CMD_TDLS_CANCEL_CHANNEL_SWITCH", NL80211_CMD_TDLS_CANCEL_CHANNEL_SWITCH);
-    lua_add_constant(L, "CMD_WIPHY_REG_CHANGE", NL80211_CMD_WIPHY_REG_CHANGE);
     lua_add_constant(L, "CMD_ABORT_SCAN", NL80211_CMD_ABORT_SCAN);
 
     lua_add_constant(L, "ATTR_WIPHY", NL80211_ATTR_WIPHY);
@@ -204,11 +101,7 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "ATTR_STA_VLAN", NL80211_ATTR_STA_VLAN);
     lua_add_constant(L, "ATTR_STA_INFO", NL80211_ATTR_STA_INFO);
     lua_add_constant(L, "ATTR_WIPHY_BANDS", NL80211_ATTR_WIPHY_BANDS);
-    lua_add_constant(L, "ATTR_MNTR_FLAGS", NL80211_ATTR_MNTR_FLAGS);
-    lua_add_constant(L, "ATTR_MESH_ID", NL80211_ATTR_MESH_ID);
     lua_add_constant(L, "ATTR_STA_PLINK_ACTION", NL80211_ATTR_STA_PLINK_ACTION);
-    lua_add_constant(L, "ATTR_MPATH_NEXT_HOP", NL80211_ATTR_MPATH_NEXT_HOP);
-    lua_add_constant(L, "ATTR_MPATH_INFO", NL80211_ATTR_MPATH_INFO);
     lua_add_constant(L, "ATTR_BSS_CTS_PROT", NL80211_ATTR_BSS_CTS_PROT);
     lua_add_constant(L, "ATTR_BSS_SHORT_PREAMBLE", NL80211_ATTR_BSS_SHORT_PREAMBLE);
     lua_add_constant(L, "ATTR_BSS_SHORT_SLOT_TIME", NL80211_ATTR_BSS_SHORT_SLOT_TIME);
@@ -380,15 +273,12 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "ATTR_VENDOR_SUBCMD", NL80211_ATTR_VENDOR_SUBCMD);
     lua_add_constant(L, "ATTR_VENDOR_DATA", NL80211_ATTR_VENDOR_DATA);
     lua_add_constant(L, "ATTR_VENDOR_EVENTS", NL80211_ATTR_VENDOR_EVENTS);
-    lua_add_constant(L, "ATTR_QOS_MAP", NL80211_ATTR_QOS_MAP);
     lua_add_constant(L, "ATTR_MAC_HINT", NL80211_ATTR_MAC_HINT);
     lua_add_constant(L, "ATTR_WIPHY_FREQ_HINT", NL80211_ATTR_WIPHY_FREQ_HINT);
     lua_add_constant(L, "ATTR_MAX_AP_ASSOC_STA", NL80211_ATTR_MAX_AP_ASSOC_STA);
-    lua_add_constant(L, "ATTR_TDLS_PEER_CAPABILITY", NL80211_ATTR_TDLS_PEER_CAPABILITY);
     lua_add_constant(L, "ATTR_SOCKET_OWNER", NL80211_ATTR_SOCKET_OWNER);
     lua_add_constant(L, "ATTR_CSA_C_OFFSETS_TX", NL80211_ATTR_CSA_C_OFFSETS_TX);
     lua_add_constant(L, "ATTR_MAX_CSA_COUNTERS", NL80211_ATTR_MAX_CSA_COUNTERS);
-    lua_add_constant(L, "ATTR_TDLS_INITIATOR", NL80211_ATTR_TDLS_INITIATOR);
     lua_add_constant(L, "ATTR_USE_RRM", NL80211_ATTR_USE_RRM);
     lua_add_constant(L, "ATTR_WIPHY_DYN_ACK", NL80211_ATTR_WIPHY_DYN_ACK);
     lua_add_constant(L, "ATTR_TSID", NL80211_ATTR_TSID);
@@ -399,17 +289,10 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "ATTR_MAC_MASK", NL80211_ATTR_MAC_MASK);
     lua_add_constant(L, "ATTR_WIPHY_SELF_MANAGED_REG", NL80211_ATTR_WIPHY_SELF_MANAGED_REG);
     lua_add_constant(L, "ATTR_EXT_FEATURES", NL80211_ATTR_EXT_FEATURES);
-    lua_add_constant(L, "ATTR_SURVEY_RADIO_STATS", NL80211_ATTR_SURVEY_RADIO_STATS);
     lua_add_constant(L, "ATTR_NETNS_FD", NL80211_ATTR_NETNS_FD);
     lua_add_constant(L, "ATTR_SCHED_SCAN_DELAY", NL80211_ATTR_SCHED_SCAN_DELAY);
     lua_add_constant(L, "ATTR_REG_INDOOR", NL80211_ATTR_REG_INDOOR);
-    lua_add_constant(L, "ATTR_MAX_NUM_SCHED_SCAN_PLANS", NL80211_ATTR_MAX_NUM_SCHED_SCAN_PLANS);
-    lua_add_constant(L, "ATTR_MAX_SCAN_PLAN_INTERVAL", NL80211_ATTR_MAX_SCAN_PLAN_INTERVAL);
-    lua_add_constant(L, "ATTR_MAX_SCAN_PLAN_ITERATIONS", NL80211_ATTR_MAX_SCAN_PLAN_ITERATIONS);
-    lua_add_constant(L, "ATTR_SCHED_SCAN_PLANS", NL80211_ATTR_SCHED_SCAN_PLANS);
-    lua_add_constant(L, "ATTR_PBSS", NL80211_ATTR_PBSS);
     lua_add_constant(L, "ATTR_BSS_SELECT", NL80211_ATTR_BSS_SELECT);
-    lua_add_constant(L, "ATTR_STA_SUPPORT_P2P_PS", NL80211_ATTR_STA_SUPPORT_P2P_PS);
 
     lua_add_constant(L, "IFTYPE_UNSPECIFIED", NL80211_IFTYPE_UNSPECIFIED);
     lua_add_constant(L, "IFTYPE_ADHOC", NL80211_IFTYPE_ADHOC);
