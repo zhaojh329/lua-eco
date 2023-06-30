@@ -313,7 +313,7 @@ local function sock_update_mt(sock, methods, name)
     if name == SOCK_MT_SERVER then
         mt.iow = nil
     else
-        mt.b = bufio.new({ fd = mt.fd, w = mt.ior, is_socket = true })
+        mt.b = bufio.new({ w = mt.ior, is_socket = true })
     end
 end
 
@@ -338,7 +338,7 @@ local function sock_setmetatable(fd, family, typ, methods, name)
     }
 
     if name == SOCK_MT_ESTAB then
-        mt.b = bufio.new({ fd = fd, w = mt.ior, is_socket = true })
+        mt.b = bufio.new({ w = mt.ior, is_socket = true })
     end
 
     setmetatable(sock, mt)

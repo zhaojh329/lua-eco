@@ -38,7 +38,7 @@ if not s then
     error(err)
 end
 
-local b = bufio.new({ fd = s:getfd(), w = eco.watcher(eco.IO, s:getfd()) })
+local b = bufio.new({ w = eco.watcher(eco.IO, s:getfd()) })
 
 print('read:', b:read(100))
 print('peek:', b:peek(10))

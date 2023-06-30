@@ -244,21 +244,24 @@ function M.new(reader, size)
         error('"reader" must be a table')
     end
 
-    if type(reader.read) ~= 'function' or type(reader.read2b) ~= 'function' then
-        if type(reader.fd) ~= 'number' then
-            error('not found file descriptor "fd" in reader')
-        end
+    local read = reader.read
+    local read2b = reader.read2b
 
-        if type(reader.w) ~= 'userdata' then
+    if type(read) ~= 'function' or type(read2b) ~= 'function' then
+        local w = reader.w
+
+        if type(w) ~= 'userdata' or not w.getfd then
             error('not found IO watcher "w" in reader')
         end
+
+        reader.fd = w:getfd()
     end
 
-    if type(reader.read) ~= 'function' then
+    if type(read) ~= 'function' then
         reader.read = default_read
     end
 
-    if type(reader.read2b) ~= 'function' then
+    if type(read2b) ~= 'function' then
         reader.read2b = default_read2b
     end
 

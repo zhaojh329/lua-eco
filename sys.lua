@@ -108,8 +108,8 @@ function M.exec(...)
         stdout_fd = stdout_fd,
         stderr_fd = stderr_fd,
         child_w = eco.watcher(eco.CHILD, pid),
-        stdout_b = bufio.new({ fd = stdout_fd, w = eco.watcher(eco.IO, stdout_fd) }),
-        stderr_b = bufio.new({ fd = stderr_fd, w = eco.watcher(eco.IO, stderr_fd) }),
+        stdout_b = bufio.new({ w = eco.watcher(eco.IO, stdout_fd) }),
+        stderr_b = bufio.new({ w = eco.watcher(eco.IO, stderr_fd) }),
         __index = exec_methods,
         __gc = exec_methods.release
     })

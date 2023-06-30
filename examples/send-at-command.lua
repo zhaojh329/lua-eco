@@ -61,7 +61,7 @@ if not ok then
     return
 end
 
-local b = bufio.new({ fd = fd, w = eco.watcher(eco.IO, fd) })
+local b = bufio.new({ w = eco.watcher(eco.IO, fd) })
 
 local res, err = send_at('ATI', fd, b)
 if not res then

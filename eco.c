@@ -531,6 +531,15 @@ static int eco_watcher_io_modify(lua_State *L)
     return 0;
 }
 
+static int eco_watcher_io_getfd(lua_State *L)
+{
+    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_IO_MT);
+
+    lua_pushinteger(L, w->w.io.fd);
+
+    return 1;
+}
+
 static struct eco_watcher *eco_watcher_io(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 2);
@@ -550,8 +559,12 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
     ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
 
     eco_new_metatable(L, ECO_WATCHER_IO_MT, NULL);
+
     lua_pushcfunction(L, eco_watcher_io_modify);
     lua_setfield(L, -2, "modify");
+
+    lua_pushcfunction(L, eco_watcher_io_getfd);
+    lua_setfield(L, -2, "getfd");
 
     return w;
 }
