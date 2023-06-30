@@ -5,6 +5,7 @@
 
 #include <sys/sendfile.h>
 #include <sys/statvfs.h>
+#include <sys/file.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -434,6 +435,23 @@ static int eco_file_sync(lua_State *L)
     return 0;
 }
 
+static int eco_file_flock(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    int operation = luaL_checkinteger(L, 2);
+
+    if (flock(fd, operation | LOCK_NB)) {
+        lua_pushnil(L);
+        lua_pushinteger(L, errno);
+        lua_pushstring(L, strerror(errno));
+        return 3;
+    }
+
+    lua_pushboolean(L, true);
+
+    return 1;
+}
+
 int luaopen_eco_core_file(lua_State *L)
 {
     lua_newtable(L);
@@ -469,6 +487,10 @@ int luaopen_eco_core_file(lua_State *L)
     lua_add_constant(L, "SEEK_SET", SEEK_SET);
     lua_add_constant(L, "SEEK_CUR", SEEK_CUR);
     lua_add_constant(L, "SEEK_END", SEEK_END);
+
+    lua_add_constant(L, "LOCK_SH", LOCK_SH);
+    lua_add_constant(L, "LOCK_EX", LOCK_EX);
+    lua_add_constant(L, "LOCK_UN", LOCK_UN);
 
     lua_pushcfunction(L, eco_file_open);
     lua_setfield(L, -2, "open");
@@ -521,6 +543,9 @@ int luaopen_eco_core_file(lua_State *L)
 
     lua_pushcfunction(L, eco_file_sync);
     lua_setfield(L, -2, "sync");
+
+    lua_pushcfunction(L, eco_file_flock);
+    lua_setfield(L, -2, "flock");
 
     return 1;
 }
