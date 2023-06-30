@@ -5,7 +5,7 @@ local bufio = require 'eco.bufio'
 local time = require 'eco.time'
 
 eco.run(function()
-    local s, err = socket.listen_tcp(nil, 8080)
+    local s, err = socket.listen_tcp(nil, 8080, { reuseaddr = true })
     if not s then
         error(err)
     end
