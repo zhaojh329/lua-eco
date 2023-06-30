@@ -2,7 +2,6 @@
 
 local socket = require 'eco.socket'
 local bufio = require 'eco.bufio'
-local file = require 'eco.file'
 local time = require 'eco.time'
 
 eco.run(function()
@@ -39,35 +38,7 @@ if not s then
     error(err)
 end
 
-local reader = { fd = s:getfd() }
-
-function reader:read(n, timeout)
-    local data, err = file.read(self.fd, n, timeout)
-    if not data then
-        return nil, err
-    end
-
-    if #data == 0 then
-        return nil, 'closed'
-    end
-
-    return data
-end
-
-function reader:read2b(b, timeout)
-    local r, err = file.read_to_buffer(self.fd, b, timeout)
-    if not r then
-        return nil, err
-    end
-
-    if r == 0 then
-        return nil, 'closed'
-    end
-
-    return r, err
-end
-
-local b = bufio.new(reader)
+local b = bufio.new({ fd = s:getfd(), w = eco.watcher(eco.IO, s:getfd()) })
 
 print('read:', b:read(100))
 print('peek:', b:peek(10))

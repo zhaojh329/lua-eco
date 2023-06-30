@@ -9,9 +9,6 @@ local bufio = require 'eco.bufio'
 local sendfile = file.sendfile
 local write = file.write
 
-local read = file.read
-local read_to_buffer = file.read_to_buffer
-
 local str_sub = string.sub
 local concat = table.concat
 local type = type
@@ -308,53 +305,6 @@ local function sock_bind(sock, ...)
     return true
 end
 
-local function create_bufio(mt)
-    local reader = {
-        fd = mt.fd,
-        ior = mt.ior
-    }
-
-    function reader:read(n, timeout)
-        if not self.ior:wait(timeout) then
-            return nil, 'timeout'
-        end
-
-        local data, err = read(self.fd, n, timeout)
-        if not data then
-            return nil, err
-        end
-
-        if #data == 0 then
-            return nil, 'closed'
-        end
-
-        return data
-    end
-
-    function reader:read2b(b, timeout)
-        if b:room() == 0 then
-            return nil, 'buffer is full'
-        end
-
-        if not self.ior:wait(timeout) then
-            return nil, 'timeout'
-        end
-
-        local r, err = read_to_buffer(self.fd, b, timeout)
-        if not r then
-            return nil, err
-        end
-
-        if r == 0 then
-            return nil, 'closed'
-        end
-
-        return r, err
-    end
-
-    return bufio.new(reader)
-end
-
 local function sock_update_mt(sock, methods, name)
     local mt = getmetatable(sock)
     mt.name = name
@@ -363,7 +313,7 @@ local function sock_update_mt(sock, methods, name)
     if name == SOCK_MT_SERVER then
         mt.iow = nil
     else
-        mt.b = create_bufio(mt)
+        mt.b = bufio.new({ fd = mt.fd, w = mt.ior, is_socket = true })
     end
 end
 
@@ -388,7 +338,7 @@ local function sock_setmetatable(fd, family, typ, methods, name)
     }
 
     if name == SOCK_MT_ESTAB then
-        mt.b = create_bufio(mt)
+        mt.b = bufio.new({ fd = fd, w = mt.ior, is_socket = true })
     end
 
     setmetatable(sock, mt)

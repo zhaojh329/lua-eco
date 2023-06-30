@@ -89,53 +89,6 @@ function exec_methods:read_stderr(pattern, timeout)
     return exec_read(mt.stderr_b, pattern, timeout)
 end
 
-local function create_bufio(fd)
-    local reader = {
-        w = eco.watcher(eco.IO, fd),
-        fd = fd
-    }
-
-    function reader:read(n, timeout)
-        if not self.w:wait(timeout) then
-            return nil, 'timeout'
-        end
-
-        local data, err = file.read(self.fd, n, timeout)
-        if not data then
-            return nil, err
-        end
-
-        if #data == 0 then
-            return nil, 'closed'
-        end
-
-        return data
-    end
-
-    function reader:read2b(b, timeout)
-        if b:room() == 0 then
-            return nil, 'buffer is full'
-        end
-
-        if not self.w:wait(timeout) then
-            return nil, 'timeout'
-        end
-
-        local r, err = file.read_to_buffer(self.fd, b, timeout)
-        if not r then
-            return nil, err
-        end
-
-        if r == 0 then
-            return nil, 'closed'
-        end
-
-        return r, err
-    end
-
-    return bufio.new(reader)
-end
-
 function M.exec(...)
     local pid, stdout_fd, stderr_fd = sys.exec(...)
     if not pid then
@@ -155,8 +108,8 @@ function M.exec(...)
         stdout_fd = stdout_fd,
         stderr_fd = stderr_fd,
         child_w = eco.watcher(eco.CHILD, pid),
-        stdout_b = create_bufio(stdout_fd),
-        stderr_b = create_bufio(stderr_fd),
+        stdout_b = bufio.new({ fd = stdout_fd, w = eco.watcher(eco.IO, stdout_fd) }),
+        stderr_b = bufio.new({ fd = stderr_fd, w = eco.watcher(eco.IO, stderr_fd) }),
         __index = exec_methods,
         __gc = exec_methods.release
     })

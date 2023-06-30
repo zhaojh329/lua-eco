@@ -2,6 +2,7 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local buffer = require 'eco.core.bufio'
+local file = require 'eco.core.file'
 local sys = require 'eco.core.sys'
 local concat = table.concat
 local str_sub = string.sub
@@ -200,20 +201,69 @@ function methods:readline(timeout)
     end
 end
 
+local function default_read(rd, n, timeout)
+    if not rd.w:wait(timeout) then
+        return nil, 'timeout'
+    end
+
+    local data, err = file.read(rd.fd, n, timeout)
+    if not data then
+        return nil, err
+    end
+
+    if #data == 0 then
+        return nil, rd.is_socket and 'closed' or 'eof'
+    end
+
+    return data
+end
+
+local function default_read2b(rd, b, timeout)
+    if b:room() == 0 then
+        return nil, 'buffer is full'
+    end
+
+    if not rd.w:wait(timeout) then
+        return nil, 'timeout'
+    end
+
+    local r, err = file.read_to_buffer(rd.fd, b, timeout)
+    if not r then
+        return nil, err
+    end
+
+    if r == 0 then
+        return nil, 'closed'
+    end
+
+    return r, err
+end
+
 function M.new(reader, size)
     if type(reader) ~= 'table' then
         error('"reader" must be a table')
     end
 
+    if type(reader.read) ~= 'function' or type(reader.read2b) ~= 'function' then
+        if type(reader.fd) ~= 'number' then
+            error('not found file descriptor "fd" in reader')
+        end
+
+        if type(reader.w) ~= 'userdata' then
+            error('not found IO watcher "w" in reader')
+        end
+    end
+
     if type(reader.read) ~= 'function' then
-        error('not found "read" function in reader')
+        reader.read = default_read
     end
 
     if type(reader.read2b) ~= 'function' then
-        error('not found "read2b" function in reader')
+        reader.read2b = default_read2b
     end
 
     local b = buffer.new(size)
+
     return setmetatable({}, {
         b = b,
         reader = reader,
