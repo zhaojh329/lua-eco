@@ -13,7 +13,7 @@ local cnt = 0
 
 while cnt < 100 do
     eco.run(function(i)
-        local sock, err = ssl.connect('127.0.0.1', 8080)
+        local sock, err = ssl.connect('127.0.0.1', 8080, true)
         if not sock then
             error(err)
         end

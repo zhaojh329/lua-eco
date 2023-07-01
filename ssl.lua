@@ -287,7 +287,7 @@ local function create_bufio(mt)
     return bufio.new(reader)
 end
 
-local function ssl_setmetatable(ctx, sock, methods, name)
+local function ssl_setmetatable(ctx, sock, methods, name, insecure)
     local ssock = {}
 
     if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
@@ -313,7 +313,7 @@ local function ssl_setmetatable(ctx, sock, methods, name)
     if name == SSL_MT_SERVER then
         return ssock
     else
-        mt.ssl = ctx:new(fd, true)
+        mt.ssl = ctx:new(fd, insecure)
         mt.iow = eco.watcher(eco.IO, fd, eco.WRITE)
         mt.b = create_bufio(mt)
     end
@@ -384,7 +384,7 @@ function M.listen6(ipaddr, port, options)
     return M.listen(ipaddr, port, options, true)
 end
 
-function M.connect(ipaddr, port, ipv6)
+local function ssl_connect(ipaddr, port, insecure, ipv6)
     local connect = socket.connect_tcp
 
     if ipv6 then
@@ -398,11 +398,15 @@ function M.connect(ipaddr, port, ipv6)
 
     local ctx = essl.context(false)
 
-    return ssl_setmetatable(ctx, sock, client_methods, SSL_MT_CLIENT)
+    return ssl_setmetatable(ctx, sock, client_methods, SSL_MT_CLIENT, insecure)
 end
 
-function M.connect6(ipaddr, port)
-    return M.connect(ipaddr, port, true)
+function M.connect(ipaddr, port, insecure)
+    return ssl_connect(ipaddr, port, insecure)
+end
+
+function M.connect6(ipaddr, port, insecure)
+    return ssl_connect(ipaddr, port, insecure, true)
 end
 
 return M

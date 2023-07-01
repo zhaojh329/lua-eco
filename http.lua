@@ -451,7 +451,7 @@ local function do_http_request(s, method, path, headers, body, timeout)
     return resp
 end
 
-local function http_connect_host(host, port, https)
+local function http_connect_host(host, port, https, opts)
     local answers, err = dns.query(host)
     if not answers then
         return nil, 'resolve "' .. host .. '" fail: ' .. err
@@ -472,7 +472,11 @@ local function http_connect_host(host, port, https)
                 end
             end
 
-            s, err = connect(a.address, port)
+            if https then
+                s, err = connect(a.address, port, opts.insecure)
+            else
+                s, err = connect(a.address, port)
+            end
             if s then
                 return s
             end
@@ -505,7 +509,9 @@ end
         status: response status;
         headers: response headers as a table.
 --]]
-function M.request(req, body)
+function M.request(req, body, opts)
+    opts = opts or {}
+
     if type(req) == 'string' then
         req = { url = req }
     end
@@ -561,7 +567,7 @@ function M.request(req, body)
         s, err = socket.connect_tcp(req.proxy.ipaddr, req.proxy.port)
         path = req.url
     else
-        s, err = http_connect_host(host, port, scheme == 'https')
+        s, err = http_connect_host(host, port, scheme == 'https', opts)
         if not s then
             return nil, 'connect fail: ' .. err
         end

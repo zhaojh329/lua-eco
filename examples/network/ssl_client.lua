@@ -9,7 +9,7 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = ssl.connect('127.0.0.1', 8080)
+local s, err = ssl.connect('127.0.0.1', 8080, true)
 if not s then
     error(err)
 end
