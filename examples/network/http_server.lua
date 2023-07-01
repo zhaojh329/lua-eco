@@ -27,7 +27,7 @@ local function handler(con, req)
             con:send('<p>', name, ': ', value, '</p>\n')
         end
 
-        con:send('<h2>body:', con:read_body(), '</h2>\n')
+        con:send('<h2>body:', con:read_body() or '', '</h2>\n')
     else
         con:serve_file(req)
     end
