@@ -59,7 +59,7 @@ function client_methods:send(data)
 
     local total = #data
     local sent = 0
-    local ok, n, err
+    local ok, n, err, errs
 
     while sent < total do
         ok, err = w:wait()
@@ -67,16 +67,13 @@ function client_methods:send(data)
             return nil, err, sent
         end
 
-        n, err = ssl:write(str_sub(data, sent + 1))
+        n, err, errs = ssl:write(str_sub(data, sent + 1))
         if not n then
-            if err then
-                return nil, err, sent
+            if err == essl.ERROR then
+                return nil, errs, sent
             end
-            if ssl:state() == -2 then
-                w = ior
-            else
-                w = iow
-            end
+
+            w = err == essl.WANT_READ and ior or iow
         end
         sent = sent + n
     end
@@ -99,7 +96,6 @@ function client_methods:sendfile(fd, count, offset)
     count = count or st.size
 
     if offset then
-        local err
         offset, err = file.lseek(fd, offset, file.SEEK_SET)
         if not offset then
             return nil, err
@@ -202,28 +198,29 @@ function client_methods:discard(size, timeout)
     return b:discard(size, timeout)
 end
 
+local function ssl_wait(err, ior, iow, timeout)
+    local w = err == essl.WANT_READ and ior or iow
+    return w:wait(timeout)
+end
+
 local function ssl_negotiate(mt, deadtime)
     local ssl, iow, ior = mt.ssl, mt.iow, mt.ior
-    local ok, err, w
+    local ok, err, errs, w
 
-    while not ok do
-        ok, err = ssl:negotiate()
-        if err then
-            return false, err
+    while true do
+        ok, err, errs = ssl:negotiate()
+        if ok then
+            return true
         end
 
-        if ssl:state() == -2 then
-            w = ior
-        else
-            w = iow
+        if err == essl.ERROR or err == essl.INSECURE then
+            return false, errs
         end
 
-        if not w:wait(deadtime - sys.uptime()) then
+        if not ssl_wait(err, ior, iow, deadtime - sys.uptime()) then
             return nil, 'handshake timeout'
         end
     end
-
-    return true
 end
 
 local function create_bufio(mt)
@@ -237,22 +234,13 @@ local function create_bufio(mt)
         local ssl = self.ssl
 
         while true do
-            local data, err = ssl:read(n)
+            local data, err, errs = ssl:read(n)
             if not data then
-                if err then
-                    return nil, err
+                if err == essl.ERROR then
+                    return nil, errs
                 end
 
-                local state = ssl:state()
-                local ok
-
-                if state == -2 then
-                    ok = self.ior:wait(timeout)
-                else
-                    ok = self.iow:wait(timeout)
-                end
-
-                if not ok then
+                if not ssl_wait(err, self.ior, self.iow, timeout) then
                     return nil, 'timeout'
                 end
             else
@@ -277,22 +265,13 @@ local function create_bufio(mt)
         local ssl = self.ssl
 
         while true do
-            local r, err = ssl:read_to_buffer(b)
+            local r, err, errs = ssl:read_to_buffer(b)
             if not r then
-                if err then
-                    return nil, err
+                if err == essl.ERROR then
+                    return nil, errs
                 end
 
-                local state = ssl:state()
-                local ok
-
-                if state == -2 then
-                    ok = self.ior:wait(timeout)
-                else
-                    ok = self.iow:wait(timeout)
-                end
-
-                if not ok then
+                if not ssl_wait(err, self.ior, self.iow, timeout) then
                     return nil, 'timeout'
                 end
             else
