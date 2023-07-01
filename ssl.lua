@@ -3,7 +3,7 @@
 
 local file = require 'eco.core.file'
 local socket = require 'eco.socket'
-local ssl = require 'eco.core.ssl'
+local essl = require 'eco.core.ssl'
 local sys = require 'eco.core.sys'
 local bufio = require 'eco.bufio'
 
@@ -371,7 +371,7 @@ end
 function M.listen(ipaddr, port, options, ipv6)
     assert(type(options) == 'table' and options.cert and options.key)
 
-    local ctx = ssl.context(true)
+    local ctx = essl.context(true)
 
     if options.ca then
         if not ctx:load_ca_cert_file(options.ca) then
@@ -417,7 +417,7 @@ function M.connect(ipaddr, port, ipv6)
         return nil, err
     end
 
-    local ctx = ssl.context(false)
+    local ctx = essl.context(false)
 
     return ssl_setmetatable(ctx, sock, client_methods, SSL_MT_CLIENT)
 end
