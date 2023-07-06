@@ -116,13 +116,16 @@ function M.exec(...)
 end
 
 function M.signal(sig, cb, ...)
+    local w = eco.watcher(eco.SIGNAL, sig)
+
     eco.run(function(...)
-        local w = eco.watcher(eco.SIGNAL, sig)
         while true do
-            w:wait()
+            if not w:wait() then return end
             cb(...)
         end
     end, ...)
+
+    return w
 end
 
 return setmetatable(M, { __index = sys })
