@@ -653,7 +653,7 @@ static void ubus_lua_objects_cb(struct ubus_context *c, struct ubus_object_data 
     lua_State *L = (lua_State *)p;
 
     lua_pushstring(L, o->path);
-    lua_rawseti(L, -2, lua_objlen(L, -2) + 1);
+    lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
 }
 
 static int eco_ubus_handle_objects(lua_State *L)
