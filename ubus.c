@@ -648,6 +648,32 @@ static int eco_ubus_handle_event(lua_State *L)
     return 0;
 }
 
+static void ubus_lua_objects_cb(struct ubus_context *c, struct ubus_object_data *o, void *p)
+{
+    lua_State *L = (lua_State *)p;
+
+    lua_pushstring(L, o->path);
+    lua_rawseti(L, -2, lua_objlen(L, -2) + 1);
+}
+
+static int eco_ubus_handle_objects(lua_State *L)
+{
+    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+    int ret;
+
+    lua_newtable(L);
+
+    ret = ubus_lookup(&ctx->ctx, NULL, ubus_lua_objects_cb, L);
+    if (ret != UBUS_STATUS_OK) {
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        lua_pushstring(L, ubus_strerror(ret));
+        return 2;
+    }
+
+    return 1;
+}
+
 static const struct luaL_Reg ubus_methods[] =  {
     {"call", eco_ubus_call},
     {"send", eco_ubus_send},
@@ -658,6 +684,7 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"close", eco_ubus_close},
     {"getfd", eco_ubus_getfd},
     {"handle_event", eco_ubus_handle_event},
+    {"objects", eco_ubus_handle_objects},
     {NULL, NULL}
 };
 

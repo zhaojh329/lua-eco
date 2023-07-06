@@ -148,6 +148,16 @@ function methods:send(event, msg)
     return mt.con:send(event, msg)
 end
 
+function methods:objects(event, msg)
+    local mt = getmetatable(self)
+
+    if mt.done.v then
+        return nil, 'closed'
+    end
+
+    return mt.con:objects()
+end
+
 function M.connect(path)
     local __con, err = ubus.connect(eco.context(), path)
 
@@ -198,6 +208,22 @@ function M.send(event, params)
     con:close()
 
     return true
+end
+
+function M.objects()
+    local con, err = ubus.connect(eco.context())
+    if not con then
+        return nil, err
+    end
+
+    local objects, err = con:objects()
+    con:close()
+
+    if objects then
+        return objects
+    end
+
+    return nil, err
 end
 
 return setmetatable(M, { __index = ubus })
