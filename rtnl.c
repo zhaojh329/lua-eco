@@ -207,12 +207,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTM_NEWSTATS", RTM_NEWSTATS);
     lua_add_constant(L, "RTM_GETSTATS", RTM_GETSTATS);
     lua_add_constant(L, "RTM_NEWCACHEREPORT", RTM_NEWCACHEREPORT);
-    lua_add_constant(L, "RTM_NEWCHAIN", RTM_NEWCHAIN);
-    lua_add_constant(L, "RTM_DELCHAIN", RTM_DELCHAIN);
-    lua_add_constant(L, "RTM_GETCHAIN", RTM_GETCHAIN);
-    lua_add_constant(L, "RTM_NEWNEXTHOP", RTM_NEWNEXTHOP);
-    lua_add_constant(L, "RTM_DELNEXTHOP", RTM_DELNEXTHOP);
-    lua_add_constant(L, "RTM_GETNEXTHOP", RTM_GETNEXTHOP);
 
     lua_add_constant(L, "IFF_UP", IFF_UP);
     lua_add_constant(L, "IFF_BROADCAST", IFF_BROADCAST);
@@ -276,13 +270,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "IFLA_PAD", IFLA_PAD);
     lua_add_constant(L, "IFLA_XDP", IFLA_XDP);
     lua_add_constant(L, "IFLA_EVENT", IFLA_EVENT);
-    lua_add_constant(L, "IFLA_NEW_NETNSID", IFLA_NEW_NETNSID);
-    lua_add_constant(L, "IFLA_IF_NETNSID", IFLA_IF_NETNSID);
-    lua_add_constant(L, "IFLA_CARRIER_UP_COUNT", IFLA_CARRIER_UP_COUNT);
-    lua_add_constant(L, "IFLA_CARRIER_DOWN_COUNT", IFLA_CARRIER_DOWN_COUNT);
-    lua_add_constant(L, "IFLA_NEW_IFINDEX", IFLA_NEW_IFINDEX);
-    lua_add_constant(L, "IFLA_MIN_MTU", IFLA_MIN_MTU);
-    lua_add_constant(L, "IFLA_MAX_MTU", IFLA_MAX_MTU);
 
     lua_add_constant(L, "IFA_UNSPEC", IFA_UNSPEC);
     lua_add_constant(L, "IFA_ADDRESS", IFA_ADDRESS);
@@ -294,7 +281,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "IFA_MULTICAST", IFA_MULTICAST);
     lua_add_constant(L, "IFA_FLAGS", IFA_FLAGS);
     lua_add_constant(L, "IFA_RT_PRIORITY", IFA_RT_PRIORITY);
-    lua_add_constant(L, "IFA_TARGET_NETNSID", IFA_TARGET_NETNSID);
 
     lua_add_constant(L, "RTNLGRP_LINK", RTNLGRP_LINK);
     lua_add_constant(L, "RTNLGRP_NOTIFY", RTNLGRP_NOTIFY);
@@ -327,7 +313,6 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTNLGRP_MPLS_NETCONF", RTNLGRP_MPLS_NETCONF);
     lua_add_constant(L, "RTNLGRP_IPV4_MROUTE_R", RTNLGRP_IPV4_MROUTE_R);
     lua_add_constant(L, "RTNLGRP_IPV6_MROUTE_R", RTNLGRP_IPV6_MROUTE_R);
-    lua_add_constant(L, "RTNLGRP_NEXTHOP", RTNLGRP_NEXTHOP);
 
     lua_add_constant(L, "RT_SCOPE_UNIVERSE", RT_SCOPE_UNIVERSE);
     lua_add_constant(L, "RT_SCOPE_SITE", RT_SCOPE_SITE);
