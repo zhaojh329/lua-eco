@@ -702,6 +702,27 @@ static int eco_socket_is_ipv6_address(lua_State *L)
     return 1;
 }
 
+static int eco_socket_inet_aton(lua_State *L)
+{
+    const char *src = luaL_checkstring(L, 1);
+    struct in_addr in = {};
+
+    inet_aton(src, &in);
+    lua_pushinteger(L, in.s_addr);
+
+    return 1;
+}
+
+static int eco_socket_inet_ntoa(lua_State *L)
+{
+    struct in_addr in;
+
+    in.s_addr = luaL_checkinteger(L, 1);
+    lua_pushstring(L, inet_ntoa(in));
+
+    return 1;
+}
+
 static int eco_socket_inet_ntop(lua_State *L)
 {
     int family = luaL_checkinteger(L, 1);
@@ -854,6 +875,12 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_pushcfunction(L, eco_socket_is_ipv6_address);
     lua_setfield(L, -2, "is_ipv6_address");
+
+    lua_pushcfunction(L, eco_socket_inet_aton);
+    lua_setfield(L, -2, "inet_aton");
+
+    lua_pushcfunction(L, eco_socket_inet_ntoa);
+    lua_setfield(L, -2, "inet_ntoa");
 
     lua_pushcfunction(L, eco_socket_inet_ntop);
     lua_setfield(L, -2, "inet_ntop");
