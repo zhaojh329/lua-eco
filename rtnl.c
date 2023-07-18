@@ -314,6 +314,18 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RTNLGRP_IPV4_MROUTE_R", RTNLGRP_IPV4_MROUTE_R);
     lua_add_constant(L, "RTNLGRP_IPV6_MROUTE_R", RTNLGRP_IPV6_MROUTE_R);
 
+    lua_add_constant(L, "RTMGRP_LINK", RTMGRP_LINK);
+    lua_add_constant(L, "RTMGRP_NOTIFY", RTMGRP_NOTIFY);
+    lua_add_constant(L, "RTMGRP_NEIGH", RTMGRP_NEIGH);
+    lua_add_constant(L, "RTMGRP_IPV4_IFADDR", RTMGRP_IPV4_IFADDR);
+    lua_add_constant(L, "RTMGRP_IPV4_MROUTE", RTMGRP_IPV4_MROUTE);
+    lua_add_constant(L, "RTMGRP_IPV4_ROUTE", RTMGRP_IPV4_ROUTE);
+    lua_add_constant(L, "RTMGRP_IPV4_RULE", RTMGRP_IPV4_RULE);
+    lua_add_constant(L, "RTMGRP_IPV6_IFADDR", RTMGRP_IPV6_IFADDR);
+    lua_add_constant(L, "RTMGRP_IPV6_MROUTE", RTMGRP_IPV6_MROUTE);
+    lua_add_constant(L, "RTMGRP_IPV6_ROUTE", RTMGRP_IPV6_ROUTE);
+    lua_add_constant(L, "RTMGRP_IPV6_IFINFO", RTMGRP_IPV6_IFINFO);
+
     lua_add_constant(L, "RT_SCOPE_UNIVERSE", RT_SCOPE_UNIVERSE);
     lua_add_constant(L, "RT_SCOPE_SITE", RT_SCOPE_SITE);
     lua_add_constant(L, "RT_SCOPE_LINK", RT_SCOPE_LINK);
