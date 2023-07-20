@@ -708,7 +708,7 @@ static int eco_socket_inet_aton(lua_State *L)
     struct in_addr in = {};
 
     inet_aton(src, &in);
-    lua_pushinteger(L, in.s_addr);
+    lua_pushint(L, in.s_addr);
 
     return 1;
 }
@@ -717,7 +717,7 @@ static int eco_socket_inet_ntoa(lua_State *L)
 {
     struct in_addr in;
 
-    in.s_addr = luaL_checkinteger(L, 1);
+    in.s_addr = (uint32_t)luaL_checknumber(L, 1);
     lua_pushstring(L, inet_ntoa(in));
 
     return 1;
