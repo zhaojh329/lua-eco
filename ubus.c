@@ -5,6 +5,7 @@
 
 #include <libubus.h>
 #include <fcntl.h>
+#include <math.h>
 
 #include "eco.h"
 
@@ -61,12 +62,15 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
 #ifdef LUA_TINT
         case LUA_TINT:
 #endif
-        case LUA_TNUMBER:
-            if ((uint64_t)lua_tonumber(L, -1) != lua_tonumber(L, -1))
+        case LUA_TNUMBER: {
+            double v = fabs(lua_tonumber(L, -1));
+
+            if ((uint64_t)v != v)
                 blobmsg_add_double(b, key, lua_tonumber(L, -1));
             else
                 blobmsg_add_u32(b, key, (uint32_t)lua_tointeger(L, -1));
             break;
+        }
 
         case LUA_TSTRING:
         case LUA_TUSERDATA:
