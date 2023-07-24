@@ -139,7 +139,7 @@ local function parse_interface(msg)
     info.ifname = nl.attr_get_str(attrs[nl80211.ATTR_IFNAME])
     info.ifindex = nl.attr_get_u32(attrs[nl80211.ATTR_IFINDEX])
     info.wdev = nl.attr_get_u64(attrs[nl80211.ATTR_WDEV])
-    info.use_4addr = nl.attr_get_u8(attrs[nl80211.ATTR_4ADDR]) == 1
+    info['4addr'] = nl.attr_get_u8(attrs[nl80211.ATTR_4ADDR]) == 1
 
     local mac = nl.attr_get_payload(attrs[nl80211.ATTR_MAC])
     info.mac = hex.encode(mac, ':')
@@ -178,6 +178,18 @@ function M.phy_lookup(name)
     return file.access(path) and file.readfile(path, '*n')
 end
 
+local function put_interface_attrs(msg, attrs)
+    for k, v in pairs(attrs or {}) do
+        if k == 'type' then
+            msg:put_attr_u32(nl80211.ATTR_IFTYPE, v)
+        elseif k == 'mac' then
+            msg:put_attr(nl80211.ATTR_MAC, hex.decode(v:gsub(':', '')))
+        elseif k == '4addr' then
+            msg:put_attr_u8(nl80211.ATTR_4ADDR, v and 1 or 0)
+        end
+    end
+end
+
 function M.add_interface(phy, ifname, attrs)
     local phyid
 
@@ -210,17 +222,53 @@ function M.add_interface(phy, ifname, attrs)
     msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
     msg:put_attr_strz(nl80211.ATTR_IFNAME, ifname)
 
-    if attrs.type then
-        msg:put_attr_u32(nl80211.ATTR_IFTYPE, attrs.type)
+    put_interface_attrs(msg, attrs)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
     end
 
-    if attrs.mac then
-        msg:put_attr(nl80211.ATTR_MAC, hex.decode(attrs.mac:gsub(':', '')))
+    msg, err = sock:recv()
+    if not msg then
+        return nil, err
     end
 
-    if attrs.use_4addr then
-        msg:put_attr_u8(nl80211.ATTR_IFTYPE, 1)
+    local nlh = msg:next()
+    if not nlh then
+        return nil, 'no ack'
     end
+
+    if nlh.type == nl.NLMSG_ERROR then
+        err = msg:parse_error()
+        if err == 0 then
+            return true
+        end
+
+        return nil, sys.strerror(-err)
+    end
+
+    return true
+end
+
+function M.set_interface(ifname, attrs)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local if_index = socket.if_nametoindex(ifname)
+    if not if_index then
+        return nil, string.format('"%s" not exists', ifname)
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_SET_INTERFACE, nl.NLM_F_ACK)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, if_index)
+
+    put_interface_attrs(msg, attrs)
 
     local ok, err = sock:send(msg)
     if not ok then
