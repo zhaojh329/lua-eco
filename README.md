@@ -33,7 +33,7 @@ Lua-eco also provides some modules for you to build applications quickly:
 * `socket`: Provides a low-level network socket interface for Lua-eco applications, allowing you to create and manage network connections. Includes tcp, tcp6, udp, udp6 and unix.
 * `ssl`: Provides SSL/TLS support for Lua-eco applications, allowing you to establish secure connections to remote servers.
 * `http/https`: Provides a HTTP client and server implementation for Lua-eco applications.
-* `websocket`: Provides a WebSocket server implementation for Lua-eco applications, allowing you to build real-time web applications.
+* `websocket`: Provides a WebSocket client and server implementation for Lua-eco applications, allowing you to build real-time web applications.
 * `mqtt`: Provides an implementation of the MQTT protocol for Lua-eco applications using [lua-mosquitto], allowing you to build IoT and messaging applications.
 * `dns`: Provides a DNS client implementation for Lua-eco applications, allowing you to perform DNS lookups and resolve domain names.
 * `ubus`: Provides a Lua interface to the [ubus] system in OpenWrt, allowing you to interact with system services and daemons.

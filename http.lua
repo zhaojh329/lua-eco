@@ -451,7 +451,7 @@ local function do_http_request(s, method, path, headers, body, timeout)
     return resp
 end
 
-local function http_connect_host(host, port, https, opts)
+function M.connect(host, port, use_ssl, opts)
     local answers, err = dns.query(host)
     if not answers then
         return nil, 'resolve "' .. host .. '" fail: ' .. err
@@ -461,18 +461,18 @@ local function http_connect_host(host, port, https, opts)
     for _, a in ipairs(answers) do
         if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
             local connect = socket.connect_tcp
-            if https then
+            if use_ssl then
                 connect = ssl.connect
             end
 
             if a.type == dns.TYPE_AAAA then
                 connect = socket.connect_tcp6
-                if https then
+                if use_ssl then
                     connect = ssl.connect6
                 end
             end
 
-            if https then
+            if use_ssl then
                 s, err = connect(a.address, port, opts.insecure)
             else
                 s, err = connect(a.address, port)
@@ -567,7 +567,7 @@ function M.request(req, body, opts)
         s, err = socket.connect_tcp(req.proxy.ipaddr, req.proxy.port)
         path = req.url
     else
-        s, err = http_connect_host(host, port, scheme == 'https', opts)
+        s, err = M.connect(host, port, scheme == 'https', opts)
         if not s then
             return nil, 'connect fail: ' .. err
         end

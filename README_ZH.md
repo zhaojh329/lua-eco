@@ -36,7 +36,7 @@ Lua-eco 还提供了一些有用的模块，方便您快速构建应用程序:
 * `socket`: 提供了一组网络套接字接口，允许您创建和管理网络连接。包括 tcp，tcp6，udp，udp6 和 unix。
 * `ssl`: 为 Lua-eco 应用程序提供了 SSL/TLS 支持，允许您建立与远程服务器的安全连接。
 * `http/https`: 为 Lua-eco 应用程序提供了 HTTP(S) 客户端和服务器实现。
-* `websocket`: 为 Lua-eco 应用程序提供了一个 WebSocket 服务器实现，允许您构建实时 Web 应用程序。
+* `websocket`: 为 Lua-eco 应用程序提供了一个 WebSocket 客户端和服务器实现，允许您构建实时 Web 应用程序。
 * `mqtt`: 提供了一个 MQTT 协议的 Lua-eco 实现，使用 [lua-mosquitto]，允许您构建物联网和消息应用程序。
 * `dns`: 为 Lua-eco 应用程序提供了一个 DNS 客户端实现，允许您执行 DNS 查找和解析域名。
 * `ubus`: 提供了一个 Lua 接口，用于 OpenWrt 中的 [ubus] 系统，允许您与系统服务和守护程序交互。

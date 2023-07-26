@@ -6,7 +6,9 @@
 local base64 = require 'eco.encoding.base64'
 local sha1 = require 'eco.crypto.sha1'
 local http = require 'eco.http'
+local url = require 'eco.url'
 local bit = require 'eco.bit'
+local sys = require 'eco.sys'
 
 local tostring = tostring
 local concat = table.concat
@@ -84,8 +86,7 @@ function  methods:recv_frame(timeout)
             return nil, nil, 'failed to receive the 8 byte payload length: ' .. err
         end
 
-        if str_byte(data, 1) ~= 0 or str_byte(data, 2) ~= 0 or str_byte(data, 3) ~= 0 or str_byte(data, 4) ~= 0
-        then
+        if str_byte(data, 1) ~= 0 or str_byte(data, 2) ~= 0 or str_byte(data, 3) ~= 0 or str_byte(data, 4) ~= 0 then
             return nil, nil, 'payload len too large'
         end
 
@@ -219,7 +220,7 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
     if masking then
         -- set the mask bit
         snd = bor(snd, 0x80)
-        local key = rand(0xffffffff)
+        local key = rand(0xffffff)
         masking_key = str_char(band(rshift(key, 24), 0xff),
                            band(rshift(key, 16), 0xff),
                            band(rshift(key, 8), 0xff),
@@ -266,7 +267,7 @@ function methods:send_frame(fin, opcode, payload)
         end
     end
 
-    local frame, err = build_frame(fin, opcode, payload_len, payload)
+    local frame, err = build_frame(fin, opcode, payload_len, payload, mt.masking)
     if not frame then
         return nil, 'failed to build frame: ' .. err
     end
@@ -376,6 +377,118 @@ function M.upgrade(con, req, opts)
     return setmetatable({}, {
         __index = methods,
         sock = mt.sock,
+        opts = opts
+    })
+end
+
+function M.connect(uri, opts)
+    local u, err = url.parse(uri)
+    if not u then
+        return nil, err
+    end
+
+    local scheme, host, port, path = u.scheme, u.host, u.port, u.raw_path
+
+    if scheme ~= 'ws' and scheme ~= 'wss' then
+        return nil, 'unsupported scheme: ' .. scheme
+    end
+
+    opts = opts or {}
+
+    local proto_header, origin_header
+
+    local protos = opts.protocols
+    if protos then
+        if type(protos) == 'table' then
+            proto_header = 'Sec-WebSocket-Protocol: ' .. concat(protos, ',') .. '\r\n'
+
+        else
+            proto_header = 'Sec-WebSocket-Protocol: ' .. protos .. '\r\n'
+        end
+    end
+
+    local origin = opts.origin
+    if origin then
+        origin_header = 'Origin: ' .. origin .. '\r\n'
+    end
+
+    local host_header = 'Host: ' .. host
+
+    if port ~= 80 and port ~= 443 then
+        host_header = host_header .. ':' .. port
+    end
+
+    local bytes = str_char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1)
+
+    local key = base64.encode(bytes)
+    local head = {
+        'GET ' .. path .. ' HTTP/1.1\r\n',
+        'Upgrade: websocket\r\n',
+        host_header .. '\r\n',
+        'Sec-WebSocket-Key: ' .. key .. '\r\n',
+        proto_header or '',
+        'Sec-WebSocket-Version: 13\r\n',
+        origin_header or '',
+        'Connection: Upgrade\r\n'
+    }
+
+    for k, v in pairs(opts.headers or {}) do
+        head[#head + 1] = k .. ': ' .. v .. '\r\n'
+    end
+
+    local sock, err = http.connect(host, port, scheme == 'wss', opts)
+    if not sock then
+        return nil, 'connect fail: ' .. err
+    end
+
+    local bytes, err = sock:send(concat(head) .. '\r\n')
+    if not bytes then
+        sock:close()
+        return nil, 'failed to send the handshake request: ' .. err
+    end
+
+    local timeout = opts.timeout or 30
+    local deadtime = sys.uptime() + timeout
+
+    local line, err = sock:recv('*l', deadtime - sys.uptime())
+    if not line then
+        return nil, err
+    end
+
+    local code, status = line:match('^HTTP/1.1%s*(%d+)%s*(.*)')
+    if not code or not status then
+        sock:close()
+        return nil, 'invalid http status line'
+    end
+
+    if code ~= '101' then
+        sock:close()
+        return nil, 'connect fail with status code: ' .. code
+    end
+
+    while true do
+        line, err = sock:recv('*l', deadtime - sys.uptime())
+        if not line then
+            sock:close()
+            return nil, 'failed to receive response header: ' .. err
+        end
+
+        if line == '' then
+            break
+        end
+    end
+
+    opts.max_payload_len = opts.max_payload_len or 65535
+
+    return setmetatable({}, {
+        __index = methods,
+        masking = true,
+        sock = sock,
         opts = opts
     })
 end
