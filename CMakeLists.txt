@@ -46,6 +46,9 @@ set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
 add_library(struct MODULE struct.c)
 set_target_properties(struct PROPERTIES OUTPUT_NAME struct PREFIX "")
 
+add_library(binary MODULE binary.c)
+set_target_properties(binary PROPERTIES OUTPUT_NAME binary PREFIX "")
+
 add_library(sys MODULE sys.c)
 set_target_properties(sys PROPERTIES OUTPUT_NAME sys PREFIX "")
 
@@ -130,7 +133,7 @@ install(
 )
 
 install(
-    TARGETS log termios struct rtnl
+    TARGETS log termios struct binary rtnl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
