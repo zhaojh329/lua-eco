@@ -55,7 +55,7 @@ while true do
 
             local attrs = msg:parse_attr(rtnl.IFINFOMSG_SIZE)
 
-            if attrs[rtnl.IFLA_MTU] then
+            if attrs[rtnl.IFLA_IFNAME] then
                 local ifname = nl.attr_get_str(attrs[rtnl.IFLA_IFNAME])
                 print('ifname:', ifname)
             end
