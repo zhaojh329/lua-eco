@@ -63,12 +63,12 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
         case LUA_TINT:
 #endif
         case LUA_TNUMBER: {
-            double v = fabs(lua_tonumber(L, -1));
+            double v = lua_tonumber(L, -1);
 
-            if ((uint64_t)v != v)
-                blobmsg_add_double(b, key, lua_tonumber(L, -1));
-            else
-                blobmsg_add_u32(b, key, (uint32_t)lua_tointeger(L, -1));
+            if (v == (int64_t)v && v <= INT32_MAX) {
+                blobmsg_add_u32(b, key, (int32_t)v);
+            } else
+                blobmsg_add_double(b, key, v);
             break;
         }
 
@@ -124,15 +124,15 @@ static int __blob_to_lua_table(lua_State *L, struct blob_attr *attr, bool is_arr
         break;
 
     case BLOBMSG_TYPE_INT16:
-        lua_pushinteger(L, be16_to_cpu(*(uint16_t *)data));
+        lua_pushinteger(L, (int16_t)be16_to_cpu(*(uint16_t *)data));
         break;
 
     case BLOBMSG_TYPE_INT32:
-        lua_pushint(L, be32_to_cpu(*(uint32_t *)data));
+        lua_pushint(L, (int32_t)be32_to_cpu(*(uint32_t *)data));
         break;
 
     case BLOBMSG_TYPE_INT64:
-        lua_pushint(L, (double) be64_to_cpu(*(uint64_t *)data));
+        lua_pushint(L, (int64_t)be64_to_cpu(*(uint64_t *)data));
         break;
 
     case BLOBMSG_TYPE_DOUBLE: {
