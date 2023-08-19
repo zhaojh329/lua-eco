@@ -190,6 +190,34 @@ local function put_interface_attrs(msg, attrs)
     end
 end
 
+local function send_nl80211_msg(sock, msg)
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    msg, err = sock:recv()
+    if not msg then
+        return nil, err
+    end
+
+    local nlh = msg:next()
+    if not nlh then
+        return nil, 'no ack'
+    end
+
+    if nlh.type == nl.NLMSG_ERROR then
+        err = msg:parse_error()
+        if err == 0 then
+            return true
+        end
+
+        return nil, sys.strerror(-err)
+    end
+
+    return true
+end
+
 function M.add_interface(phy, ifname, attrs)
     local phyid
 
@@ -224,31 +252,7 @@ function M.add_interface(phy, ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
-        return nil, 'no ack'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        if err == 0 then
-            return true
-        end
-
-        return nil, sys.strerror(-err)
-    end
-
-    return true
+    return send_nl80211_msg(sock, msg)
 end
 
 function M.set_interface(ifname, attrs)
@@ -270,31 +274,7 @@ function M.set_interface(ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
-        return nil, 'no ack'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        if err == 0 then
-            return true
-        end
-
-        return nil, sys.strerror(-err)
-    end
-
-    return true
+    return send_nl80211_msg(sock, msg)
 end
 
 function M.del_interface(ifname)
@@ -314,31 +294,7 @@ function M.del_interface(ifname)
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, if_index)
 
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
-        return nil, 'no ack'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        if err == 0 then
-            return true
-        end
-
-        return nil, sys.strerror(-err)
-    end
-
-    return true
+    return send_nl80211_msg(sock, msg)
 end
 
 function M.get_interface(ifname)
