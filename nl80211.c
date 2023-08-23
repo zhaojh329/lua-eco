@@ -348,6 +348,9 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "FREQUENCY_ATTR_IR_CONCURRENT", NL80211_FREQUENCY_ATTR_IR_CONCURRENT);
     lua_add_constant(L, "FREQUENCY_ATTR_NO_20MHZ", NL80211_FREQUENCY_ATTR_NO_20MHZ);
     lua_add_constant(L, "FREQUENCY_ATTR_NO_10MHZ", NL80211_FREQUENCY_ATTR_NO_10MHZ);
+    lua_add_constant(L, "FREQUENCY_ATTR_NO_HE", NL80211_FREQUENCY_ATTR_NO_HE);
+    lua_add_constant(L, "FREQUENCY_ATTR_NO_320MHZ", NL80211_FREQUENCY_ATTR_NO_320MHZ);
+    lua_add_constant(L, "FREQUENCY_ATTR_NO_EHT", NL80211_FREQUENCY_ATTR_NO_EHT);
 
     lua_add_constant(L, "BSS_BSSID", NL80211_BSS_BSSID);
     lua_add_constant(L, "BSS_FREQUENCY", NL80211_BSS_FREQUENCY);
@@ -429,6 +432,11 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "RATE_INFO_EHT_GI", NL80211_RATE_INFO_EHT_GI);
 
     lua_add_constant(L, "PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP", NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP);
+
+    lua_add_constant(L, "BAND_2GHZ", NL80211_BAND_2GHZ);
+    lua_add_constant(L, "BAND_5GHZ", NL80211_BAND_5GHZ);
+    lua_add_constant(L, "BAND_60GHZ", NL80211_BAND_60GHZ);
+    lua_add_constant(L, "BAND_6GHZ", NL80211_BAND_6GHZ);
 
     lua_pushcfunction(L, parse_sta_flag_update);
     lua_setfield(L, -2, "parse_sta_flag_update");

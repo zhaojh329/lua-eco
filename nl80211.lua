@@ -1082,4 +1082,142 @@ function M.get_protocol_features(phy)
     return features
 end
 
+local function parse_freqlist(attrs, freqlist)
+    for band, band_data in pairs(attrs) do
+        local band_attrs = nl.parse_attr_nested(band_data)
+
+        if band_attrs[nl80211.BAND_ATTR_FREQS] then
+            for _, freq_data in pairs(nl.parse_attr_nested(band_attrs[nl80211.BAND_ATTR_FREQS])) do
+                local freq_attrs = nl.parse_attr_nested(freq_data)
+                local info = { band = band }
+
+                if band == nl80211.BAND_2GHZ then
+                    info.band = 2.4
+                elseif band == nl80211.BAND_5GHZ then
+                    info.band = 5
+                elseif band == nl80211.BAND_60GHZ then
+                    info.band = 60
+                elseif band == nl80211.BAND_6GHZ then
+                    info.band = 6
+                end
+
+                info.freq = nl.attr_get_u32(freq_attrs[nl80211.FREQUENCY_ATTR_FREQ])
+                info.channel = M.freq_to_channel(info.freq)
+
+                local flags = {}
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_HT40_MINUS] then
+                    flags['NO_HT40+'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_HT40_PLUS] then
+                    flags['NO_HT40-'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_80MHZ] then
+                    flags['NO_80MHZ'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_160MHZ] then
+                    flags['NO_160MHZ'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_20MHZ] then
+                    flags['NO_20MHZ'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_10MHZ] then
+                    flags['NO_10MHZ'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_320MHZ] then
+                    flags['NO_320MHZ'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_HE] then
+                    info['NO_HE'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_EHT] then
+                    flags['NO_EHT'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_NO_IR] and not freq_attrs[nl80211.FREQUENCY_ATTR_RADAR] then
+                    flags['NO_IR'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_RADAR] then
+                    flags['RADAR'] = true
+                end
+
+                if freq_attrs[nl80211.FREQUENCY_ATTR_INDOOR_ONLY] then
+                    flags['INDOOR_ONLY'] = true
+                end
+
+                info.flags = flags
+                freqlist[#freqlist + 1] = info
+            end
+        end
+    end
+end
+
+function M.get_freqlist(phy)
+    local phyid
+
+    if type(phy) == 'string' then
+        phyid = M.phy_lookup(phy)
+        if not phyid then
+            return nil, string.format('"%s" not exists', phy)
+        end
+    elseif type(phy) == 'number' then
+        phyid = phy
+    else
+        error('invalid phy')
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_WIPHY, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
+    msg:put_attr_flag(nl80211.ATTR_SPLIT_WIPHY_DUMP)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    local freqlist = {}
+
+    while true do
+        msg, err = sock:recv()
+        if not msg then
+            return nil, err
+        end
+
+        while true do
+            local nlh = msg:next()
+            if not nlh then
+                break
+            end
+
+            if nlh.type == nl.NLMSG_ERROR then
+                err = msg:parse_error()
+                return nil, sys.strerror(-err)
+            end
+
+            if nlh.type == nl.NLMSG_DONE then
+                return freqlist
+            end
+
+            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+
+            if attrs[nl80211.ATTR_WIPHY_BANDS] then
+                parse_freqlist(nl.parse_attr_nested(attrs[nl80211.ATTR_WIPHY_BANDS]), freqlist)
+            end
+        end
+    end
+end
+
 return setmetatable(M, { __index = nl80211 })
