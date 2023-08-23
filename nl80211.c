@@ -76,6 +76,7 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "CMD_SCAN_ABORTED", NL80211_CMD_SCAN_ABORTED);
 
     lua_add_constant(L, "CMD_RADAR_DETECT", NL80211_CMD_RADAR_DETECT);
+    lua_add_constant(L, "CMD_GET_PROTOCOL_FEATURES", NL80211_CMD_GET_PROTOCOL_FEATURES);
     lua_add_constant(L, "CMD_CH_SWITCH_STARTED_NOTIFY", NL80211_CMD_CH_SWITCH_STARTED_NOTIFY);
     lua_add_constant(L, "CMD_ABORT_SCAN", NL80211_CMD_ABORT_SCAN);
 
@@ -426,6 +427,8 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "RATE_INFO_EHT_MCS", NL80211_RATE_INFO_EHT_MCS);
     lua_add_constant(L, "RATE_INFO_EHT_NSS", NL80211_RATE_INFO_EHT_NSS);
     lua_add_constant(L, "RATE_INFO_EHT_GI", NL80211_RATE_INFO_EHT_GI);
+
+    lua_add_constant(L, "PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP", NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP);
 
     lua_pushcfunction(L, parse_sta_flag_update);
     lua_setfield(L, -2, "parse_sta_flag_update");

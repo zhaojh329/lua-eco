@@ -1029,4 +1029,57 @@ function M.get_stations(ifname)
     end
 end
 
+function M.get_protocol_features(phy)
+    local phyid
+
+    if type(phy) == 'string' then
+        phyid = M.phy_lookup(phy)
+        if not phyid then
+            return nil, string.format('"%s" not exists', phy)
+        end
+    elseif type(phy) == 'number' then
+        phyid = phy
+    else
+        error('invalid phy')
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_PROTOCOL_FEATURES)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    msg, err = sock:recv()
+    if not msg then
+        return nil, err
+    end
+
+    local nlh = msg:next()
+    if not nlh then
+        return nil, 'no msg responsed'
+    end
+
+    if nlh.type == nl.NLMSG_ERROR then
+        err = msg:parse_error()
+        return nil, sys.strerror(-err)
+    end
+
+    local features = 0
+
+    local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+    if attrs and attrs[nl80211.ATTR_PROTOCOL_FEATURES] then
+        features = nl.attr_get_u32(attrs[nl80211.ATTR_PROTOCOL_FEATURES])
+    end
+
+    sock:close()
+
+    return features
+end
+
 return setmetatable(M, { __index = nl80211 })
