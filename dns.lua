@@ -89,8 +89,6 @@ local function build_request(qname, id, opts)
     local ident_hi = str_char(rshift(id, 8))
     local ident_lo = str_char(band(id, 0xff))
 
-    opts = opts or {}
-
     local qtype = opts.type or TYPE_A
 
     local flags
