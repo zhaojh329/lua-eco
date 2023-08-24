@@ -591,6 +591,10 @@ function con_methods:closed()
     return getmetatable(self).sock:closed()
 end
 
+function con_methods:remote_addr()
+    return getmetatable(self).peer
+end
+
 function con_methods:add_header(name, value)
     local resp = getmetatable(self).resp
 
@@ -958,9 +962,10 @@ function con_methods:serve_file(req)
     return true
 end
 
-local function handle_connection(con, peer, handler)
+local function handle_connection(con, handler)
     local mt = getmetatable(con)
     local sock = mt.sock
+    local peer = mt.peer
 
     local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
     local http_keepalive = mt.options.http_keepalive
@@ -1064,8 +1069,6 @@ local function handle_connection(con, peer, handler)
     mt.resp = resp
 
     local req = {
-        remote_addr = peer.ipaddr,
-        remote_port = peer.port,
         method = method,
         path = url.unescape(path),
         major_version = major_version,
@@ -1190,12 +1193,13 @@ function M.listen(ipaddr, port, options, handler)
                             server = 'Lua-eco/' .. eco.VERSION
                         }
                     },
+                    peer = peer,
                     options = options,
                     __index = con_methods
                 })
 
                 while not c:closed() do
-                    if not handle_connection(con, peer, handler) then
+                    if not handle_connection(con, handler) then
                         c:close()
                     end
                 end
