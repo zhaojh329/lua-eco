@@ -105,6 +105,7 @@ static int lua_b64_decode(lua_State *L)
 
     for (i = 0; i < inlen; i++) {
         if (in[i] == '=') {
+            outlen--;
             luaL_addlstring (&b, (const char *)out, outlen);
             break;
         }
