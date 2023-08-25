@@ -22,8 +22,8 @@ function exec_methods:release()
     file.close(mt.stdout_fd)
     file.close(mt.stderr_fd)
 
-    self.stdout_fd = nil
-    self.stderr_fd = nil
+    mt.stdout_fd = nil
+    mt.stderr_fd = nil
 end
 
 function exec_methods:wait(timeout)
