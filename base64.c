@@ -93,7 +93,7 @@ static int lua_b64_decode(lua_State *L)
     uint8_t out[3] = {};
     int outlen = 0;
     luaL_Buffer b;
-    int i, j, c;
+    int i, c;
 
     luaL_buffinit(L, &b);
 
@@ -103,7 +103,7 @@ static int lua_b64_decode(lua_State *L)
         return 2;
     }
 
-    for (i = j = 0; i < inlen; i++) {
+    for (i = 0; i < inlen; i++) {
         if (in[i] == '=') {
             luaL_addlstring (&b, (const char *)out, outlen);
             break;
