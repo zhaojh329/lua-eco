@@ -56,6 +56,8 @@ local resolver_errstrs = {
 
 local soa_int32_fields = { 'serial', 'refresh', 'retry', 'expire', 'minimum' }
 
+local transaction_id_init
+
 local function parse_resolvconf()
     local nameservers = {}
     local conf = {}
@@ -81,8 +83,14 @@ local function parse_resolvconf()
     return conf
 end
 
-local function gen_id()
-    return math.random(0, 65535)
+local function get_next_transaction_id()
+    if not transaction_id_init then
+        transaction_id_init = math.random(0, 65535)
+    else
+        transaction_id_init = transaction_id_init % 65535 + 1
+    end
+
+    return transaction_id_init
 end
 
 local function build_request(qname, id, opts)
@@ -577,7 +585,7 @@ function M.query(qname, opts)
     local err
 
     for _, nameserver in ipairs(nameservers) do
-        local id = gen_id()
+        local id = get_next_transaction_id()
 
         local req
         req, err = build_request(qname, id, opts)
