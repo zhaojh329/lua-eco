@@ -58,46 +58,34 @@ function timer_methods:set(delay)
     end, self, unpack(mt.arguments))
 end
 
+-- The timer function is similar to `at`, but will not be started immediately.
+function M.timer(cb, ...)
+    assert(type(cb) == 'function')
+
+    return setmetatable({}, {
+        w = new_timer(),
+        cb = cb,
+        arguments = { ... },
+        __index = timer_methods
+    })
+end
+
 --[[
     The at function is used to create a timer that will execute a given callback function after
     a specified delay time.
     The callback function will receive the timer object as its first parameter, and the rest of
     the parameters will be the ones passed to the at function.
 
-    To use the at function, you need to provide three parameters:
-
-    delay: Optional the amount of time to wait before executing the callback function, in seconds.
-           If not provide this argument, you must call it's set method to start it.
-    cb: The callback function that will be executed after the specified delay time.
-    ...: Optional arguments to pass to the callback function.
-
     The at function returns a timer object with two methods:
     set: Sets the timer to execute the callback function after the specified delay time.
     cancel: Cancels the timer so that the callback function will not be executed.
 --]]
-function M.at(...)
-    local arg1, arg2 = select(1, ...)
-    local delay, cb, arguments
+function M.at(delay, cb, ...)
+    assert(type(delay) == 'number')
 
-    if type(arg1) == 'number' then
-        delay = arg1
-        cb = arg2
-        arguments = { select(3, ...) }
-    else
-        cb = arg1
-        arguments = { select(2, ...) }
-    end
+    local tmr = M.timer(cb, ...)
 
-    assert(type(cb) == 'function')
-
-    local tmr = setmetatable({}, {
-        w = new_timer(),
-        cb = cb,
-        arguments = arguments,
-        __index = timer_methods
-    })
-
-    if delay then tmr:set(delay) end
+    tmr:set(delay)
 
     return tmr
 end

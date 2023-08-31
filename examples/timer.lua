@@ -7,7 +7,7 @@ time.at(0.5, function(tmr, start)
     print(time.now() - start, 'seconds after')
 end, time.now())
 
-local tmr = time.at(function(tmr)
+local tmr = time.timer(function(tmr)
     print('I will be canceled')
 end)
 
