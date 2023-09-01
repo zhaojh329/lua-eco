@@ -25,6 +25,10 @@ enum {
     ECO_WATCHER_SIGNAL
 };
 
+enum {
+    ECO_FLAG_TIMER_PERIODIC = 1 << 0
+};
+
 struct eco_watcher {
     struct ev_timer tmr;
     union {
@@ -32,9 +36,11 @@ struct eco_watcher {
         struct ev_async async;
         struct ev_child child;
         struct ev_signal signal;
+        struct ev_periodic periodic;
     } w;
     struct eco_context *ctx;
     lua_State *co;
+    uint8_t flags;
     int type;
 };
 
@@ -225,6 +231,18 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
     eco_resume(watcher->ctx->L, co, 2);
 }
 
+static void eco_watcher_periodic_cb(struct ev_loop *loop, ev_periodic *w, int revents)
+{
+    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.periodic);
+    lua_State *co = watcher->co;
+
+    watcher->co = NULL;
+
+    lua_pushboolean(co, true);
+    eco_resume(watcher->ctx->L, co, 1);
+    return;
+}
+
 static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
     struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.io);
@@ -387,8 +405,13 @@ static int eco_watcher_wait(lua_State *L, const char *tname)
     w->co = L;
 
     if (timeout > 0) {
-        ev_timer_set(&w->tmr, timeout, 0);
-        ev_timer_start(loop, &w->tmr);
+        if (w->flags & ECO_FLAG_TIMER_PERIODIC) {
+            ev_periodic_set(&w->w.periodic, timeout, 0, NULL);
+            ev_periodic_start(loop, &w->w.periodic);
+        } else {
+            ev_timer_set(&w->tmr, timeout, 0);
+            ev_timer_start(loop, &w->tmr);
+        }
     }
 
     return lua_yield(L, 0);
@@ -511,9 +534,23 @@ static int eco_watcher_async_send(lua_State *L)
     return 0;
 }
 
-static struct eco_watcher *eco_watcher_timer(lua_State *L)
+static struct eco_watcher *eco_watcher_new(lua_State *L)
 {
     struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+
+    memset(w, 0, sizeof(struct eco_watcher));
+    return w;
+}
+
+static struct eco_watcher *eco_watcher_timer(lua_State *L)
+{
+    struct eco_watcher *w = eco_watcher_new(L);
+
+    if (lua_toboolean(L, 2)) {
+        w->flags |= ECO_FLAG_TIMER_PERIODIC;
+        ev_init(&w->w.periodic, eco_watcher_periodic_cb);
+    }
+
     eco_new_metatable(L, ECO_WATCHER_TIMER_MT, NULL);
     return w;
 }
@@ -571,7 +608,7 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
 
 static struct eco_watcher *eco_watcher_async(lua_State *L)
 {
-    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+    struct eco_watcher *w = eco_watcher_new(L);
 
     ev_async_init(&w->w.async, eco_watcher_async_cb);
     eco_new_metatable(L, ECO_WATCHER_ASYNC_MT, NULL);
@@ -585,7 +622,7 @@ static struct eco_watcher *eco_watcher_async(lua_State *L)
 static struct eco_watcher *eco_watcher_child(lua_State *L)
 {
     int pid = luaL_checkinteger(L, 2);
-    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+    struct eco_watcher *w = eco_watcher_new(L);
 
     ev_child_init(&w->w.child, eco_watcher_child_cb, pid, 0);
     eco_new_metatable(L, ECO_WATCHER_CHILD_MT, NULL);
@@ -596,7 +633,7 @@ static struct eco_watcher *eco_watcher_child(lua_State *L)
 static struct eco_watcher *eco_watcher_signal(lua_State *L)
 {
     int signal = luaL_checkinteger(L, 2);
-    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
+    struct eco_watcher *w = eco_watcher_new(L);
 
     ev_signal_init(&w->w.signal, eco_watcher_signal_cb, signal);
     eco_new_metatable(L, ECO_WATCHER_SIGNAL_MT, NULL);

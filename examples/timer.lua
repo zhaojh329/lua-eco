@@ -21,3 +21,8 @@ time.at(1.0, function(tmr)
     print('repeat:', time.now())
     tmr:set(1.0)
 end)
+
+-- timer with absolute time
+time.on(time.now() + 1.5, function()
+    print('absolute timer:', time.now())
+end)

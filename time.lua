@@ -7,18 +7,20 @@ local unpack = unpack or table.unpack
 local M = {}
 
 local timers = {}
+local timers_periodic = {}
 
-local function new_timer()
-    for _, w in ipairs(timers) do
+local function new_timer(periodic)
+    local tmrs = periodic and timers_periodic or timers
+    for _, w in ipairs(tmrs) do
         if not w:active() then
             return w
         end
     end
 
-    local w = eco.watcher(eco.TIMER)
+    local w = eco.watcher(eco.TIMER, periodic)
 
-    if #timers < 10 then
-        timers[#timers + 1] = w
+    if #tmrs < 10 then
+        tmrs[#tmrs + 1] = w
     end
 
     return w
@@ -86,6 +88,22 @@ function M.at(delay, cb, ...)
     local tmr = M.timer(cb, ...)
 
     tmr:set(delay)
+
+    return tmr
+end
+
+function M.on(ts, cb, ...)
+    assert(type(ts) == 'number')
+    assert(type(cb) == 'function')
+
+    local tmr = setmetatable({}, {
+        w = new_timer(true),
+        cb = cb,
+        arguments = { ... },
+        __index = timer_methods
+    })
+
+    tmr:set(ts)
 
     return tmr
 end
