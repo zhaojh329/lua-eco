@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(lua-eco C)
 
@@ -13,27 +13,34 @@ set(ECO_VERSION_MAJOR 2)
 set(ECO_VERSION_MINOR 5)
 set(ECO_VERSION_PATCH 1)
 
-find_package(Lua REQUIRED)
 find_package(Libev REQUIRED)
 
-add_compile_options(-D_GNU_SOURCE -O -Wall -Werror --std=gnu99)
+pkg_search_module(LUA53 lua-5.3)
+
+if (NOT LUA53)
+    find_path(LUA53_INCLUDE_DIRS lua.h PATH_SUFFIXES lua5.3)
+    find_library(LUA53_LIBRARIES lua5.3)
+endif()
+
+if (NOT LUA53_INCLUDE_DIRS OR NOT LUA53_LIBRARIES)
+    message(FATAL_ERROR "Liblua 5.3 is required.")
+endif()
+
+add_compile_options(-D_GNU_SOURCE -Os -Wall -Werror --std=gnu99)
 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-include_directories(${LUA_INCLUDE_DIR} ${LIBEV_INCLUDE_DIR})
+include_directories(${LUA53_INCLUDE_DIRS} ${LIBEV_INCLUDE_DIR})
 
-if ("${PLATFORM}" STREQUAL "openwrt")
-    set(LUA_INSTALL_PREFIX /usr/lib/lua)
-else()
-    set(LUA_INSTALL_PREFIX lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR})
-endif()
+set(LUA_INSTALL_PREFIX lib/lua/5.3)
 
 option(ECO_SSL_SUPPORT "ssl" ON)
 option(ECO_UBUS_SUPPORT "ubus" ON)
+option(ECO_MQTT_SUPPORT "ubus" ON)
 
 add_executable(eco eco.c)
-target_link_libraries(eco PRIVATE ${LIBEV_LIBRARY} ${LUA_LIBRARIES})
+target_link_libraries(eco PRIVATE ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
 target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(time MODULE time.c)
@@ -42,9 +49,6 @@ set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
 
 add_library(bufio MODULE bufio.c)
 set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
-
-add_library(binary MODULE binary.c)
-set_target_properties(binary PROPERTIES OUTPUT_NAME binary PREFIX "")
 
 add_library(sys MODULE sys.c)
 set_target_properties(sys PROPERTIES OUTPUT_NAME sys PREFIX "")
@@ -124,13 +128,36 @@ if (ECO_UBUS_SUPPORT)
     endif()
 endif()
 
+if (ECO_MQTT_SUPPORT)
+    find_path(MOSQ_INCLUDE_DIRS mosquitto.h)
+    find_library(MOSQ NAMES mosquitto)
+    if (MOSQ_INCLUDE_DIRS AND MOSQ)
+        add_library(mqtt MODULE mqtt.c)
+        target_include_directories(mqtt PRIVATE ${MOSQ_INCLUDE_DIRS})
+        target_link_libraries(mqtt PRIVATE ${MOSQ})
+        set_target_properties(mqtt PROPERTIES OUTPUT_NAME mqtt PREFIX "")
+
+        install(
+            TARGETS mqtt
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+        )
+
+        install(
+            FILES mqtt.lua
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco
+        )
+    else()
+        message(WARNING "Not found libmosquitto. Skip build eco.mqtt")
+    endif()
+endif()
+
 install(
     TARGETS eco
     DESTINATION bin
 )
 
 install(
-    TARGETS log termios binary rtnl
+    TARGETS log termios rtnl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
@@ -156,7 +183,7 @@ install(
 
 install(
     FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
-        url.lua http.lua websocket.lua mqtt.lua sync.lua bit.lua
+        url.lua http.lua websocket.lua sync.lua
         nl.lua genl.lua ip.lua nl80211.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )

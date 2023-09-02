@@ -54,9 +54,15 @@ static int eco_genl_parse_genlmsghdr(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"genlmsghdr", eco_genl_new_genlmsghdr},
+    {"parse_genlmsghdr", eco_genl_parse_genlmsghdr},
+    {NULL, NULL}
+};
+
 int luaopen_eco_core_genl(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "GENL_ID_CTRL", GENL_ID_CTRL);
 
@@ -87,12 +93,6 @@ int luaopen_eco_core_genl(lua_State *L)
     lua_add_constant(L, "CTRL_ATTR_MCAST_GRP_ID", CTRL_ATTR_MCAST_GRP_ID);
 
     lua_add_constant(L, "GENLMSGHDR_SIZE", sizeof(struct genlmsghdr));
-
-    lua_pushcfunction(L, eco_genl_new_genlmsghdr);
-    lua_setfield(L, -2, "genlmsghdr");
-
-    lua_pushcfunction(L, eco_genl_parse_genlmsghdr);
-    lua_setfield(L, -2, "parse_genlmsghdr");
 
     return 1;
 }

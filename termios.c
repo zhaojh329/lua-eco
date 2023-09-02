@@ -204,9 +204,17 @@ static int lua_tcflow(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"tcgetattr", lua_tcgetattr},
+    {"tcsetattr", lua_tcsetattr},
+    {"tcflush", lua_tcflush},
+    {"tcflow", lua_tcflow},
+    {NULL, NULL}
+};
+
 int luaopen_eco_termios(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     /* actions for tcsetattr */
     lua_add_constant(L, "TCSANOW", TCSANOW);
@@ -326,18 +334,6 @@ int luaopen_eco_termios(lua_State *L)
     lua_add_constant(L, "TCOON", TCOON);
     lua_add_constant(L, "TCIOFF", TCIOFF);
     lua_add_constant(L, "TCION", TCION);
-
-    lua_pushcfunction(L, lua_tcgetattr);
-    lua_setfield(L, -2, "tcgetattr");
-
-    lua_pushcfunction(L, lua_tcsetattr);
-    lua_setfield(L, -2, "tcsetattr");
-
-    lua_pushcfunction(L, lua_tcflush);
-    lua_setfield(L, -2, "tcflush");
-
-    lua_pushcfunction(L, lua_tcflow);
-    lua_setfield(L, -2, "tcflow");
 
     return 1;
 }

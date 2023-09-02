@@ -59,16 +59,12 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
         case LUA_TBOOLEAN:
             blobmsg_add_u8(b, key, (uint8_t)lua_toboolean(L, -1));
             break;
-#ifdef LUA_TINT
-        case LUA_TINT:
-#endif
-        case LUA_TNUMBER: {
-            double v = lua_tonumber(L, -1);
 
-            if (v == (int64_t)v && v <= INT32_MAX) {
-                blobmsg_add_u32(b, key, (int32_t)v);
-            } else
-                blobmsg_add_double(b, key, v);
+        case LUA_TNUMBER: {
+            if (lua_isinteger(L, -1))
+                blobmsg_add_u64(b, key, lua_tointeger(L, -1));
+            else
+                blobmsg_add_double(b, key, lua_tonumber(L, -1));
             break;
         }
 
@@ -128,11 +124,11 @@ static int __blob_to_lua_table(lua_State *L, struct blob_attr *attr, bool is_arr
         break;
 
     case BLOBMSG_TYPE_INT32:
-        lua_pushint(L, (int32_t)be32_to_cpu(*(uint32_t *)data));
+        lua_pushinteger(L, (int32_t)be32_to_cpu(*(uint32_t *)data));
         break;
 
     case BLOBMSG_TYPE_INT64:
-        lua_pushint(L, (int64_t)be64_to_cpu(*(uint64_t *)data));
+        lua_pushinteger(L, (int64_t)be64_to_cpu(*(uint64_t *)data));
         break;
 
     case BLOBMSG_TYPE_DOUBLE: {
@@ -185,12 +181,8 @@ static void blob_to_lua_table(lua_State *L, struct blob_attr *attr, size_t len, 
 
 static void eco_push_ubus_ctx(lua_State *L, struct eco_ubus_context *ctx)
 {
-    lua_pushlightuserdata(L, &obj_registry);
-    lua_rawget(L, LUA_REGISTRYINDEX);
-
-    lua_pushlightuserdata(L, ctx);
-    lua_rawget(L, -2);
-
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
+    lua_rawgetp(L, -1, ctx);
     lua_remove(L, -2);
 }
 
@@ -205,8 +197,7 @@ static int eco_ubus_close(lua_State *L)
 
     ctx->ctx.sock.eof = true;
 
-    lua_pushlightuserdata(L, &obj_registry);
-    lua_rawget(L, LUA_REGISTRYINDEX);;
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);;
 
     lua_pushlightuserdata(L, ctx);
     lua_pushnil(L);
@@ -628,8 +619,7 @@ static int eco_ubus_connect(lua_State *L)
     lua_newtable(L);
     lua_setuservalue(L, -2);
 
-    lua_pushlightuserdata(L, &obj_registry);
-    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
     lua_pushlightuserdata(L, ctx);
     lua_pushvalue(L, -3);
     lua_rawset(L, -3);
@@ -703,13 +693,12 @@ static int eco_ubus_strerror(lua_State *L)
 
 int luaopen_eco_core_ubus(lua_State *L)
 {
-    lua_pushlightuserdata(L, &obj_registry);
     lua_newtable(L);
     lua_createtable(L, 0, 1);
     lua_pushliteral(L, "v");
     lua_setfield(L, -2, "__mode");
     lua_setmetatable(L, -2);
-    lua_rawset(L, LUA_REGISTRYINDEX);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &obj_registry);
 
     lua_newtable(L);
 

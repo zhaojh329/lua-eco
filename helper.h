@@ -10,8 +10,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "lua-compat.h"
-
 #ifndef likely
 #define likely(x)   (__builtin_expect(((x) != 0), 1))
 #endif

@@ -129,7 +129,7 @@ again:
         return 2;
     }
 
-    lua_pushnumber(L, ret);
+    lua_pushinteger(L, ret);
     return 1;
 }
 
@@ -241,28 +241,28 @@ static int __eco_file_stat(lua_State *L, struct stat *st)
     }
     lua_setfield(L, -2, "type");
 
-    lua_pushint(L, st->st_atime);
+    lua_pushinteger(L, st->st_atime);
     lua_setfield(L, -2, "atime");
 
-    lua_pushint(L, st->st_mtime);
+    lua_pushinteger(L, st->st_mtime);
     lua_setfield(L, -2, "mtime");
 
-    lua_pushint(L, st->st_ctime);
+    lua_pushinteger(L, st->st_ctime);
     lua_setfield(L, -2, "ctime");
 
-    lua_pushint(L, st->st_nlink);
+    lua_pushinteger(L, st->st_nlink);
     lua_setfield(L, -2, "nlink");
 
-    lua_pushint(L, st->st_uid);
+    lua_pushinteger(L, st->st_uid);
     lua_setfield(L, -2, "uid");
 
-    lua_pushint(L, st->st_gid);
+    lua_pushinteger(L, st->st_gid);
     lua_setfield(L, -2, "gid");
 
-    lua_pushint(L, st->st_size);
+    lua_pushinteger(L, st->st_size);
     lua_setfield(L, -2, "size");
 
-    lua_pushint(L, st->st_ino);
+    lua_pushinteger(L, st->st_ino);
     lua_setfield(L, -2, "ino");
 
     return 1;
@@ -452,9 +452,30 @@ static int eco_file_flock(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"open", eco_file_open},
+    {"close", eco_file_close},
+    {"read", eco_file_read},
+    {"read_to_buffer", eco_file_read_to_buffer},
+    {"write", eco_file_write},
+    {"sendfile", eco_file_sendfile},
+    {"lseek", eco_file_lseek},
+    {"access", eco_file_access},
+    {"readlink", eco_file_readlink},
+    {"stat", eco_file_stat},
+    {"fstat", eco_file_fstat},
+    {"statvfs", eco_file_statvfs},
+    {"chown", eco_file_chown},
+    {"dirname", eco_file_dirname},
+    {"basename", eco_file_basename},
+    {"sync", eco_file_sync},
+    {"flock", eco_file_flock},
+    {NULL, NULL}
+};
+
 int luaopen_eco_core_file(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "O_RDONLY", O_RDONLY);
     lua_add_constant(L, "O_WRONLY", O_WRONLY);
@@ -492,60 +513,9 @@ int luaopen_eco_core_file(lua_State *L)
     lua_add_constant(L, "LOCK_EX", LOCK_EX);
     lua_add_constant(L, "LOCK_UN", LOCK_UN);
 
-    lua_pushcfunction(L, eco_file_open);
-    lua_setfield(L, -2, "open");
-
-    lua_pushcfunction(L, eco_file_close);
-    lua_setfield(L, -2, "close");
-
-    lua_pushcfunction(L, eco_file_read);
-    lua_setfield(L, -2, "read");
-
-    lua_pushcfunction(L, eco_file_read_to_buffer);
-    lua_setfield(L, -2, "read_to_buffer");
-
-    lua_pushcfunction(L, eco_file_write);
-    lua_setfield(L, -2, "write");
-
-    lua_pushcfunction(L, eco_file_sendfile);
-    lua_setfield(L, -2, "sendfile");
-
-    lua_pushcfunction(L, eco_file_lseek);
-    lua_setfield(L, -2, "lseek");
-
-    lua_pushcfunction(L, eco_file_access);
-    lua_setfield(L, -2, "access");
-
-    lua_pushcfunction(L, eco_file_readlink);
-    lua_setfield(L, -2, "readlink");
-
-    lua_pushcfunction(L, eco_file_stat);
-    lua_setfield(L, -2, "stat");
-
-    lua_pushcfunction(L, eco_file_fstat);
-    lua_setfield(L, -2, "fstat");
-
-    lua_pushcfunction(L, eco_file_statvfs);
-    lua_setfield(L, -2, "statvfs");
-
     eco_new_metatable(L, ECO_FILE_DIR_MT, dir_methods);
     lua_pushcclosure(L, eco_file_dir, 1);
     lua_setfield(L, -2, "dir");
-
-    lua_pushcfunction(L, eco_file_chown);
-    lua_setfield(L, -2, "chown");
-
-    lua_pushcfunction(L, eco_file_dirname);
-    lua_setfield(L, -2, "dirname");
-
-    lua_pushcfunction(L, eco_file_basename);
-    lua_setfield(L, -2, "basename");
-
-    lua_pushcfunction(L, eco_file_sync);
-    lua_setfield(L, -2, "sync");
-
-    lua_pushcfunction(L, eco_file_flock);
-    lua_setfield(L, -2, "flock");
 
     return 1;
 }

@@ -389,7 +389,7 @@ static int eco_nl_attr_get_u32(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
     uint32_t value = *((uint32_t *)nla_data(attr));
-    lua_pushint(L, value);
+    lua_pushinteger(L, value);
     return 1;
 }
 
@@ -397,7 +397,7 @@ static int eco_nl_attr_get_s32(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
     int32_t value = *((int32_t *)nla_data(attr));
-    lua_pushint(L, value);
+    lua_pushinteger(L, value);
     return 1;
 }
 
@@ -410,7 +410,7 @@ static int eco_nl_attr_get_u64(lua_State *L)
     if (value > INT64_MAX)
         value = INT64_MAX;
 
-    lua_pushint(L, value);
+    lua_pushinteger(L, value);
     return 1;
 }
 
@@ -419,7 +419,7 @@ static int eco_nl_attr_get_s64(lua_State *L)
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
     int64_t value = *((int64_t *)nla_data(attr));
 
-    lua_pushint(L, value);
+    lua_pushinteger(L, value);
     return 1;
 }
 
@@ -454,9 +454,24 @@ static int eco_nl_parse_attr_nested(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"attr_get_u8", eco_nl_attr_get_u8},
+    {"attr_get_s8", eco_nl_attr_get_s8},
+    {"attr_get_u16", eco_nl_attr_get_u16},
+    {"attr_get_s16", eco_nl_attr_get_s16},
+    {"attr_get_u32", eco_nl_attr_get_u32},
+    {"attr_get_s32", eco_nl_attr_get_s32},
+    {"attr_get_u64", eco_nl_attr_get_u64},
+    {"attr_get_s64", eco_nl_attr_get_s64},
+    {"attr_get_str", eco_nl_attr_get_str},
+    {"attr_get_payload", eco_nl_attr_get_payload},
+    {"parse_attr_nested", eco_nl_parse_attr_nested},
+    {NULL, NULL}
+};
+
 int luaopen_eco_core_nl(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "NLMSG_NOOP", NLMSG_NOOP);
     lua_add_constant(L, "NLMSG_ERROR", NLMSG_ERROR);
@@ -514,39 +529,6 @@ int luaopen_eco_core_nl(lua_State *L)
     eco_new_metatable(L, ECO_NLMSG_KER_MT, nlmsg_ker_methods);
     lua_pushcclosure(L, eco_new_nlmsg_ker, 1);
     lua_setfield(L, -2, "nlmsg_ker");
-
-    lua_pushcfunction(L, eco_nl_attr_get_u8);
-    lua_setfield(L, -2, "attr_get_u8");
-
-    lua_pushcfunction(L, eco_nl_attr_get_s8);
-    lua_setfield(L, -2, "attr_get_s8");
-
-    lua_pushcfunction(L, eco_nl_attr_get_u16);
-    lua_setfield(L, -2, "attr_get_u16");
-
-    lua_pushcfunction(L, eco_nl_attr_get_s16);
-    lua_setfield(L, -2, "attr_get_s16");
-
-    lua_pushcfunction(L, eco_nl_attr_get_u32);
-    lua_setfield(L, -2, "attr_get_u32");
-
-    lua_pushcfunction(L, eco_nl_attr_get_s32);
-    lua_setfield(L, -2, "attr_get_s32");
-
-    lua_pushcfunction(L, eco_nl_attr_get_u64);
-    lua_setfield(L, -2, "attr_get_u64");
-
-    lua_pushcfunction(L, eco_nl_attr_get_s64);
-    lua_setfield(L, -2, "attr_get_s64");
-
-    lua_pushcfunction(L, eco_nl_attr_get_str);
-    lua_setfield(L, -2, "attr_get_str");
-
-    lua_pushcfunction(L, eco_nl_attr_get_payload);
-    lua_setfield(L, -2, "attr_get_payload");
-
-    lua_pushcfunction(L, eco_nl_parse_attr_nested);
-    lua_setfield(L, -2, "parse_attr_nested");
 
     return 1;
 }

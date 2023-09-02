@@ -4,13 +4,6 @@
 -- Referenced from https://github.com/openresty/lua-resty-dns/blob/master/lib/resty/dns/resolver.lua
 
 local socket = require 'eco.socket'
-local bit = require 'eco.bit'
-
-local str_char = string.char
-
-local rshift = bit.rshift
-local lshift = bit.lshift
-local band = bit.band
 
 local TYPE_A      = 1
 local TYPE_NS     = 2
@@ -94,43 +87,30 @@ local function get_next_transaction_id()
 end
 
 local function build_request(qname, id, opts)
-    local ident_hi = str_char(rshift(id, 8))
-    local ident_lo = str_char(band(id, 0xff))
+    local flags = 0
 
-    local qtype = opts.type or TYPE_A
-
-    local flags
-    if opts.no_recurse then
-        flags = "\0\0"
-    else
-        flags = "\1\0"
+    if not opts.no_recurse then
+        flags = flags | 1 << 8
     end
 
-    local nqs = '\0\1'
-    local nan = '\0\0'
-    local nns = '\0\0'
-    local nar = '\0\0'
-    local typ = str_char(rshift(qtype, 8), band(qtype, 0xff))
-    local class = '\0\1'
-
-    if string.byte(qname, 1) == string.byte('.') then
-        return nil, 'bad name'
-    end
+    local nqs = 1
+    local nan = 0
+    local nns = 0
+    local nar = 0
 
     local name = qname:gsub('([^.]+)%.?', function(s)
-        return str_char(#s) .. s
-    end) .. '\0'
+        return string.char(#s) .. s
+    end)
 
-    return table.concat({
-        ident_hi, ident_lo, flags, nqs, nan, nns, nar,
-        name, typ, class
-    })
+    return string.pack('>I2I2I2I2I2I2zI2I2',
+        id, flags, nqs, nan, nns, nar, name, opts.type or TYPE_A, CLASS_IN)
 end
 
 local function decode_name(buf, pos)
     local labels = {}
     local nptrs = 0
     local p = pos
+
     while nptrs < 128 do
         local fst = string.byte(buf, p)
 
@@ -145,7 +125,7 @@ local function decode_name(buf, pos)
             break
         end
 
-        if band(fst, 0xc0) ~= 0 then
+        if fst & 0xc0 ~= 0 then
             -- being a pointer
             if nptrs == 0 then
                 pos = pos + 2
@@ -158,7 +138,7 @@ local function decode_name(buf, pos)
                 return nil, 'truncated'
             end
 
-            p = lshift(band(fst, 0x3f), 8) + snd + 1
+            p = ((fst & 0x3f) << 8) + snd + 1
         else
             -- being a label
             local label = buf:sub(p + 1, p + fst)
@@ -195,27 +175,11 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
 
         ans.name = name
 
-        local type_hi = string.byte(buf, pos)
-        local type_lo = string.byte(buf, pos + 1)
-        local typ = lshift(type_hi, 8) + type_lo
+        local typ, class, ttl, len = string.unpack('>I2I2I4I2', buf:sub(pos))
 
         ans.type = typ
-
-        local class_hi = string.byte(buf, pos + 2)
-        local class_lo = string.byte(buf, pos + 3)
-        local class = lshift(class_hi, 8) + class_lo
-
         ans.class = class
-
-        local byte_1, byte_2, byte_3, byte_4 = string.byte(buf, pos + 4, pos + 7)
-
-        local ttl = lshift(byte_1, 24) + lshift(byte_2, 16) + lshift(byte_3, 8) + byte_4
-
         ans.ttl = ttl
-
-        local len_hi = string.byte(buf, pos + 8)
-        local len_lo = string.byte(buf, pos + 9)
-        local len = lshift(len_hi, 8) + len_lo
 
         pos = pos + 10
 
@@ -278,10 +242,7 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
                 return nil, 'bad MX record value length: ' .. len
             end
 
-            local pref_hi = string.byte(buf, pos)
-            local pref_lo = string.byte(buf, pos + 1)
-
-            ans.preference = lshift(pref_hi, 8) + pref_lo
+            ans.preference = string.unpack('>I2', buf:sub(pos))
 
             local host, p = decode_name(buf, pos + 2)
             if not host then
@@ -301,17 +262,7 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
                 return nil, 'bad SRV record value length: ' .. len
             end
 
-            local prio_hi = string.byte(buf, pos)
-            local prio_lo = string.byte(buf, pos + 1)
-            ans.priority = lshift(prio_hi, 8) + prio_lo
-
-            local weight_hi = string.byte(buf, pos + 2)
-            local weight_lo = string.byte(buf, pos + 3)
-            ans.weight = lshift(weight_hi, 8) + weight_lo
-
-            local port_hi = string.byte(buf, pos + 4)
-            local port_lo = string.byte(buf, pos + 5)
-            ans.port = lshift(port_hi, 8) + port_lo
+            ans.priority, ans.weight, ans.port = string.unpack('>I2I2I2', buf:sub(pos))
 
             local name, p = decode_name(buf, pos + 6)
             if not name then
@@ -327,7 +278,6 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
             pos = p
 
         elseif typ == TYPE_NS then
-
             local name, p = decode_name(buf, pos)
             if not name then
                 return nil, pos
@@ -342,8 +292,7 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
             ans.nsdname = name
 
         elseif typ == TYPE_TXT or typ == TYPE_SPF then
-
-            local key = (typ == TYPE_TXT) and 'txt' or 'spf'
+            local key = typ == TYPE_TXT and 'txt' or 'spf'
 
             local slen = string.byte(buf, pos)
             if slen + 1 > len then
@@ -364,7 +313,7 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
                 val = {val}
                 local idx = 2
                 repeat
-                    local slen = string.byte(buf, pos)
+                    slen = string.byte(buf, pos)
                     if pos + slen + 1 > last then
                         -- truncate the over-run TXT record data
                         slen = last - pos - 1
@@ -380,7 +329,6 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
             ans[key] = val
 
         elseif typ == TYPE_PTR then
-
             local name, p = decode_name(buf, pos)
             if not name then
                 return nil, pos
@@ -409,8 +357,7 @@ local function parse_section(answers, section, buf, start_pos, size, should_skip
             ans.rname = name
 
             for _, field in ipairs(soa_int32_fields) do
-                local byte_1, byte_2, byte_3, byte_4 = string.byte(buf, p, p + 3)
-                ans[field] = lshift(byte_1, 24) + lshift(byte_2, 16) + lshift(byte_3, 8) + byte_4
+                ans[field] = string.unpack('>I4', buf:sub(p))
                 p = p + 4
             end
 
@@ -433,39 +380,25 @@ local function parse_response(buf, id)
     end
 
     -- header layout: ident flags nqs nan nns nar
-    local ident_hi = string.byte(buf, 1)
-    local ident_lo = string.byte(buf, 2)
-    local ans_id = lshift(ident_hi, 8) + ident_lo
+    local ans_id, flags, nqs, nan = string.unpack('>I2I2I2I2', buf)
 
     if ans_id ~= id then
         return nil, 'id mismatch'
     end
 
-    local flags_hi = string.byte(buf, 3)
-    local flags_lo = string.byte(buf, 4)
-    local flags = lshift(flags_hi, 8) + flags_lo
-
-    if band(flags, 0x8000) == 0 then
+    if flags & 0x8000 == 0 then
         return nil, 'bad QR flag in the DNS response'
     end
 
-    if band(flags, 0x200) ~= 0 then
+    if flags & 0x200 ~= 0 then
         return nil, 'truncated'
     end
 
-    local code = band(flags, 0xf)
-
-    local nqs_hi = string.byte(buf, 5)
-    local nqs_lo = string.byte(buf, 6)
-    local nqs = lshift(nqs_hi, 8) + nqs_lo
+    local code = flags & 0xf
 
     if nqs ~= 1 then
         return nil, string.format('bad number of questions in DNS response: %d', nqs)
     end
-
-    local nan_hi = string.byte(buf, 7)
-    local nan_lo = string.byte(buf, 8)
-    local nan = lshift(nan_hi, 8) + nan_lo
 
     -- skip the question part
     local ans_qname, pos = decode_name(buf, 13)
@@ -477,10 +410,7 @@ local function parse_response(buf, id)
         return nil, 'truncated';
     end
 
-    local class_hi = string.byte(buf, pos + 2)
-    local class_lo = string.byte(buf, pos + 3)
-    local qclass = lshift(class_hi, 8) + class_lo
-
+    local qclass = string.unpack('>I2', buf:sub(pos + 2))
     if qclass ~= 1 then
         return nil, string.format('unknown query class %d in DNS response', qclass)
     end
@@ -530,6 +460,10 @@ end
                 single hostname string or a table holding both the hostname string and the port number.
 --]]
 function M.query(qname, opts)
+    if string.byte(qname, 1) == string.byte('.') or #qname > 255 then
+        return nil, 'bad name'
+    end
+
     if socket.is_ipv4_address(qname) then
         return { {
             type = TYPE_A,

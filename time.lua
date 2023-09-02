@@ -2,7 +2,6 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local time = require 'eco.core.time'
-local unpack = unpack or table.unpack
 
 local M = {}
 
@@ -57,7 +56,7 @@ function timer_methods:set(delay)
         if w:wait(delay) then
             mt.cb(...)
         end
-    end, self, unpack(mt.arguments))
+    end, self, table.unpack(mt.arguments))
 end
 
 -- The timer function is similar to `at`, but will not be started immediately.

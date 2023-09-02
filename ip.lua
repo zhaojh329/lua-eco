@@ -5,7 +5,6 @@ local socket = require 'eco.core.socket'
 local hex = require 'eco.encoding.hex'
 local rtnl = require 'eco.rtnl'
 local sys = require 'eco.sys'
-local bit = require 'eco.bit'
 local nl = require 'eco.nl'
 
 local M = {}
@@ -78,55 +77,55 @@ function link.set(dev, attrs)
 
     attrs = attrs or {}
 
-    local msg = nl.nlmsg(rtnl.RTM_SETLINK, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_ACK))
+    local msg = nl.nlmsg(rtnl.RTM_SETLINK, nl.NLM_F_REQUEST | nl.NLM_F_ACK)
 
     local change = 0
     local flags = 0
 
     if attrs.up then
-        change = bit.bor(change, rtnl.IFF_UP)
-        flags = bit.bor(flags, rtnl.IFF_UP)
+        change = change | rtnl.IFF_UP
+        flags = flags | rtnl.IFF_UP
     elseif attrs.down then
-        change = bit.bor(change, rtnl.IFF_UP)
+        change = change | rtnl.IFF_UP
     end
 
     if attrs.arp ~= nil then
-        change = bit.bor(change, rtnl.IFF_NOARP)
+        change = change | rtnl.IFF_NOARP
 
         if not attrs.arp then
-            flags = bit.bor(flags, rtnl.IFF_NOARP)
+            flags = flags | rtnl.IFF_NOARP
         end
     end
 
     if attrs.dynamic ~= nil then
-        change = bit.bor(change, rtnl.IFF_DYNAMIC)
+        change = change | rtnl.IFF_DYNAMIC
 
         if attrs.dynamic then
-            flags = bit.bor(flags, rtnl.IFF_DYNAMIC)
+            flags = flags | rtnl.IFF_DYNAMIC
         end
     end
 
     if attrs.multicast ~= nil then
-        change = bit.bor(change, rtnl.IFF_MULTICAST)
+        change = change | rtnl.IFF_MULTICAST
 
         if attrs.multicast then
-            flags = bit.bor(flags, rtnl.IFF_MULTICAST)
+            flags = flags | rtnl.IFF_MULTICAST
         end
     end
 
     if attrs.allmulticast ~= nil then
-        change = bit.bor(change, rtnl.IFF_MULTICAST)
+        change = change | rtnl.IFF_MULTICAST
 
         if attrs.allmulticast then
-            flags = bit.bor(flags, rtnl.IFF_ALLMULTI)
+            flags = flags | rtnl.IFF_ALLMULTI
         end
     end
 
     if attrs.promisc ~= nil then
-        change = bit.bor(change, rtnl.IFF_PROMISC)
+        change = change | rtnl.IFF_PROMISC
 
         if attrs.promisc then
-            flags = bit.bor(flags, rtnl.IFF_PROMISC)
+            flags = flags | rtnl.IFF_PROMISC
         end
     end
 
@@ -188,7 +187,7 @@ function link.get(dev)
         return nil, err
     end
 
-    local msg = nl.nlmsg(rtnl.RTM_GETLINK, bit.bor(nl.NLM_F_REQUEST))
+    local msg = nl.nlmsg(rtnl.RTM_GETLINK, nl.NLM_F_REQUEST)
 
     msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, index = dev_index }))
 
@@ -228,31 +227,31 @@ function link.get(dev)
 
     local info = rtnl.parse_ifinfomsg(msg)
 
-    if bit.band(info.flags, rtnl.IFF_UP) > 0 then
+    if info.flags & rtnl.IFF_UP > 0 then
         res.up = true
     end
 
-    if bit.band(info.flags, rtnl.IFF_RUNNING) > 0 then
+    if info.flags & rtnl.IFF_RUNNING > 0 then
         res.running = true
     end
 
-    if bit.band(info.flags, rtnl.IFF_NOARP) > 0 then
+    if info.flags & rtnl.IFF_NOARP > 0 then
         res.arp = false
     end
 
-    if bit.band(info.flags, rtnl.IFF_DYNAMIC) > 0 then
+    if info.flags & rtnl.IFF_DYNAMIC > 0 then
         res.dynamic = true
     end
 
-    if bit.band(info.flags, rtnl.IFF_MULTICAST) > 0 then
+    if info.flags & rtnl.IFF_MULTICAST > 0 then
         res.multicast = true
     end
 
-    if bit.band(info.flags, rtnl.IFF_ALLMULTI) > 0 then
+    if info.flags & rtnl.IFF_ALLMULTI > 0 then
         res.allmulticast = true
     end
 
-    if bit.band(info.flags, rtnl.IFF_PROMISC) > 0 then
+    if info.flags & rtnl.IFF_PROMISC > 0 then
         res.promisc = true
     end
 
@@ -364,7 +363,7 @@ local function do_address(action, dev, addr)
         error('invalid action')
     end
 
-    local msg = nl.nlmsg(msg_type, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_ACK))
+    local msg = nl.nlmsg(msg_type, nl.NLM_F_REQUEST | nl.NLM_F_ACK)
 
     msg:put(rtnl.ifaddrmsg({
         family = family,
@@ -421,7 +420,7 @@ function address.get(dev)
         return nil, err
     end
 
-    local msg = nl.nlmsg(rtnl.RTM_GETADDR, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_DUMP))
+    local msg = nl.nlmsg(rtnl.RTM_GETADDR, nl.NLM_F_REQUEST | nl.NLM_F_DUMP)
 
     msg:put(rtnl.ifaddrmsg({ family = socket.AF_UNSPEC }))
 

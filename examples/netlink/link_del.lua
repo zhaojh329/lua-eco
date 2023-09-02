@@ -3,7 +3,6 @@
 local socket = require 'eco.socket'
 local rtnl = require 'eco.rtnl'
 local sys = require 'eco.sys'
-local bit = require 'eco.bit'
 local nl = require 'eco.nl'
 
 local sock, err = nl.open(nl.NETLINK_ROUTE)
@@ -12,7 +11,7 @@ if not sock then
     return
 end
 
-local msg = nl.nlmsg(rtnl.RTM_DELLINK, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_ACK))
+local msg = nl.nlmsg(rtnl.RTM_DELLINK, nl.NLM_F_REQUEST | nl.NLM_F_ACK)
 
 msg:put(rtnl.rtgenmsg({ family = socket.AF_UNSPEC }))
 msg:put_attr_str(rtnl.IFLA_IFNAME, 'eth0')

@@ -17,7 +17,7 @@ static int eco_sys_uptime(lua_State *L)
     struct sysinfo info = {};
 
     sysinfo(&info);
-    lua_pushnumber(L, info.uptime);
+    lua_pushinteger(L, info.uptime);
 
     return 1;
 }
@@ -139,27 +139,19 @@ static int eco_sys_strerror(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"uptime", eco_sys_uptime},
+    {"getpid", eco_sys_getpid},
+    {"getppid", eco_sys_getppid},
+    {"kill", eco_sys_kill},
+    {"exec", eco_sys_exec},
+    {"strerror", eco_sys_strerror},
+    {NULL, NULL}
+};
+
 int luaopen_eco_core_sys(lua_State *L)
 {
-    lua_newtable(L);
-
-    lua_pushcfunction(L, eco_sys_uptime);
-    lua_setfield(L, -2, "uptime");
-
-    lua_pushcfunction(L, eco_sys_getpid);
-    lua_setfield(L, -2, "getpid");
-
-    lua_pushcfunction(L, eco_sys_getppid);
-    lua_setfield(L, -2, "getppid");
-
-    lua_pushcfunction(L, eco_sys_kill);
-    lua_setfield(L, -2, "kill");
-
-    lua_pushcfunction(L, eco_sys_exec);
-    lua_setfield(L, -2, "exec");
-
-    lua_pushcfunction(L, eco_sys_strerror);
-    lua_setfield(L, -2, "strerror");
+    luaL_newlib(L, funcs);
 
     /* signal */
     lua_add_constant(L, "SIGABRT", SIGABRT);

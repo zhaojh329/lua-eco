@@ -95,15 +95,7 @@ function M.exec(...)
         return nil, stdout_fd
     end
 
-    local p = {}
-
-    if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
-        local __prox = newproxy(true)
-        getmetatable(__prox).__gc = function() p:release() end
-        p[__prox] = true
-    end
-
-    return setmetatable(p, {
+    return setmetatable({}, {
         pid = pid,
         stdout_fd = stdout_fd,
         stderr_fd = stderr_fd,

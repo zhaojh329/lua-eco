@@ -151,9 +151,18 @@ static int eco_rtnl_parse_ifaddrmsg(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"rtgenmsg", eco_rtnl_new_rtgenmsg},
+    {"ifinfomsg", eco_rtnl_new_ifinfomsg},
+    {"ifaddrmsg", eco_rtnl_new_ifaddrmsg},
+    {"parse_ifinfomsg", eco_rtnl_parse_ifinfomsg},
+    {"parse_ifaddrmsg", eco_rtnl_parse_ifaddrmsg},
+    {NULL, NULL}
+};
+
 int luaopen_eco_rtnl(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "RTM_NEWLINK", RTM_NEWLINK);
     lua_add_constant(L, "RTM_DELLINK", RTM_DELLINK);
@@ -334,21 +343,6 @@ int luaopen_eco_rtnl(lua_State *L)
 
     lua_add_constant(L, "IFINFOMSG_SIZE", sizeof(struct ifinfomsg));
     lua_add_constant(L, "IFADDRMSG_SIZE", sizeof(struct ifaddrmsg));
-
-    lua_pushcfunction(L, eco_rtnl_new_rtgenmsg);
-    lua_setfield(L, -2, "rtgenmsg");
-
-    lua_pushcfunction(L, eco_rtnl_new_ifinfomsg);
-    lua_setfield(L, -2, "ifinfomsg");
-
-    lua_pushcfunction(L, eco_rtnl_new_ifaddrmsg);
-    lua_setfield(L, -2, "ifaddrmsg");
-
-    lua_pushcfunction(L, eco_rtnl_parse_ifinfomsg);
-    lua_setfield(L, -2, "parse_ifinfomsg");
-
-    lua_pushcfunction(L, eco_rtnl_parse_ifaddrmsg);
-    lua_setfield(L, -2, "parse_ifaddrmsg");
 
     return 1;
 }

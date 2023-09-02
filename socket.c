@@ -280,7 +280,7 @@ again:
         return 2;
     }
 
-    lua_pushnumber(L, ret);
+    lua_pushinteger(L, ret);
     return 1;
 }
 
@@ -334,7 +334,7 @@ again:
         return 2;
     }
 
-    lua_pushnumber(L, ret);
+    lua_pushinteger(L, ret);
     return 1;
 }
 
@@ -708,7 +708,7 @@ static int eco_socket_inet_aton(lua_State *L)
     struct in_addr in = {};
 
     inet_aton(src, &in);
-    lua_pushint(L, in.s_addr);
+    lua_pushinteger(L, in.s_addr);
 
     return 1;
 }
@@ -759,7 +759,7 @@ static int eco_socket_if_nametoindex(lua_State *L)
     if (ifidx == 0)
         lua_pushnil(L);
     else
-        lua_pushint(L, ifidx);
+        lua_pushinteger(L, ifidx);
 
     return 1;
 }
@@ -775,9 +775,43 @@ static int eco_socket_if_indextoname(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"socket", eco_socket_socket},
+    {"bind", eco_socket_bind},
+    {"bind6", eco_socket_bind6},
+    {"bind_unix", eco_socket_bind_unix},
+    {"bind_nl", eco_socket_bind_nl},
+    {"listen", eco_socket_listen},
+    {"accept", eco_socket_accept},
+    {"connect", eco_socket_connect},
+    {"connect6", eco_socket_connect6},
+    {"connect_unix", eco_socket_connect_unix},
+    {"connect_nl", eco_socket_connect_nl},
+    {"send", eco_socket_send},
+    {"recv", eco_socket_recv},
+    {"sendto", eco_socket_sendto},
+    {"sendto6", eco_socket_sendto6},
+    {"sendto_unix", eco_socket_sendto_unix},
+    {"sendto_nl", eco_socket_sendto_nl},
+    {"recvfrom", eco_socket_recvfrom},
+    {"getsockname", eco_socket_getsockname},
+    {"getpeername", eco_socket_getpeername},
+    {"getoption", eco_socket_getoption},
+    {"setoption", eco_socket_setoption},
+    {"is_ipv4_address", eco_socket_is_ipv4_address},
+    {"is_ipv6_address", eco_socket_is_ipv6_address},
+    {"inet_aton", eco_socket_inet_aton},
+    {"inet_ntoa", eco_socket_inet_ntoa},
+    {"inet_ntop", eco_socket_inet_ntop},
+    {"inet_pton", eco_socket_inet_pton},
+    {"if_nametoindex", eco_socket_if_nametoindex},
+    {"if_indextoname", eco_socket_if_indextoname},
+    {NULL, NULL}
+};
+
 int luaopen_eco_core_socket(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "AF_UNSPEC", AF_UNSPEC);
     lua_add_constant(L, "AF_INET", AF_INET);
@@ -803,96 +837,6 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_add_constant(L, "MSG_NOSIGNAL", MSG_NOSIGNAL);
     lua_add_constant(L, "MSG_MORE", MSG_MORE);
     lua_add_constant(L, "MSG_CMSG_CLOEXEC", MSG_CMSG_CLOEXEC);
-
-    lua_pushcfunction(L, eco_socket_socket);
-    lua_setfield(L, -2, "socket");
-
-    lua_pushcfunction(L, eco_socket_bind);
-    lua_setfield(L, -2, "bind");
-
-    lua_pushcfunction(L, eco_socket_bind6);
-    lua_setfield(L, -2, "bind6");
-
-    lua_pushcfunction(L, eco_socket_bind_unix);
-    lua_setfield(L, -2, "bind_unix");
-
-    lua_pushcfunction(L, eco_socket_bind_nl);
-    lua_setfield(L, -2, "bind_nl");
-
-    lua_pushcfunction(L, eco_socket_listen);
-    lua_setfield(L, -2, "listen");
-
-    lua_pushcfunction(L, eco_socket_accept);
-    lua_setfield(L, -2, "accept");
-
-    lua_pushcfunction(L, eco_socket_connect);
-    lua_setfield(L, -2, "connect");
-
-    lua_pushcfunction(L, eco_socket_connect6);
-    lua_setfield(L, -2, "connect6");
-
-    lua_pushcfunction(L, eco_socket_connect_unix);
-    lua_setfield(L, -2, "connect_unix");
-
-    lua_pushcfunction(L, eco_socket_connect_nl);
-    lua_setfield(L, -2, "connect_nl");
-
-    lua_pushcfunction(L, eco_socket_send);
-    lua_setfield(L, -2, "send");
-
-    lua_pushcfunction(L, eco_socket_recv);
-    lua_setfield(L, -2, "recv");
-
-    lua_pushcfunction(L, eco_socket_sendto);
-    lua_setfield(L, -2, "sendto");
-
-    lua_pushcfunction(L, eco_socket_sendto6);
-    lua_setfield(L, -2, "sendto6");
-
-    lua_pushcfunction(L, eco_socket_sendto_unix);
-    lua_setfield(L, -2, "sendto_unix");
-
-    lua_pushcfunction(L, eco_socket_sendto_nl);
-    lua_setfield(L, -2, "sendto_nl");
-
-    lua_pushcfunction(L, eco_socket_recvfrom);
-    lua_setfield(L, -2, "recvfrom");
-
-    lua_pushcfunction(L, eco_socket_getsockname);
-    lua_setfield(L, -2, "getsockname");
-
-    lua_pushcfunction(L, eco_socket_getpeername);
-    lua_setfield(L, -2, "getpeername");
-
-    lua_pushcfunction(L, eco_socket_getoption);
-    lua_setfield(L, -2, "getoption");
-
-    lua_pushcfunction(L, eco_socket_setoption);
-    lua_setfield(L, -2, "setoption");
-
-    lua_pushcfunction(L, eco_socket_is_ipv4_address);
-    lua_setfield(L, -2, "is_ipv4_address");
-
-    lua_pushcfunction(L, eco_socket_is_ipv6_address);
-    lua_setfield(L, -2, "is_ipv6_address");
-
-    lua_pushcfunction(L, eco_socket_inet_aton);
-    lua_setfield(L, -2, "inet_aton");
-
-    lua_pushcfunction(L, eco_socket_inet_ntoa);
-    lua_setfield(L, -2, "inet_ntoa");
-
-    lua_pushcfunction(L, eco_socket_inet_ntop);
-    lua_setfield(L, -2, "inet_ntop");
-
-    lua_pushcfunction(L, eco_socket_inet_pton);
-    lua_setfield(L, -2, "inet_pton");
-
-    lua_pushcfunction(L, eco_socket_if_nametoindex);
-    lua_setfield(L, -2, "if_nametoindex");
-
-    lua_pushcfunction(L, eco_socket_if_indextoname);
-    lua_setfield(L, -2, "if_indextoname");
 
     return 1;
 }

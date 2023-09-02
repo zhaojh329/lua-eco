@@ -151,15 +151,14 @@ static int lua_b64_decode(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"encode", lua_b64_encode},
+    {"decode", lua_b64_decode},
+    {NULL, NULL}
+};
+
 int luaopen_eco_encoding_base64(lua_State *L)
 {
-    lua_newtable(L);
-
-    lua_pushcfunction(L, lua_b64_encode);
-    lua_setfield(L, -2, "encode");
-
-    lua_pushcfunction(L, lua_b64_decode);
-    lua_setfield(L, -2, "decode");
-
+    luaL_newlib(L, funcs);
     return 1;
 }

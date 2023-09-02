@@ -3,7 +3,6 @@
 local hex = require 'eco.encoding.hex'
 local rtnl = require 'eco.rtnl'
 local sys = require 'eco.sys'
-local bit = require 'eco.bit'
 local nl = require 'eco.nl'
 
 local sock, err = nl.open(nl.NETLINK_ROUTE)
@@ -47,7 +46,7 @@ while true do
                 end
             end
 
-            if bit.band(info.flags, rtnl.IFF_RUNNING) > 0 then
+            if info.flags & rtnl.IFF_RUNNING > 0 then
                 print('RUNNING')
             else
                 print('NOT RUNNING')

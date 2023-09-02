@@ -290,12 +290,6 @@ end
 local function ssl_setmetatable(ctx, sock, methods, name, insecure)
     local ssock = {}
 
-    if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
-        local __prox = newproxy(true)
-        getmetatable(__prox).__gc = function() ssl_close(ssock) end
-        ssock[__prox] = true
-    end
-
     local fd = sock:getfd()
 
     local mt = {

@@ -139,13 +139,24 @@ static int lua_log_set_flags(lua_State *L)
     return 0;
 }
 
+static const luaL_Reg funcs[] = {
+    {"set_level", lua_log_set_level},
+    {"debug", lua_log_debug},
+    {"info", lua_log_info},
+    {"err", lua_log_err},
+    {"log", lua_log},
+    {"set_path", lua_log_set_path},
+    {"set_flags", lua_log_set_flags},
+    {NULL, NULL}
+};
+
 int luaopen_eco_log(lua_State *L)
 {
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "EMERG", LOG_EMERG);
     lua_add_constant(L, "ALERT", LOG_ALERT);
-    lua_add_constant(L, "CRIT", LOG_CRIT);
+lua_add_constant(L, "CRIT", LOG_CRIT);
     lua_add_constant(L, "ERR", LOG_ERR);
     lua_add_constant(L, "WARNING", LOG_WARNING);
     lua_add_constant(L, "NOTICE", LOG_NOTICE);
@@ -155,27 +166,6 @@ int luaopen_eco_log(lua_State *L)
     lua_add_constant(L, "FLAG_LF", LOG_FLAG_LF);
     lua_add_constant(L, "FLAG_FILE", LOG_FLAG_FILE);
     lua_add_constant(L, "FLAG_PATH", LOG_FLAG_PATH);
-
-    lua_pushcfunction(L, lua_log_set_level);
-    lua_setfield(L, -2, "set_level");
-
-    lua_pushcfunction(L, lua_log_debug);
-    lua_setfield(L, -2, "debug");
-
-    lua_pushcfunction(L, lua_log_info);
-    lua_setfield(L, -2, "info");
-
-    lua_pushcfunction(L, lua_log_err);
-    lua_setfield(L, -2, "err");
-
-    lua_pushcfunction(L, lua_log);
-    lua_setfield(L, -2, "log");
-
-    lua_pushcfunction(L, lua_log_set_path);
-    lua_setfield(L, -2, "set_path");
-
-    lua_pushcfunction(L, lua_log_set_flags);
-    lua_setfield(L, -2, "set_flags");
 
     return 1;
 }

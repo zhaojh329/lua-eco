@@ -2,7 +2,6 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local ubus = require 'eco.core.ubus'
-local unpack = unpack or table.unpack
 
 local M = {}
 
@@ -104,6 +103,9 @@ function methods:add(object, methods)
 
     for _, m in pairs(methods) do
         local cb = m[1]
+
+        assert(type(cb) == 'function')
+
         m[1] = function(req, msg)
             eco.run(function()
                 local rc = cb(req, msg)
@@ -165,20 +167,12 @@ function M.connect(path)
         return nil, err
     end
 
-    local con = {}
-
     local w = eco.watcher(eco.IO, __con:getfd())
     local done = { v = false }
 
     eco.run(process_msg, __con, w, done)
 
-    if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
-        local __prox = newproxy(true)
-        getmetatable(__prox).__gc = function() methods.close(con) end
-        con[__prox] = true
-    end
-
-    return setmetatable(con, {
+    return setmetatable({}, {
         w = w,
         done = done,
         con = __con,

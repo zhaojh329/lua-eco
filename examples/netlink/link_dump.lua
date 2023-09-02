@@ -4,7 +4,6 @@ local hex = require 'eco.encoding.hex'
 local socket = require 'eco.socket'
 local rtnl = require 'eco.rtnl'
 local sys = require 'eco.sys'
-local bit = require 'eco.bit'
 local nl = require 'eco.nl'
 
 local sock, err = nl.open(nl.NETLINK_ROUTE)
@@ -13,7 +12,7 @@ if not sock then
     return
 end
 
-local msg = nl.nlmsg(rtnl.RTM_GETLINK, bit.bor(nl.NLM_F_REQUEST, nl.NLM_F_DUMP))
+local msg = nl.nlmsg(rtnl.RTM_GETLINK, nl.NLM_F_REQUEST | nl.NLM_F_DUMP)
 
 msg:put(rtnl.rtgenmsg({ family = socket.AF_PACKET }))
 
@@ -46,7 +45,7 @@ while true do
                 end
             end
 
-            if bit.band(info.flags, rtnl.IFF_RUNNING) > 0 then
+            if info.flags & rtnl.IFF_RUNNING > 0 then
                 print('RUNNING')
             else
                 print('NOT RUNNING')

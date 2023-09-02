@@ -3,21 +3,18 @@
 local ubus = require 'eco.ubus'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
-local cjson = require 'cjson'
 
 sys.signal(sys.SIGINT, function()
     print('\nGot SIGINT, now quit')
     eco.unloop()
 end)
 
-local res, err = ubus.call('system', 'info')
+local res, err = ubus.call('system', 'board')
 if not res then
-    print('call system info fail:', err)
+    print('call system.board fail:', err)
 else
-    print(cjson.encode(res))
+    print(res.model)
 end
-
-ubus.send('test', { a = 1 })
 
 local con, err = ubus.connect()
 if not con then
@@ -25,7 +22,11 @@ if not con then
 end
 
 con:listen('*', function(ev, msg)
-    print(ev, cjson.encode(msg))
+    print('got event:', ev)
+end)
+
+time.at(1, function()
+    ubus.send('test', { a = 1 })
 end)
 
 con:add('eco', {
@@ -47,15 +48,16 @@ con:add('eco', {
 })
 
 time.at(1, function()
-    local res, err = ubus.call('eco', 'defer')
+    res, err = ubus.call('eco', 'defer')
     if not res then
         print('call fail:', err)
         return
     end
 
-    print(cjson.encode(res[1]))
-    print(cjson.encode(res[2]))
+    print(res[1].message)
+    print(res[2].message)
 end)
+
 
 while true do
     time.sleep(1)

@@ -55,8 +55,7 @@ static const char *eco_context_registry = "eco-context";
 
 static int eco_push_context(lua_State *L)
 {
-    lua_pushlightuserdata(L, &eco_context_registry);
-    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_context_registry);
 
     return 1;
 }
@@ -82,20 +81,16 @@ struct eco_context *eco_get_context(lua_State *L)
 
 static void eco_resume(lua_State *L, lua_State *co, int narg)
 {
-#if LUA_VERSION_NUM < 502
-    int status = lua_resume(co, narg);
-#elif LUA_VERSION_NUM < 504
-    int status = lua_resume(co, L, narg);
-#else
+#if LUA_VERSION_NUM > 503
     int nres;
     int status = lua_resume(co, L, narg, &nres);
+#else
+    int status = lua_resume(co, L, narg);
 #endif
     switch (status) {
     case 0: /* dead */
         eco_push_context_env(L);
-
-        lua_pushlightuserdata(L, &obj_registry);
-        lua_rawget(L, LUA_REGISTRYINDEX);
+        lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
         lua_pushlightuserdata(L, co);
         lua_rawget(L, -2);
         lua_remove(L, -2);
@@ -131,8 +126,7 @@ static int eco_count(lua_State *L)
 {
     int count = 0;
 
-    lua_pushlightuserdata(L, &obj_registry);
-    lua_rawget(L,            LUA_REGISTRYINDEX);
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
 
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
@@ -155,8 +149,7 @@ static int eco_run(lua_State *L)
     lua_insert(L, 1);
     lua_xmove(L, co, narg);
 
-    lua_pushlightuserdata(L, &obj_registry);
-    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
 
     lua_pushlightuserdata(L, co);
     lua_pushvalue(L, 1);
@@ -693,17 +686,26 @@ static int eco_watcher(lua_State *L)
     return 1;
 }
 
+static const luaL_Reg funcs[] = {
+    {"context", eco_push_context},
+    {"watcher", eco_watcher},
+    {"count", eco_count},
+    {"unloop", eco_unloop},
+    {"run", eco_run},
+    {"id", eco_id},
+    {NULL, NULL}
+};
+
 static int luaopen_eco(lua_State *L)
 {
-    lua_pushlightuserdata(L, &obj_registry);
     lua_newtable(L);
     lua_createtable(L, 0, 1);
     lua_pushliteral(L, "v");
     lua_setfield(L, -2, "__mode");
     lua_setmetatable(L, -2);
-    lua_rawset(L, LUA_REGISTRYINDEX);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &obj_registry);
 
-    lua_newtable(L);
+    luaL_newlib(L, funcs);
 
     lua_add_constant(L, "VERSION_MAJOR", ECO_VERSION_MAJOR);
     lua_add_constant(L, "VERSION_MINOR", ECO_VERSION_MINOR);
@@ -711,21 +713,6 @@ static int luaopen_eco(lua_State *L)
 
     lua_pushliteral(L, ECO_VERSION_STRING);
     lua_setfield(L, -2, "VERSION");
-
-    lua_pushcfunction(L, eco_count);
-    lua_setfield(L, -2, "count");
-
-    lua_pushcfunction(L, eco_unloop);
-    lua_setfield(L, -2, "unloop");
-
-    lua_pushcfunction(L, eco_run);
-    lua_setfield(L, -2, "run");
-
-    lua_pushcfunction(L, eco_id);
-    lua_setfield(L, -2, "id");
-
-    lua_pushcfunction(L, eco_push_context);
-    lua_setfield(L, -2, "context");
 
     lua_add_constant(L, "IO", ECO_WATCHER_IO);
     lua_add_constant(L, "ASYNC", ECO_WATCHER_ASYNC);
@@ -735,9 +722,6 @@ static int luaopen_eco(lua_State *L)
 
     lua_add_constant(L, "READ", EV_READ);
     lua_add_constant(L, "WRITE", EV_WRITE);
-
-    lua_pushcfunction(L, eco_watcher);
-    lua_setfield(L, -2, "watcher");
 
     return 1;
 }
@@ -805,13 +789,12 @@ int main(int argc, char *const argv[])
     luaopen_eco(L);
     lua_setglobal(L, "eco");
 
-    lua_pushlightuserdata(L, &eco_context_registry);
     ctx = lua_newuserdata(L, sizeof(struct eco_context));
     lua_newtable(L);
     lua_setuservalue(L, -2);
     luaL_newmetatable(L, ECO_CTX_MT);
     lua_setmetatable(L, -2);
-    lua_rawset(L, LUA_REGISTRYINDEX);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_context_registry);
 
     ctx->loop = loop;
     ctx->L = L;

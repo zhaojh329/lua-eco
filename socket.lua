@@ -318,14 +318,6 @@ local function sock_update_mt(sock, methods, name)
 end
 
 local function sock_setmetatable(fd, family, typ, methods, name)
-    local sock = {}
-
-    if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
-        local __prox = newproxy(true)
-        getmetatable(__prox).__gc = function() sock_close(sock) end
-        sock[__prox] = true
-    end
-
     local mt = {
         name = name,
         family = family,
@@ -341,9 +333,7 @@ local function sock_setmetatable(fd, family, typ, methods, name)
         mt.b = bufio.new({ w = mt.ior, is_socket = true })
     end
 
-    setmetatable(sock, mt)
-
-    return sock
+    return setmetatable({}, mt)
 end
 
 local function sock_accept(sock, timeout)

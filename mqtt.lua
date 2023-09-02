@@ -1,13 +1,10 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
--- For more usage to see https://github.com/flukso/lua-mosquitto
-
+local mqtt  = require 'eco.core.mqtt'
 local socket = require 'eco.socket'
-local mosq  = require 'mosquitto'
 local time = require 'eco.time'
 local dns = require 'eco.dns'
-local bit = require 'eco.bit'
 
 local M = {}
 
@@ -20,7 +17,7 @@ local function mqtt_io_loop(mt)
         local ev = eco.READ
 
         if con:want_write() then
-            ev = bit.bor(ev, eco.WRITE)
+            ev = ev | eco.WRITE
         end
 
         w:modify(ev)
@@ -34,13 +31,13 @@ local function mqtt_io_loop(mt)
             return
         end
 
-        if bit.band(ev, eco.READ) > 0 then
+        if ev & eco.READ > 0 then
             if not con:loop_read(1) then
                 break
             end
         end
 
-        if bit.band(ev, eco.WRITE) > 0 then
+        if ev & eco.WRITE > 0 then
             if not con:loop_write(1) then
                 break
             end
@@ -200,22 +197,14 @@ function methods:connect(host, port, keepalive)
 end
 
 function M.new(id, clean_session)
-    local con = mosq.new(id, clean_session)
+    local con = mqtt.new(eco.context(), id, clean_session)
 
-    local o = {}
-
-    if tonumber(_VERSION:match('%d%.%d')) < 5.2 then
-        local __prox = newproxy(true)
-        getmetatable(__prox).__gc = function() o:destroy() end
-        o[__prox] = true
-    end
-
-    return setmetatable(o, {
+    return setmetatable({}, {
         __index = methods,
-        __gc = o.destroy,
+        __gc = methods.destroy,
         con = con,
         done = { v = true }
     })
 end
 
-return setmetatable(M, { __index = mosq })
+return setmetatable(M, { __index = mqtt })

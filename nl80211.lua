@@ -7,11 +7,9 @@ local socket = require 'eco.socket'
 local sys = require 'eco.core.sys'
 local file = require 'eco.file'
 local genl = require 'eco.genl'
-local bit = require 'eco.bit'
 local nl = require 'eco.nl'
 
 local str_byte = string.byte
-local lshift = bit.lshift
 
 local M = {}
 
@@ -118,7 +116,7 @@ local function prepare_send_cmd(cmd, flags)
         return nil, err
     end
 
-    local msg = nl.nlmsg(nl80211_id, bit.bor(nl.NLM_F_REQUEST, flags or 0))
+    local msg = nl.nlmsg(nl80211_id, nl.NLM_F_REQUEST | (flags or 0))
 
     msg:put(genl.genlmsghdr({ cmd = cmd }))
 
@@ -438,7 +436,7 @@ end
 
 local function parse_rsn(data, defcipher, defauth)
     local res = {
-        version = bit.bor(str_byte(data, 1),  lshift(str_byte(data, 2), 8)),
+        version = str_byte(data, 1) | str_byte(data, 2) << 8,
         group_cipher = defcipher,
         pair_ciphers = {},
         auth_suites = {}
@@ -461,7 +459,7 @@ local function parse_rsn(data, defcipher, defauth)
         return res
     end
 
-    local count = bit.bor(str_byte(data, 1),  lshift(str_byte(data, 2), 8))
+    local count = str_byte(data, 1) | str_byte(data, 2) << 8
     if 2 + count * 4 > #data then
         pair_ciphers[defcipher] = true
         return res
@@ -480,7 +478,7 @@ local function parse_rsn(data, defcipher, defauth)
         return res
     end
 
-    count = bit.bor(str_byte(data, 1),  lshift(str_byte(data, 2), 8))
+    count = str_byte(data, 1) | str_byte(data, 2) << 8
     if 2 + count * 4 > #data then
         auth_suites[defauth] = true
         return res
@@ -542,15 +540,15 @@ local function parse_bss(nest)
 
     local caps = nl.attr_get_u16(attrs[nl80211.BSS_CAPABILITY])
 
-    if bit.band(caps, lshift(1, 0)) > 0 then
+    if caps & 1 << 0 > 0 then
         info.caps['ESS'] = true
     end
 
-    if bit.band(caps, lshift(1, 1)) > 0 then
+    if caps & 1 << 1 > 0 then
         info.cap['IBSS'] = true
     end
 
-    if bit.band(caps, lshift(1, 4)) > 0 then
+    if caps & 1 << 4 > 0 then
         info.caps['PRIVACY'] = true
     end
 
