@@ -544,9 +544,10 @@ static struct eco_watcher *eco_watcher_new(lua_State *L)
 
 static struct eco_watcher *eco_watcher_timer(lua_State *L)
 {
+    bool periodic = lua_toboolean(L, 2);
     struct eco_watcher *w = eco_watcher_new(L);
 
-    if (lua_toboolean(L, 2)) {
+    if (periodic) {
         w->flags |= ECO_FLAG_TIMER_PERIODIC;
         ev_init(&w->w.periodic, eco_watcher_periodic_cb);
     }
@@ -592,7 +593,7 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
     if (ev & ~(EV_READ | EV_WRITE))
         luaL_argerror(L, 3, "must be eco.READ or eco.WRITE or both them");
 
-    w = lua_newuserdata(L, sizeof(struct eco_watcher));
+    w = eco_watcher_new(L);
     ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
 
     eco_new_metatable(L, ECO_WATCHER_IO_MT, NULL);
