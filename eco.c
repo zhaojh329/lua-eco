@@ -534,25 +534,26 @@ static int eco_watcher_async_send(lua_State *L)
     return 0;
 }
 
-static struct eco_watcher *eco_watcher_new(lua_State *L)
+static struct eco_watcher *eco_watcher_new(lua_State *L, const char *mt)
 {
     struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
 
     memset(w, 0, sizeof(struct eco_watcher));
+    eco_new_metatable(L, mt, NULL);
+
     return w;
 }
 
 static struct eco_watcher *eco_watcher_timer(lua_State *L)
 {
     bool periodic = lua_toboolean(L, 2);
-    struct eco_watcher *w = eco_watcher_new(L);
+    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_TIMER_MT);
 
     if (periodic) {
         w->flags |= ECO_FLAG_TIMER_PERIODIC;
         ev_init(&w->w.periodic, eco_watcher_periodic_cb);
     }
 
-    eco_new_metatable(L, ECO_WATCHER_TIMER_MT, NULL);
     return w;
 }
 
@@ -593,10 +594,8 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
     if (ev & ~(EV_READ | EV_WRITE))
         luaL_argerror(L, 3, "must be eco.READ or eco.WRITE or both them");
 
-    w = eco_watcher_new(L);
+    w = eco_watcher_new(L, ECO_WATCHER_IO_MT);
     ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
-
-    eco_new_metatable(L, ECO_WATCHER_IO_MT, NULL);
 
     lua_pushcfunction(L, eco_watcher_io_modify);
     lua_setfield(L, -2, "modify");
@@ -609,10 +608,9 @@ static struct eco_watcher *eco_watcher_io(lua_State *L)
 
 static struct eco_watcher *eco_watcher_async(lua_State *L)
 {
-    struct eco_watcher *w = eco_watcher_new(L);
+    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_ASYNC_MT);
 
     ev_async_init(&w->w.async, eco_watcher_async_cb);
-    eco_new_metatable(L, ECO_WATCHER_ASYNC_MT, NULL);
 
     lua_pushcfunction(L, eco_watcher_async_send);
     lua_setfield(L, -2, "send");
@@ -623,10 +621,9 @@ static struct eco_watcher *eco_watcher_async(lua_State *L)
 static struct eco_watcher *eco_watcher_child(lua_State *L)
 {
     int pid = luaL_checkinteger(L, 2);
-    struct eco_watcher *w = eco_watcher_new(L);
+    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_CHILD_MT);
 
     ev_child_init(&w->w.child, eco_watcher_child_cb, pid, 0);
-    eco_new_metatable(L, ECO_WATCHER_CHILD_MT, NULL);
 
     return w;
 }
@@ -634,10 +631,9 @@ static struct eco_watcher *eco_watcher_child(lua_State *L)
 static struct eco_watcher *eco_watcher_signal(lua_State *L)
 {
     int signal = luaL_checkinteger(L, 2);
-    struct eco_watcher *w = eco_watcher_new(L);
+    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_SIGNAL_MT);
 
     ev_signal_init(&w->w.signal, eco_watcher_signal_cb, signal);
-    eco_new_metatable(L, ECO_WATCHER_SIGNAL_MT, NULL);
 
     return w;
 }
