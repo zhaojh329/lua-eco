@@ -61,10 +61,15 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
             break;
 
         case LUA_TNUMBER: {
-            if (lua_isinteger(L, -1))
-                blobmsg_add_u64(b, key, lua_tointeger(L, -1));
-            else
+            if (lua_isinteger(L, -1)) {
+                int64_t v = lua_tointeger(L, -1);
+                if (v > INT32_MAX)
+                    blobmsg_add_u64(b, key, v);
+                else
+                    blobmsg_add_u32(b, key, v);
+            } else {
                 blobmsg_add_double(b, key, lua_tonumber(L, -1));
+            }
             break;
         }
 
