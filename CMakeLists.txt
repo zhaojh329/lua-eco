@@ -26,7 +26,7 @@ if (NOT LUA53_INCLUDE_DIRS OR NOT LUA53_LIBRARIES)
     message(FATAL_ERROR "Liblua 5.3 is required.")
 endif()
 
-add_compile_options(-D_GNU_SOURCE -Os -Wall -Werror --std=gnu99)
+add_compile_options(-D_GNU_SOURCE -Os -Wall -Werror --std=gnu99 -fno-strict-aliasing)
 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
