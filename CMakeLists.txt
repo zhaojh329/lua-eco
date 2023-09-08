@@ -178,7 +178,7 @@ install(
 
 install(
     TARGETS sha1 md5
-    DESTINATION ${LUA_INSTALL_PREFIX}/eco/crypto
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/hash
 )
 
 install(

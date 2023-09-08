@@ -268,7 +268,7 @@ static int lua_sha1_new(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_crypto_sha1(lua_State *L)
+int luaopen_eco_hash_sha1(lua_State *L)
 {
     lua_newtable(L);
 

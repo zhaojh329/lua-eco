@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local sha1 = require 'eco.crypto.sha1'
+local sha1 = require 'eco.hash.sha1'
 local hex = require 'eco.encoding.hex'
 
 local ctx = sha1.new()

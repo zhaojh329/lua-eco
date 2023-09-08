@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local md5 = require 'eco.crypto.md5'
+local md5 = require 'eco.hash.md5'
 local hex = require 'eco.encoding.hex'
 
 local ctx = md5.new()

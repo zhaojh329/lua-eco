@@ -4,7 +4,7 @@
 -- Referenced from https://github.com/openresty/lua-resty-websocket
 
 local base64 = require 'eco.encoding.base64'
-local sha1 = require 'eco.crypto.sha1'
+local sha1 = require 'eco.hash.sha1'
 local http = require 'eco.http'
 local url = require 'eco.url'
 local sys = require 'eco.sys'

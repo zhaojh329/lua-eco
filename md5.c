@@ -326,7 +326,7 @@ static int lua_md5_new(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_crypto_md5(lua_State *L)
+int luaopen_eco_hash_md5(lua_State *L)
 {
     lua_newtable(L);
 
