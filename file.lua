@@ -2,6 +2,8 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local file = require 'eco.core.file'
+local sys = require 'eco.core.sys'
+local time = require 'eco.time'
 
 local M = {}
 
@@ -76,6 +78,31 @@ function M.write(fd, data)
     w:wait()
 
     return file.write(fd, data)
+end
+
+function M.flock(fd, operation, timeout)
+    local deadtime
+
+    if timeout then
+        deadtime = sys.uptime() + timeout
+    end
+
+    while true do
+        local ok, errno = file.flock(fd, operation)
+        if ok then
+            return true
+        end
+
+        if errno ~= sys.EAGAIN then
+            return false, sys.strerror(errno)
+        end
+
+        if deadtime and sys.uptime() > deadtime then
+            return false, 'timeout'
+        end
+
+        time.sleep(0.001)
+    end
 end
 
 return setmetatable(M, { __index = file })

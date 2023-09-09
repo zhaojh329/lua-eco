@@ -443,8 +443,7 @@ static int eco_file_flock(lua_State *L)
     if (flock(fd, operation | LOCK_NB)) {
         lua_pushnil(L);
         lua_pushinteger(L, errno);
-        lua_pushstring(L, strerror(errno));
-        return 3;
+        return 2;
     }
 
     lua_pushboolean(L, true);
