@@ -5,9 +5,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://gitee.com/zhaojh329/lua-eco.git
-PKG_SOURCE_DATE:=2023-09-08
-PKG_SOURCE_VERSION:=148ba7164a1f13afaf22b134bad9855da22e3a71
-PKG_MIRROR_HASH:=ec6396360450c2652cf5d24122536e2344f0f912ae3519edca8a260b5a215309
+PKG_SOURCE_DATE:=2023-09-09
+PKG_SOURCE_VERSION:=b89e75381f5b8e04febe34b9b8496274a6336060
+PKG_MIRROR_HASH:=04760eea471c66ced754856b7ed53a65d3dc8ff26af55f2c3299f570692bb8de
 
 PKG_MAINTAINER:=Jianhui Zhao <zhaojh329@gmail.com>
 PKG_LICENSE:=MIT
@@ -46,12 +46,10 @@ define Package/lua-eco/Module
 endef
 
 Package/lua-eco-log=$(call Package/lua-eco/Module,log utils)
-Package/lua-eco-sys=$(call Package/lua-eco/Module,system utils)
-Package/lua-eco-file=$(call Package/lua-eco/Module,file utils)
 Package/lua-eco-base64=$(call Package/lua-eco/Module,base64)
 Package/lua-eco-sha1=$(call Package/lua-eco/Module,sha1)
 Package/lua-eco-md5=$(call Package/lua-eco/Module,md5)
-Package/lua-eco-socket=$(call Package/lua-eco/Module,socket,+lua-eco-file +lua-eco-sys)
+Package/lua-eco-socket=$(call Package/lua-eco/Module,socket)
 Package/lua-eco-dns=$(call Package/lua-eco/Module,dns,+lua-eco-socket)
 Package/lua-eco-ssl=$(call Package/lua-eco/Module,ssl,\
   +LUA_ECO_OPENSSL:libopenssl +LUA_ECO_WOLFSSL:libwolfssl \
@@ -61,7 +59,6 @@ Package/lua-eco-http=$(call Package/lua-eco/Module,http/https,+lua-eco-dns +lua-
 Package/lua-eco-mqtt=$(call Package/lua-eco/Module,mqtt,+lua-eco-socket +lua-eco-dns +libmosquitto-ssl)
 Package/lua-eco-websocket=$(call Package/lua-eco/Module,websocket,+lua-eco-http +lua-eco-base64 +lua-eco-sha1)
 Package/lua-eco-termios=$(call Package/lua-eco/Module,termios)
-Package/lua-eco-struct=$(call Package/lua-eco/Module,struct pack)
 Package/lua-eco-netlink=$(call Package/lua-eco/Module,netlink,+lua-eco-socket)
 Package/lua-eco-ip=$(call Package/lua-eco/Module,ip utils,+lua-eco-netlink)
 Package/lua-eco-nl80211=$(call Package/lua-eco/Module,nl80211,+lua-eco-netlink)
@@ -100,25 +97,13 @@ define Package/lua-eco/install
 	$(INSTALL_DIR) $(1)/usr/bin $(1)/usr/local/lib/lua/5.3/eco/core $(1)/usr/local/lib/lua/5.3/eco/encoding
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/eco $(1)/usr/bin
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/hex.lua $(1)/usr/local/lib/lua/5.3/eco/encoding
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/{time,bufio}.so $(1)/usr/local/lib/lua/5.3/eco/core
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/{time,bufio,sync}.lua $(1)/usr/local/lib/lua/5.3/eco
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/{time,bufio,sys,file}.so $(1)/usr/local/lib/lua/5.3/eco/core
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/{time,bufio,sys,file,sync}.lua $(1)/usr/local/lib/lua/5.3/eco
 endef
 
 define Package/lua-eco-log/install
 	$(INSTALL_DIR) $(1)/usr/local/lib/lua/5.3/eco
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/log.so $(1)/usr/local/lib/lua/5.3/eco
-endef
-
-define Package/lua-eco-sys/install
-	$(INSTALL_DIR) $(1)/usr/local/lib/lua/5.3/eco/core
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/sys.lua $(1)/usr/local/lib/lua/5.3/eco
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sys.so $(1)/usr/local/lib/lua/5.3/eco/core
-endef
-
-define Package/lua-eco-file/install
-	$(INSTALL_DIR) $(1)/usr/local/lib/lua/5.3/eco/core
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/file.lua $(1)/usr/local/lib/lua/5.3/eco
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/file.so $(1)/usr/local/lib/lua/5.3/eco/core
 endef
 
 define Package/lua-eco-base64/install
@@ -180,11 +165,6 @@ define Package/lua-eco-termios/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/termios.so $(1)/usr/local/lib/lua/5.3/eco
 endef
 
-define Package/lua-eco-struct/install
-	$(INSTALL_DIR) $(1)/usr/local/lib/lua/5.3/eco
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/struct.so $(1)/usr/local/lib/lua/5.3/eco
-endef
-
 define Package/lua-eco-netlink/install
 	$(INSTALL_DIR) $(1)/usr/local/lib/lua/5.3/eco/core
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/{nl,genl}.lua $(1)/usr/local/lib/lua/5.3/eco
@@ -205,8 +185,6 @@ endef
 
 $(eval $(call BuildPackage,lua-eco))
 $(eval $(call BuildPackage,lua-eco-log))
-$(eval $(call BuildPackage,lua-eco-sys))
-$(eval $(call BuildPackage,lua-eco-file))
 $(eval $(call BuildPackage,lua-eco-base64))
 $(eval $(call BuildPackage,lua-eco-sha1))
 $(eval $(call BuildPackage,lua-eco-md5))
