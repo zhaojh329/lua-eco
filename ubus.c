@@ -11,7 +11,6 @@
 
 struct eco_ubus_context {
     struct ubus_context ctx;
-    struct blob_buf buf;
     lua_State *L;
 };
 
@@ -277,6 +276,7 @@ static int eco_ubus_call(lua_State *L)
     const char *path = luaL_checkstring(L, 2);
     const char *func = luaL_checkstring(L, 3);
     struct eco_ubus_request *req;
+    struct blob_buf buf = {};
     uint32_t id;
     int ret;
 
@@ -288,8 +288,9 @@ static int eco_ubus_call(lua_State *L)
         return 2;
     }
 
-    blob_buf_init(&ctx->buf, 0);
-    lua_table_to_blob(L, 4, &ctx->buf, false);
+    blob_buf_init(&buf, 0);
+
+    lua_table_to_blob(L, 4, &buf, false);
 
     req = lua_newuserdata(L, sizeof(struct eco_ubus_request));
     eco_new_metatable(L, ECO_UBUS_REQ_MT, ubus_req_methods);
@@ -304,8 +305,9 @@ static int eco_ubus_call(lua_State *L)
     lua_pushvalue(L, 6);
     req->ref[1] = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    ret = ubus_invoke_async(&ctx->ctx, id, func, ctx->buf.head, &req->req);
+    ret = ubus_invoke_async(&ctx->ctx, id, func, buf.head, &req->req);
     if (ret) {
+        blob_buf_free(&buf);
         lua_pushnil(L);
         lua_pushstring(L, ubus_strerror(ret));
         return 2;
@@ -315,6 +317,8 @@ static int eco_ubus_call(lua_State *L)
     req->req.complete_cb = eco_ubus_call_complete_cb;
     ubus_complete_request_async(&ctx->ctx, &req->req);
 
+    blob_buf_free(&buf);
+
     return 1;
 }
 
@@ -322,13 +326,17 @@ static int eco_ubus_send(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     const char *event = luaL_checkstring(L, 2);
+    struct blob_buf buf = {};
 
     luaL_checktype(L, 3, LUA_TTABLE);
-    blob_buf_init(&ctx->buf, 0);
 
-    lua_table_to_blob(L, 3, &ctx->buf, false);
+    blob_buf_init(&buf, 0);
 
-    ubus_send_event(&ctx->ctx, event, ctx->buf.head);
+    lua_table_to_blob(L, 3, &buf, false);
+
+    ubus_send_event(&ctx->ctx, event, buf.head);
+
+    blob_buf_free(&buf);
 
     return 0;
 }
@@ -577,13 +585,17 @@ static int eco_ubus_reply(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     struct ubus_request_data *req = lua_touserdata(L, 2);
+    struct blob_buf buf = {};
 
     luaL_checktype(L, 3, LUA_TTABLE);
-    blob_buf_init(&ctx->buf, 0);
 
-    lua_table_to_blob(L, 3, &ctx->buf, false);
+    blob_buf_init(&buf, 0);
 
-    ubus_send_reply(&ctx->ctx, req, ctx->buf.head);
+    lua_table_to_blob(L, 3, &buf, false);
+
+    ubus_send_reply(&ctx->ctx, req, buf.head);
+
+    blob_buf_free(&buf);
 
     return 0;
 }
