@@ -9,6 +9,7 @@
 #include <lauxlib.h>
 #include <lua.h>
 #include <ev.h>
+#include <string.h>
 
 #include "helper.h"
 
