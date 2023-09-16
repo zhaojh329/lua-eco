@@ -276,7 +276,10 @@ again:
         if (errno == EINTR)
             goto again;
         lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
+        if (errno == EPIPE)
+            lua_pushliteral(L, "closed");
+        else
+            lua_pushstring(L, strerror(errno));
         return 2;
     }
 
