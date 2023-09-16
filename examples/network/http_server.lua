@@ -46,8 +46,8 @@ local options = {
 }
 
 -- https
--- options.cert = 'cert.pem'
--- options.key = 'key.pem'
+options.cert = 'cert.pem'
+options.key = 'key.pem'
 
 local srv, err = http.listen(nil, 8080, options, handler)
 if not srv then
