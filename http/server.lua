@@ -727,6 +727,10 @@ local function handle_connection(con, handler)
         return false
     end
 
+    if resp.code == M.STATUS_SWITCHING_PROTOCOLS then
+        return false
+    end
+
     if not resp.head_sent then
         send_http_head(resp)
     end
