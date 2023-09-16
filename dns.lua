@@ -155,31 +155,27 @@ local function decode_name(buf, pos)
     return table.concat(labels, '.'), pos
 end
 
-local function parse_section(answers, section, buf, start_pos, size, should_skip)
+local function parse_section(answers, section, buf, start_pos, size)
     local pos = start_pos
 
     for _ = 1, size do
-        local ans = {}
-
-        if not should_skip then
-            answers[#answers + 1] = ans
-        end
-
-        ans.section = section
-
         local name
         name, pos = decode_name(buf, pos)
         if not name then
             return nil, pos
         end
 
-        ans.name = name
-
         local typ, class, ttl, len = string.unpack('>I2I2I4I2', buf:sub(pos))
 
-        ans.type = typ
-        ans.class = class
-        ans.ttl = ttl
+        local ans = {
+            section = section,
+            type = typ,
+            class = class,
+            ttl = ttl,
+            name = name
+        }
+
+        answers[#answers + 1] = ans
 
         pos = pos + 10
 
