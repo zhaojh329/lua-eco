@@ -265,47 +265,6 @@ local function do_http_request(sock, method, path, headers, body, opts)
     return resp
 end
 
-local function http_connect(host, port, use_ssl, opts)
-    local answers, err = dns.query(host)
-    if not answers then
-        return nil, 'resolve "' .. host .. '" fail: ' .. err
-    end
-
-    local addresses = {}
-
-    for _, a in ipairs(answers) do
-        if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
-            addresses[#addresses + 1] = a
-        end
-    end
-
-    if #addresses < 1 then
-        return nil, 'resolve "' .. host .. '" fail: 0 address'
-    end
-
-    local s
-    for _, a in ipairs(addresses) do
-        local connect = socket.connect_tcp
-        if use_ssl then
-            connect = ssl.connect
-        end
-
-        if a.type == dns.TYPE_AAAA then
-            connect = socket.connect_tcp6
-            if use_ssl then
-                connect = ssl.connect6
-            end
-        end
-
-        s, err = connect(a.address, port, opts.insecure)
-        if s then
-            return s
-        end
-    end
-
-    return nil, err
-end
-
 local methods = {}
 
 function methods:close()
@@ -401,9 +360,52 @@ function methods:request(method, url, body, opts)
         headers[k:lower()] = v
     end
 
-    local sock, err = http_connect(host, port, scheme_info.use_ssl, opts)
+    local answers, err = dns.query(host, { type = opts.ipv6 and dns.TYPE_AAAA or dns.TYPE_A })
+    if not answers then
+        return nil, 'resolve "' .. host .. '" fail: ' .. err
+    end
+
+    local addresses = {}
+
+    for _, a in ipairs(answers) do
+        if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
+            addresses[#addresses + 1] = a
+        end
+    end
+
+    if #addresses < 1 then
+        return nil, 'resolve "' .. host .. '" fail: not found'
+    end
+
+    local sock
+
+    for _, a in ipairs(addresses) do
+        local connect = socket.connect_tcp
+        if scheme_info.use_ssl then
+            connect = ssl.connect
+        end
+
+        if a.type == dns.TYPE_AAAA then
+            connect = socket.connect_tcp6
+            if scheme_info.use_ssl then
+                connect = ssl.connect6
+            end
+        end
+
+        sock, err = connect(a.address, port, opts.insecure)
+        if sock then
+            break
+        end
+
+        if a.type == dns.TYPE_A then
+            err = string.format('connect "%s:%d" fail: ', a.address, port) .. err
+        else
+            err = string.format('connect "[%s]:%d" fail: ', a.address, port) .. err
+        end
+    end
+
     if not sock then
-        return nil, 'connect fail: ' .. err
+        return nil, err
     end
 
     self:close()
@@ -431,6 +433,7 @@ end
     opts: A table contains some options:
         timeout: A number, defaults to 30s.
         insecure: A boolean, SSL connecting with insecure.
+        ipv6: A boolean, parse ipv6 address for host.
         body_to_file: A string indicates that the body is to be written to the file.
 
     In case of failure, the function returns nil followed by an error message.
