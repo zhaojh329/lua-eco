@@ -498,6 +498,7 @@ function methods:discard_body()
 
     local _, err = sock:discard(mt.body_remain, 3.0)
     if err then
+        sock:close()
         return false, err
     end
 
