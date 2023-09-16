@@ -6,8 +6,6 @@
 local base64 = require 'eco.encoding.base64'
 local http = require 'eco.http.client'
 local sha1 = require 'eco.hash.sha1'
-local url = require 'eco.http.url'
-local sys = require 'eco.sys'
 
 local tostring = tostring
 local concat = table.concat
@@ -365,105 +363,39 @@ function M.upgrade(con, req, opts)
 end
 
 function M.connect(uri, opts)
-    local u, err = url.parse(uri)
-    if not u then
-        return nil, err
-    end
-
-    local scheme, host, port, path = u.scheme, u.host, u.port, u.raw_path
-
-    if scheme ~= 'ws' and scheme ~= 'wss' then
-        return nil, 'unsupported scheme: ' .. scheme
-    end
-
     opts = opts or {}
 
-    local proto_header, origin_header
+    local headers = opts.headers or {}
 
     local protos = opts.protocols
     if protos then
         if type(protos) == 'table' then
-            proto_header = 'Sec-WebSocket-Protocol: ' .. concat(protos, ',') .. '\r\n'
-
+            headers['sec-websocket-protocol'] = concat(protos, ',')
         else
-            proto_header = 'Sec-WebSocket-Protocol: ' .. protos .. '\r\n'
+            headers['sec-websocket-protocol'] = protos
         end
     end
+
 
     local origin = opts.origin
     if origin then
-        origin_header = 'Origin: ' .. origin .. '\r\n'
+        headers['origin'] = origin
     end
 
-    local host_header = 'Host: ' .. host
+    local hc = http.new()
 
-    if port ~= 80 and port ~= 443 then
-        host_header = host_header .. ':' .. port
-    end
-
-    local bytes = str_char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                           rand(256) - 1)
-
-    local key = base64.encode(bytes)
-    local head = {
-        'GET ' .. path .. ' HTTP/1.1\r\n',
-        'Upgrade: websocket\r\n',
-        host_header .. '\r\n',
-        'Sec-WebSocket-Key: ' .. key .. '\r\n',
-        proto_header or '',
-        'Sec-WebSocket-Version: 13\r\n',
-        origin_header or '',
-        'Connection: Upgrade\r\n'
-    }
-
-    for k, v in pairs(opts.headers or {}) do
-        head[#head + 1] = k .. ': ' .. v .. '\r\n'
-    end
-
-    local sock, err = http.connect(host, port, scheme == 'wss', opts)
-    if not sock then
-        return nil, 'connect fail: ' .. err
-    end
-
-    bytes, err = sock:send(concat(head) .. '\r\n')
-    if not bytes then
-        sock:close()
-        return nil, 'failed to send the handshake request: ' .. err
-    end
-
-    local timeout = opts.timeout or 30
-    local deadtime = sys.uptime() + timeout
-
-    local line, err = sock:recv('*l', deadtime - sys.uptime())
-    if not line then
+    local res, err = hc:request('GET', uri, nil, {
+        insecure = opts.insecure,
+        timeout = opts.insecure,
+        headers = headers
+    })
+    if not res then
         return nil, err
     end
 
-    local code, status = line:match('^HTTP/1.1%s*(%d+)%s*(.*)')
-    if not code or not status then
-        sock:close()
-        return nil, 'invalid http status line'
-    end
-
-    if code ~= '101' then
-        sock:close()
-        return nil, 'connect fail with status code: ' .. code
-    end
-
-    while true do
-        line, err = sock:recv('*l', deadtime - sys.uptime())
-        if not line then
-            sock:close()
-            return nil, 'failed to receive response header: ' .. err
-        end
-
-        if line == '' then
-            break
-        end
+    if res.code ~= 101 then
+        hc:close()
+        return nil, 'connect fail with status code: ' .. res.code
     end
 
     opts.max_payload_len = opts.max_payload_len or 65535
@@ -471,7 +403,8 @@ function M.connect(uri, opts)
     return setmetatable({}, {
         __index = methods,
         masking = true,
-        sock = sock,
+        hc = hc,
+        sock = hc:sock(),
         opts = opts
     })
 end

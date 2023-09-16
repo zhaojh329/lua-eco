@@ -2,7 +2,7 @@
 
 local http = require 'eco.http.client'
 
-local resp, err = http.request('https://127.0.0.1:8080', nil, { insecure = true })
+local resp, err = http.get('https://127.0.0.1:8080/test', { insecure = true })
 if not resp then
     print(err)
     return
@@ -17,5 +17,6 @@ for name, value in pairs(resp.headers) do
 end
 
 print('\nbody:')
-io.write(resp.read_body(10))
-print(resp.read_body(-1))
+if resp.body then
+    print(resp.body)
+end

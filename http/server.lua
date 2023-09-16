@@ -198,7 +198,7 @@ local mime_map = {
 }
 
 local month_abbr_map = {
-    Jan  = 1,
+    Jan = 1,
     Feb = 2,
     Mar = 3,
     Apr = 4,
@@ -212,31 +212,17 @@ local month_abbr_map = {
     Dec = 12
 }
 
-local function build_http_headers(data, headers)
-    for name, value in pairs(headers) do
-        name = name:gsub('^.', function(s)
-            return s:upper()
-        end)
+local methods = {}
 
-        name = name:gsub('-.', function(s)
-            return s:upper()
-        end)
-
-        data[#data + 1] = string.format('%s: %s\r\n', name, value)
-    end
-end
-
-local con_methods = {}
-
-function con_methods:closed()
+function methods:closed()
     return getmetatable(self).sock:closed()
 end
 
-function con_methods:remote_addr()
+function methods:remote_addr()
     return getmetatable(self).peer
 end
 
-function con_methods:add_header(name, value)
+function methods:add_header(name, value)
     local resp = getmetatable(self).resp
 
     if resp.head_sent then
@@ -246,7 +232,7 @@ function con_methods:add_header(name, value)
     resp.headers[name:lower()] = value
 end
 
-function con_methods:set_status(code, status)
+function methods:set_status(code, status)
     local resp = getmetatable(self).resp
 
     if resp.head_sent then
@@ -260,6 +246,20 @@ function con_methods:set_status(code, status)
     end
 
     return true
+end
+
+local function build_headers(data, headers)
+    for name, value in pairs(headers) do
+        name = name:gsub('^.', function(s)
+            return s:upper()
+        end)
+
+        name = name:gsub('-.', function(s)
+            return s:upper()
+        end)
+
+        data[#data + 1] = string.format('%s: %s\r\n', name, value)
+    end
 end
 
 local function send_http_head(resp)
@@ -280,14 +280,14 @@ local function send_http_head(resp)
 
     data[#data + 1] = '\r\n'
 
-    build_http_headers(data, resp.headers)
+    build_headers(data, resp.headers)
 
     data[#data + 1] = '\r\n'
 
     resp.head_sent = true
 end
 
-function con_methods:send_error(code, status, content)
+function methods:send_error(code, status, content)
     local mt = getmetatable(self)
 
     if mt.sock:closed() then
@@ -310,7 +310,7 @@ function con_methods:send_error(code, status, content)
     return true
 end
 
-function con_methods:send(...)
+function methods:send(...)
     local mt = getmetatable(self)
     local resp = mt.resp
 
@@ -353,12 +353,12 @@ local function http_send_file(sock, fd, size, count, offset)
         return false, err
     end
 
-    local _, err = sock:sendfile(fd, count, offset)
+    _, err = sock:sendfile(fd, count, offset)
     if err then
         return false, err
     end
 
-    local _, err = sock:send('\r\n')
+    _, err = sock:send('\r\n')
     if err then
         return false, err
     end
@@ -366,7 +366,7 @@ local function http_send_file(sock, fd, size, count, offset)
     return true
 end
 
-function con_methods:send_file_fd(fd, size, count, offset)
+function methods:send_file_fd(fd, size, count, offset)
     local mt = getmetatable(self)
     local resp = mt.resp
     local sock = mt.sock
@@ -393,7 +393,7 @@ function con_methods:send_file_fd(fd, size, count, offset)
     return true
 end
 
-function con_methods:send_file(path, count, offset)
+function methods:send_file(path, count, offset)
     local mt = getmetatable(self)
 
     if mt.sock:closed() then
@@ -418,7 +418,7 @@ function con_methods:send_file(path, count, offset)
         return false, err
     end
 
-    local _, err = self:send_file_fd(fd, st.size, count, offset)
+    _, err = self:send_file_fd(fd, st.size, count, offset)
     file.close(fd)
 
     if err then
@@ -428,7 +428,7 @@ function con_methods:send_file(path, count, offset)
     return true
 end
 
-function con_methods:flush()
+function methods:flush()
     local mt = getmetatable(self)
     local resp = mt.resp
     local sock = mt.sock
@@ -453,7 +453,7 @@ function con_methods:flush()
     return true
 end
 
-function con_methods:read_body(count, timeout)
+function methods:read_body(count, timeout)
     local mt = getmetatable(self)
     local body_remain = mt.body_remain
     local sock = mt.sock
@@ -492,7 +492,7 @@ function con_methods:read_body(count, timeout)
     return data
 end
 
-function con_methods:discard_body()
+function methods:discard_body()
     local mt = getmetatable(self)
     local sock = mt.sock
 
@@ -504,7 +504,7 @@ function con_methods:discard_body()
     return true
 end
 
-function con_methods:serve_file(req)
+function methods:serve_file(req)
     local mt = getmetatable(self)
     local options = mt.options
     local path = req.path
@@ -561,7 +561,8 @@ function con_methods:serve_file(req)
     end
 
     if req.headers['if-modified-since'] then
-        local day, month, year, hour, min, sec = req.headers['if-modified-since']:match('^%a+, (%d%d) (%a+) (%d%d%d%d) (%d%d):(%d%d):(%d%d) GMT$')
+        local day, month, year, hour, min, sec =
+            req.headers['if-modified-since']:match('^%a+, (%d%d) (%a+) (%d%d%d%d) (%d%d):(%d%d):(%d%d) GMT$')
         if day and month and month_abbr_map[month] and year and hour and min and sec then
             local t = os.time({
                 year = year,
@@ -593,7 +594,7 @@ function con_methods:serve_file(req)
         return self:send_error(M.STATUS_INTERNAL_SERVER_ERROR, nil, string.format('open "%s" fail: %s', phy_path, err))
     end
 
-    local _, err = self:send_file_fd(fd, st.size)
+    _, err = self:send_file_fd(fd, st.size)
     file.close(fd)
 
     if err then
@@ -836,7 +837,7 @@ function M.listen(ipaddr, port, options, handler)
                     },
                     peer = peer,
                     options = options,
-                    __index = con_methods
+                    __index = methods
                 })
 
                 while not c:closed() do
