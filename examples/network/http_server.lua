@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local http = require 'eco.http'
+local http = require 'eco.http.server'
 local log = require 'eco.log'
 
 log.set_level(log.DEBUG)

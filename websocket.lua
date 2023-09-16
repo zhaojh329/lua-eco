@@ -4,9 +4,9 @@
 -- Referenced from https://github.com/openresty/lua-resty-websocket
 
 local base64 = require 'eco.encoding.base64'
+local http = require 'eco.http.client'
 local sha1 = require 'eco.hash.sha1'
-local http = require 'eco.http'
-local url = require 'eco.url'
+local url = require 'eco.http.url'
 local sys = require 'eco.sys'
 
 local tostring = tostring
@@ -337,7 +337,7 @@ function M.upgrade(con, req, opts)
 
     local protocol = headers['sec-websocket-protocol']
 
-    con:set_status(http.STATUS_SWITCHING_PROTOCOLS)
+    con:set_status(101)
     con:add_header('upgrade', 'websocket')
     con:add_header('connection', 'upgrade')
 

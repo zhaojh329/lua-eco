@@ -183,7 +183,11 @@ install(
 
 install(
     FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
-        url.lua http.lua websocket.lua sync.lua
-        nl.lua genl.lua ip.lua nl80211.lua
+        websocket.lua sync.lua nl.lua genl.lua ip.lua nl80211.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
+)
+
+install(
+    FILES http/client.lua http/server.lua http/url.lua
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/http
 )

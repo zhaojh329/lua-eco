@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local http = require 'eco.http'
+local http = require 'eco.http.server'
 local sys = require 'eco.sys'
 
 sys.signal(sys.SIGINT, function()

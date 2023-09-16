@@ -1,6 +1,6 @@
 #!/usr/bin/env eco
 
-local http = require 'eco.http'
+local http = require 'eco.http.client'
 
 local resp, err = http.request('https://127.0.0.1:8080', nil, { insecure = true })
 if not resp then

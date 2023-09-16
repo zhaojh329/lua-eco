@@ -1,7 +1,7 @@
 #!/usr/bin/env eco
 
 local websocket = require 'eco.websocket'
-local http = require 'eco.http'
+local http = require 'eco.http.server'
 
 local page =
 [[
