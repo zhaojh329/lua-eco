@@ -420,8 +420,7 @@ local function parse_response(buf, id)
     local answers = {}
 
     if code ~= 0 then
-        answers.errcode = code
-        answers.errstr = resolver_errstrs[code] or 'unknown'
+        return nil, resolver_errstrs[code] or 'unknown'
     end
 
     local err
