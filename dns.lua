@@ -5,38 +5,21 @@
 
 local socket = require 'eco.socket'
 
-local TYPE_A      = 1
-local TYPE_NS     = 2
-local TYPE_CNAME  = 5
-local TYPE_SOA    = 6
-local TYPE_PTR    = 12
-local TYPE_MX     = 15
-local TYPE_TXT    = 16
-local TYPE_AAAA   = 28
-local TYPE_SRV    = 33
-local TYPE_SPF    = 99
-
-local CLASS_IN    = 1
-
-local SECTION_AN  = 1
-local SECTION_NS  = 2
-local SECTION_AR  = 3
-
 local M = {
-    TYPE_A      = TYPE_A,
-    TYPE_NS     = TYPE_NS,
-    TYPE_CNAME  = TYPE_CNAME,
-    TYPE_SOA    = TYPE_SOA,
-    TYPE_PTR    = TYPE_PTR,
-    TYPE_MX     = TYPE_MX,
-    TYPE_TXT    = TYPE_TXT,
-    TYPE_AAAA   = TYPE_AAAA,
-    TYPE_SRV    = TYPE_SRV,
-    TYPE_SPF    = TYPE_SPF,
-    CLASS_IN    = CLASS_IN,
-    SECTION_AN  = SECTION_AN,
-    SECTION_NS  = SECTION_NS,
-    SECTION_AR  = SECTION_AR
+    TYPE_A      = 1,
+    TYPE_NS     = 2,
+    TYPE_CNAME  = 5,
+    TYPE_SOA    = 6,
+    TYPE_PTR    = 12,
+    TYPE_MX     = 15,
+    TYPE_TXT    = 16,
+    TYPE_AAAA   = 28,
+    TYPE_SRV    = 33,
+    TYPE_SPF    = 99,
+    CLASS_IN    = 1,
+    SECTION_AN  = 1,
+    SECTION_NS  = 2,
+    SECTION_AR  = 3
 }
 
 local resolver_errstrs = {
@@ -103,7 +86,7 @@ local function build_request(qname, id, opts)
     end)
 
     return string.pack('>I2I2I2I2I2I2zI2I2',
-        id, flags, nqs, nan, nns, nar, name, opts.type or TYPE_A, CLASS_IN)
+        id, flags, nqs, nan, nns, nar, name, opts.type or M.TYPE_A, M.CLASS_IN)
 end
 
 local function decode_name(buf, pos)
@@ -179,7 +162,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
         pos = pos + 10
 
-        if typ == TYPE_A then
+        if typ == M.TYPE_A then
 
             if len ~= 4 then
                 return nil, 'bad A record value length: ' .. len
@@ -192,7 +175,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             pos = pos + 4
 
-        elseif typ == TYPE_CNAME then
+        elseif typ == M.TYPE_CNAME then
 
             local cname, p = decode_name(buf, pos)
             if not cname then
@@ -207,7 +190,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             ans.cname = cname
 
-        elseif typ == TYPE_AAAA then
+        elseif typ == M.TYPE_AAAA then
 
             if len ~= 16 then
                 return nil, 'bad AAAA record value length: ' .. len
@@ -232,7 +215,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             pos = pos + 16
 
-        elseif typ == TYPE_MX then
+        elseif typ == M.TYPE_MX then
 
             if len < 3 then
                 return nil, 'bad MX record value length: ' .. len
@@ -253,7 +236,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             pos = p
 
-        elseif typ == TYPE_SRV then
+        elseif typ == M.TYPE_SRV then
             if len < 7 then
                 return nil, 'bad SRV record value length: ' .. len
             end
@@ -273,7 +256,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             pos = p
 
-        elseif typ == TYPE_NS then
+        elseif typ == M.TYPE_NS then
             local name, p = decode_name(buf, pos)
             if not name then
                 return nil, pos
@@ -287,8 +270,8 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             ans.nsdname = name
 
-        elseif typ == TYPE_TXT or typ == TYPE_SPF then
-            local key = typ == TYPE_TXT and 'txt' or 'spf'
+        elseif typ == M.TYPE_TXT or typ == M.TYPE_SPF then
+            local key = typ == M.TYPE_TXT and 'txt' or 'spf'
 
             local slen = string.byte(buf, pos)
             if slen + 1 > len then
@@ -324,7 +307,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             ans[key] = val
 
-        elseif typ == TYPE_PTR then
+        elseif typ == M.TYPE_PTR then
             local name, p = decode_name(buf, pos)
             if not name then
                 return nil, pos
@@ -338,7 +321,7 @@ local function parse_section(answers, section, buf, start_pos, size)
 
             ans.ptrdname = name
 
-        elseif typ == TYPE_SOA then
+        elseif typ == M.TYPE_SOA then
             local name, p = decode_name(buf, pos)
             if not name then
                 return nil, pos
@@ -421,7 +404,7 @@ local function parse_response(buf, id)
 
     local err
 
-    pos, err = parse_section(answers, SECTION_AN, buf, pos, nan)
+    pos, err = parse_section(answers, M.SECTION_AN, buf, pos, nan)
 
     if not pos then
         return nil, err
@@ -461,14 +444,14 @@ function M.query(qname, opts)
 
     if socket.is_ipv4_address(qname) then
         return { {
-            type = TYPE_A,
+            type = M.TYPE_A,
             address = qname
         } }
     end
 
     if socket.is_ipv6_address(qname) then
         return { {
-            type = TYPE_AAAA,
+            type = M.TYPE_AAAA,
             address = qname
         } }
     end
@@ -543,6 +526,23 @@ function M.query(qname, opts)
     end
 
     return nil, err
+end
+
+function M.type_name(n)
+    local names = {
+        [M.TYPE_A]      = 'A',
+        [M.TYPE_NS]     = 'NS',
+        [M.TYPE_CNAME]  = 'CNAME',
+        [M.TYPE_SOA]    = 'SOA',
+        [M.TYPE_PTR]    = 'PTR',
+        [M.TYPE_MX]     = 'MX',
+        [M.TYPE_TXT]    = 'TXT',
+        [M.TYPE_AAAA]   = 'AAAA',
+        [M.TYPE_SRV]    = 'SRV',
+        [M.TYPE_SPF]    = 'SPF'
+    }
+
+    return names[n] or 'unknown'
 end
 
 return M
