@@ -457,7 +457,7 @@ local dgram_methods = {
 local function create_socket(family, typ, protocol, methods, name)
     local fd, err = socket.socket(family, typ, protocol)
     if not fd then
-        return nil, 'create socket: ' .. sys.strerror(err)
+        return nil, sys.strerror(err)
     end
 
     return sock_setmetatable(fd, family, typ, methods, name)
@@ -505,12 +505,12 @@ function M.listen_unix(path, options)
 
     local ok, err = sock:bind(path)
     if not ok then
-        return nil, 'bind: ' .. err
+        return nil, err
     end
 
     ok, err = sock:listen(options.backlog)
     if not ok then
-        return nil, 'listen: ' .. err
+        return nil, err
     end
 
     return sock
@@ -538,12 +538,12 @@ local function listen_tcp_common(create, ipaddr, port, options)
 
     local ok, err = sock:bind(ipaddr, port)
     if not ok then
-        return nil, 'bind: ' .. err
+        return nil, err
     end
 
     ok, err = sock:listen(options.backlog)
     if not ok then
-        return nil, 'listen: ' .. err
+        return nil, err
     end
 
     return sock
@@ -568,13 +568,13 @@ function M.connect_unix(server_path, local_path)
     if local_path then
         ok, err = sock:bind(local_path)
         if not ok then
-            return nil, 'bind: ' .. err
+            return nil, err
         end
     end
 
     ok, err = sock:connect(server_path)
     if not ok then
-        return nil, 'connect: ' .. err
+        return nil, err
     end
 
     return sock
@@ -588,7 +588,7 @@ local function connect_tcp_common(create, ipaddr, port)
 
     local ok, err = sock:connect(ipaddr, port)
     if not ok then
-        return nil, 'connect: ' .. err
+        return nil, err
     end
 
     return sock
