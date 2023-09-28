@@ -842,5 +842,7 @@ run:
 err:
     lua_close(L);
 
+    ev_default_destroy();
+
     return error;
 }
