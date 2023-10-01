@@ -6,7 +6,7 @@
 [4]: https://github.com/zhaojh329/lua-eco/pulls
 [5]: https://img.shields.io/badge/提问-欢迎-brightgreen.svg?style=plastic
 [6]: https://github.com/zhaojh329/lua-eco/issues/new
-[7]: https://img.shields.io/badge/发布版本-2.5.1-blue.svg?style=plastic
+[7]: https://img.shields.io/badge/发布版本-3.0.0-blue.svg?style=plastic
 [8]: https://github.com/zhaojh329/lua-eco/releases
 [9]: https://github.com/zhaojh329/lua-eco/workflows/build/badge.svg
 [11]: https://img.shields.io/badge/技术交流群-点击加入：153530783-brightgreen.svg
@@ -86,7 +86,6 @@ end, 'eco2')
             -*- lua-eco............... A Lua interpreter with a built-in libev event loop
             -*- lua-eco-base64................................ base64 support for lua-eco
              -*- lua-eco-dns...................................... dns support for lua-eco
-             -*- lua-eco-file.............................. file utils support for lua-eco
              -*- lua-eco-http.............................. http/https support for lua-eco
              -*- lua-eco-log................................ log utils support for lua-eco
              <*> lua-eco-mqtt.................................... mqtt support for lua-eco
@@ -95,7 +94,6 @@ end, 'eco2')
              -*- lua-eco-socket................................ socket support for lua-eco
              -*- lua-eco-ssl...................................... ssl support for lua-eco
                 SSL Library (mbedTLS)  --->
-            -*- lua-eco-sys.............................. system utils support for lua-eco
             <*> lua-eco-termios............................... termios support for lua-eco
             -*- lua-eco-ubus..................................... ubus support for lua-eco
             <*> lua-eco-websocket........................... websocket support for lua-eco
