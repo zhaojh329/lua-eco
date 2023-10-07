@@ -18,24 +18,22 @@ local SSL_MT_ESTAB  = 2
 local M = {}
 
 local function ssl_close(ssock)
-    local mt = getmetatable(ssock)
-
-    if mt.closed then
+    if ssock.__closed then
         return
     end
 
-    mt.ssl:free()
+    ssock.ssl:free()
 
-    if mt.name ~= SSL_MT_ESTAB then
-        mt.ctx:free()
+    if ssock.name ~= SSL_MT_ESTAB then
+        ssock.ctx:free()
     end
 
-    mt.sock:close()
-    mt.closed = true
+    ssock.sock:close()
+    ssock.__closed = true
 end
 
 local function ssl_socket(ssock)
-    return getmetatable(ssock).sock
+    return ssock.sock
 end
 
 local client_methods = {
@@ -43,18 +41,18 @@ local client_methods = {
     socket = ssl_socket
 }
 
+local metatable_cli = { __index = client_methods, __gc = ssl_close }
+
 function client_methods:closed()
-    return getmetatable(self).closed
+    return self.__closed
 end
 
 function client_methods:send(data)
-    local mt = getmetatable(self)
-
-    if mt.closed then
+    if self.__closed then
         return nil, 'closed'
     end
 
-    local ssl, iow, ior = mt.ssl, mt.iow, mt.ior
+    local ssl, iow, ior = self.ssl, self.iow, self.ior
     local w = iow
 
     local total = #data
@@ -82,9 +80,7 @@ function client_methods:send(data)
 end
 
 function client_methods:sendfile(fd, count, offset)
-    local mt = getmetatable(self)
-
-    if mt.closed then
+    if self.__closed then
         return nil, 'closed'
     end
 
@@ -133,10 +129,9 @@ function client_methods:sendfile(fd, count, offset)
 end
 
 function client_methods:recv(pattern, timeout)
-    local mt = getmetatable(self)
-    local b = mt.b
+    local b = self.b
 
-    if mt.closed then
+    if self.__closed then
         return nil, 'closed'
     end
 
@@ -173,10 +168,9 @@ function client_methods:recv(pattern, timeout)
 end
 
 function client_methods:recvfull(size, timeout)
-    local mt = getmetatable(self)
-    local b = mt.b
+    local b = self.b
 
-    if mt.closed then
+    if self.__closed then
         return nil, 'closed'
     end
 
@@ -186,10 +180,9 @@ function client_methods:recvfull(size, timeout)
 end
 
 function client_methods:discard(size, timeout)
-    local mt = getmetatable(self)
-    local b = mt.b
+    local b = self.b
 
-    if mt.closed then
+    if self.__closed then
         return nil, 'closed'
     end
 
@@ -203,9 +196,9 @@ local function ssl_wait(err, ior, iow, timeout)
     return w:wait(timeout)
 end
 
-local function ssl_negotiate(mt, deadtime)
-    local ssl, iow, ior = mt.ssl, mt.iow, mt.ior
-    local ok, err, errs, w
+local function ssl_negotiate(ssock, deadtime)
+    local ssl, iow, ior = ssock.ssl, ssock.iow, ssock.ior
+    local ok, err, errs
 
     while true do
         ok, err, errs = ssl:negotiate()
@@ -223,8 +216,8 @@ local function ssl_negotiate(mt, deadtime)
     end
 end
 
-local function create_bufio(mt)
-    local reader = { ssl = mt.ssl, ior = mt.ior, iow = mt.iow }
+local function create_bufio(ssock)
+    local reader = { ssl = ssock.ssl, ior = ssock.ior, iow = ssock.iow }
 
     function reader:read(n, timeout)
         if not self.ior:wait(timeout) then
@@ -287,19 +280,15 @@ local function create_bufio(mt)
     return bufio.new(reader)
 end
 
-local function ssl_setmetatable(ctx, sock, methods, name, insecure)
-    local ssock = {}
-
+local function ssl_setmetatable(ctx, sock, mt, name, insecure)
     local fd = sock:getfd()
 
-    local mt = {
+    local ssock = {
         name = name,
         fd = fd,
         ctx = ctx,
         sock = sock,
-        ior = eco.watcher(eco.IO, fd),
-        __index = methods,
-        __gc = methods.close
+        ior = eco.watcher(eco.IO, fd)
     }
 
     setmetatable(ssock, mt)
@@ -307,12 +296,12 @@ local function ssl_setmetatable(ctx, sock, methods, name, insecure)
     if name == SSL_MT_SERVER then
         return ssock
     else
-        mt.ssl = ctx:new(fd, insecure)
-        mt.iow = eco.watcher(eco.IO, fd, eco.WRITE)
-        mt.b = create_bufio(mt)
+        ssock.ssl = ctx:new(fd, insecure)
+        ssock.iow = eco.watcher(eco.IO, fd, eco.WRITE)
+        ssock.b = create_bufio(ssock)
     end
 
-    local ok, err = ssl_negotiate(mt, sys.uptime() + 3.0)
+    local ok, err = ssl_negotiate(ssock, sys.uptime() + 3.0)
     if not ok then
         return nil, err
     end
@@ -325,15 +314,15 @@ local server_methods = {
     socket = ssl_socket
 }
 
-function server_methods:accept()
-    local mt = getmetatable(self)
+local metatable_srv = { __index = server_methods, __gc = ssl_close }
 
-    local sock, addr = mt.sock:accept()
+function server_methods:accept()
+    local sock, addr = self.sock:accept()
     if not sock then
         return nil, addr
     end
 
-    local ssock, err = ssl_setmetatable(mt.ctx, sock, client_methods, SSL_MT_ESTAB)
+    local ssock, err = ssl_setmetatable(self.ctx, sock, metatable_cli, SSL_MT_ESTAB)
     if not ssock then
         return nil, err
     end
@@ -371,7 +360,7 @@ function M.listen(ipaddr, port, options, ipv6)
         return nil, err
     end
 
-    return ssl_setmetatable(ctx, sock, server_methods, SSL_MT_SERVER)
+    return ssl_setmetatable(ctx, sock, metatable_srv, SSL_MT_SERVER)
 end
 
 function M.listen6(ipaddr, port, options)
@@ -392,7 +381,7 @@ local function ssl_connect(ipaddr, port, insecure, ipv6)
 
     local ctx = essl.context(false)
 
-    return ssl_setmetatable(ctx, sock, client_methods, SSL_MT_CLIENT, insecure)
+    return ssl_setmetatable(ctx, sock, metatable_cli, SSL_MT_CLIENT, insecure)
 end
 
 function M.connect(ipaddr, port, insecure)
