@@ -12,20 +12,17 @@ local M = {}
 local methods = {}
 
 function methods:size()
-    local mt = getmetatable(self)
-    return mt.b:size()
+    return self.b:size()
 end
 
 function methods:length()
-    local mt = getmetatable(self)
-    return mt.b:length()
+    return self.b:length()
 end
 
 -- Returns the next n bytes without advancing the reader
 function methods:peek(n, timeout)
-    local mt = getmetatable(self)
-    local reader = mt.reader
-    local b = mt.b
+    local reader = self.reader
+    local b = self.b
     local blen = b:length()
 
     if blen < n then
@@ -52,9 +49,8 @@ end
     an error message, followed a number indicate how many bytes have been discarded.
 --]]
 function methods:discard(n, timeout)
-    local mt = getmetatable(self)
-    local reader = mt.reader
-    local b = mt.b
+    local reader = self.reader
+    local b = self.b
 
     if n < 1 then
         return 0
@@ -81,9 +77,8 @@ end
 
 -- Reads at most n bytes.
 function methods:read(n, timeout)
-    local mt = getmetatable(self)
-    local reader = mt.reader
-    local b = mt.b
+    local reader = self.reader
+    local b = self.b
 
     if n == 0 then
         return ''
@@ -106,9 +101,8 @@ end
 -- Reads exactly n bytes. Returns nil followed by
 -- an error message if fewer bytes were read.
 function methods:readfull(n, timeout)
-    local mt = getmetatable(self)
-    local reader = mt.reader
-    local b = mt.b
+    local reader = self.reader
+    local b = self.b
     local blen = b:length()
 
     if blen >= n then
@@ -155,9 +149,8 @@ end
 
 -- Reads a single line, not including the end-of-line bytes("\r\n" or "\n").
 function methods:readline(timeout)
-    local mt = getmetatable(self)
-    local reader = mt.reader
-    local b = mt.b
+    local reader = self.reader
+    local b = self.b
 
     local deadtime
 
@@ -239,6 +232,8 @@ local function default_read2b(rd, b, timeout)
     return r, err
 end
 
+local metatable = { __index = methods }
+
 function M.new(reader, size)
     if type(reader) ~= 'table' then
         error('"reader" must be a table')
@@ -267,11 +262,10 @@ function M.new(reader, size)
 
     local b = buffer.new(size)
 
-    return setmetatable({}, {
+    return setmetatable({
         b = b,
         reader = reader,
-        __index = methods
-    })
+    }, metatable)
 end
 
 return M
