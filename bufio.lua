@@ -13,7 +13,7 @@ local methods = {}
 
 function methods:size()
     local mt = getmetatable(self)
-    return mt.size
+    return mt.b:size()
 end
 
 function methods:length()
