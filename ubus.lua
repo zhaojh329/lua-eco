@@ -17,28 +17,24 @@ end
 local methods = {}
 
 function methods:closed()
-    local mt = getmetatable(self)
-    return mt.done.v
+    return self.done.v
 end
 
 function methods:close()
-    local mt = getmetatable(self)
-    local done = mt.done
-    local con = mt.con
+    local done = self.done
+    local con = self.con
 
     if done.v then
         return
     end
 
     done.v = true
-    mt.w:cancel()
+    self.w:cancel()
     con:close()
 end
 
 function methods:call(object, method, params)
-    local mt = getmetatable(self)
-
-    if mt.done.v then
+    if self.done.v then
         return nil, 'closed'
     end
 
@@ -47,7 +43,7 @@ function methods:call(object, method, params)
     local msgs = {}
     local req, err
 
-    req, err = mt.con:call(object, method, params,
+    req, err = self.con:call(object, method, params,
         function(msg)
             msgs[#msgs + 1] = msg
         end,
@@ -84,20 +80,17 @@ function methods:call(object, method, params)
 end
 
 function methods:reply(req, msg)
-    local mt = getmetatable(self)
-
-    if mt.done.v then
+    if self.done.v then
         return nil, 'closed'
     end
 
-    return mt.con:reply(req, msg)
+    return self.con:reply(req, msg)
 end
 
 function methods:add(object, methods)
-    local mt = getmetatable(self)
-    local con = mt.con
+    local con = self.con
 
-    if mt.done.v then
+    if self.done.v then
         return nil, 'closed'
     end
 
@@ -124,13 +117,11 @@ function methods:add(object, methods)
 end
 
 function methods:listen(event, cb)
-    local mt = getmetatable(self)
-
-    if mt.done.v then
+    if self.done.v then
         return nil, 'closed'
     end
 
-    local e, err = mt.con:listen(event, function(...)
+    local e, err = self.con:listen(event, function(...)
         eco.run(cb, ...)
     end)
     if not e then
@@ -141,24 +132,25 @@ function methods:listen(event, cb)
 end
 
 function methods:send(event, msg)
-    local mt = getmetatable(self)
-
-    if mt.done.v then
+    if self.done.v then
         return nil, 'closed'
     end
 
-    return mt.con:send(event, msg)
+    return self.con:send(event, msg)
 end
 
 function methods:objects()
-    local mt = getmetatable(self)
-
-    if mt.done.v then
+    if self.done.v then
         return nil, 'closed'
     end
 
-    return mt.con:objects()
+    return self.con:objects()
 end
+
+local metatable = {
+    __index = methods,
+    __gc = methods.close
+}
 
 function M.connect(path)
     local __con, err = ubus.connect(eco.context(), path)
@@ -172,13 +164,11 @@ function M.connect(path)
 
     eco.run(process_msg, __con, w, done)
 
-    return setmetatable({}, {
+    return setmetatable({
         w = w,
         done = done,
         con = __con,
-        __index = methods,
-        __gc = methods.close
-    })
+    }, metatable)
 end
 
 function M.call(object, method, params)
