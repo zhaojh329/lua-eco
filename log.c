@@ -156,7 +156,7 @@ int luaopen_eco_log(lua_State *L)
 
     lua_add_constant(L, "EMERG", LOG_EMERG);
     lua_add_constant(L, "ALERT", LOG_ALERT);
-lua_add_constant(L, "CRIT", LOG_CRIT);
+    lua_add_constant(L, "CRIT", LOG_CRIT);
     lua_add_constant(L, "ERR", LOG_ERR);
     lua_add_constant(L, "WARNING", LOG_WARNING);
     lua_add_constant(L, "NOTICE", LOG_NOTICE);
