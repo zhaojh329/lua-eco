@@ -6,34 +6,29 @@ local sys = require 'eco.core.sys'
 local bufio = require 'eco.bufio'
 
 local concat = table.concat
-local type = type
 
 local M = {}
 
 local exec_methods = {}
 
 function exec_methods:release()
-    local mt = getmetatable(self)
-
-    if not mt.stdout_fd then
+    if not self.stdout_fd then
         return
     end
 
-    file.close(mt.stdout_fd)
-    file.close(mt.stderr_fd)
+    file.close(self.stdout_fd)
+    file.close(self.stderr_fd)
 
-    mt.stdout_fd = nil
-    mt.stderr_fd = nil
+    self.stdout_fd = nil
+    self.stderr_fd = nil
 end
 
 function exec_methods:wait(timeout)
-    local mt = getmetatable(self)
-    return mt.child_w:wait(timeout or 30.0)
+    return self.child_w:wait(timeout or 30.0)
 end
 
 function exec_methods:pid()
-    local mt = getmetatable(self)
-    return mt.pid
+    return self.__pid
 end
 
 local function exec_read(b, pattern, timeout)
@@ -70,24 +65,25 @@ local function exec_read(b, pattern, timeout)
 end
 
 function exec_methods:read_stdout(pattern, timeout)
-    local mt = getmetatable(self)
-
-    if not mt.stdout_fd then
+    if not self.stdout_fd then
         return nil, 'closeed'
     end
 
-    return exec_read(mt.stdout_b, pattern, timeout)
+    return exec_read(self.stdout_b, pattern, timeout)
 end
 
 function exec_methods:read_stderr(pattern, timeout)
-    local mt = getmetatable(self)
-
-    if not mt.stderr_fd then
+    if not self.stderr_fd then
         return nil, 'closeed'
     end
 
-    return exec_read(mt.stderr_b, pattern, timeout)
+    return exec_read(self.stderr_b, pattern, timeout)
 end
+
+local exec_metatable = {
+    __index = exec_methods,
+    __gc = exec_methods.release
+}
 
 function M.exec(...)
     local pid, stdout_fd, stderr_fd = sys.exec(...)
@@ -95,16 +91,14 @@ function M.exec(...)
         return nil, stdout_fd
     end
 
-    return setmetatable({}, {
-        pid = pid,
+    return setmetatable({
+        __pid = pid,
         stdout_fd = stdout_fd,
         stderr_fd = stderr_fd,
         child_w = eco.watcher(eco.CHILD, pid),
         stdout_b = bufio.new({ w = eco.watcher(eco.IO, stdout_fd) }),
-        stderr_b = bufio.new({ w = eco.watcher(eco.IO, stderr_fd) }),
-        __index = exec_methods,
-        __gc = exec_methods.release
-    })
+        stderr_b = bufio.new({ w = eco.watcher(eco.IO, stderr_fd) })
+    }, exec_metatable)
 end
 
 function M.signal(sig, cb, ...)
