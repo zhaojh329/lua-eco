@@ -268,19 +268,18 @@ end
 local methods = {}
 
 function methods:close()
-    local mt = getmetatable(self)
-    local sock = mt.sock
+    local sock = self.__sock
 
     if not sock then
         return
     end
 
     sock:close()
-    mt.sock = nil
+    self.sock = nil
 end
 
 function methods:sock()
-    local sock = getmetatable(self).sock
+    local sock = self.__sock
     if sock then
         return sock
     end
@@ -410,16 +409,18 @@ function methods:request(method, url, body, opts)
 
     self:close()
 
-    getmetatable(self).sock = sock
+    self.__sock = sock
 
     return do_http_request(sock, method, path, headers, body, opts)
 end
 
+local metatable = {
+    __index = methods,
+    __gc = methods.close
+}
+
 function M.new()
-    return setmetatable({}, {
-        __index = methods,
-        __gc = methods.close
-    })
+    return setmetatable({}, metatable)
 end
 
 local function body_is_file(body)
@@ -470,6 +471,8 @@ function M.post(url, body, opts)
     return M.request('POST', url, body, opts)
 end
 
+local body_file_mt = { name = BODY_FILE_MT }
+
 function M.body_with_file(name)
     local st, err = file.stat(name)
     if not st then
@@ -489,7 +492,7 @@ function M.body_with_file(name)
         size = st.size
     }
 
-    return setmetatable(o, { name = BODY_FILE_MT })
+    return setmetatable(o, body_file_mt)
 end
 
 return M

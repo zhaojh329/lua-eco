@@ -215,15 +215,15 @@ local month_abbr_map = {
 local methods = {}
 
 function methods:closed()
-    return getmetatable(self).sock:closed()
+    return self.sock:closed()
 end
 
 function methods:remote_addr()
-    return getmetatable(self).peer
+    return self.peer
 end
 
 function methods:add_header(name, value)
-    local resp = getmetatable(self).resp
+    local resp = self.resp
 
     if resp.head_sent then
         error('http head has been sent')
@@ -233,7 +233,7 @@ function methods:add_header(name, value)
 end
 
 function methods:set_status(code, status)
-    local resp = getmetatable(self).resp
+    local resp = self.resp
 
     if resp.head_sent then
         error('http head has been sent')
@@ -288,9 +288,7 @@ local function send_http_head(resp)
 end
 
 function methods:send_error(code, status, content)
-    local mt = getmetatable(self)
-
-    if mt.sock:closed() then
+    if self.sock:closed() then
         return false, 'closed'
     end
 
@@ -304,17 +302,16 @@ function methods:send_error(code, status, content)
     if content then
         self:send(content)
     else
-        send_http_head(mt.resp)
+        send_http_head(self.resp)
     end
 
     return true
 end
 
 function methods:send(...)
-    local mt = getmetatable(self)
-    local resp = mt.resp
+    local resp = self.resp
 
-    if mt.sock:closed() then
+    if self.sock:closed() then
         return false, 'closed'
     end
 
@@ -367,9 +364,8 @@ local function http_send_file(sock, fd, size, count, offset)
 end
 
 function methods:send_file_fd(fd, size, count, offset)
-    local mt = getmetatable(self)
-    local resp = mt.resp
-    local sock = mt.sock
+    local resp = self.resp
+    local sock = self.sock
 
     if count and count < 1 then
         return true
@@ -394,9 +390,7 @@ function methods:send_file_fd(fd, size, count, offset)
 end
 
 function methods:send_file(path, count, offset)
-    local mt = getmetatable(self)
-
-    if mt.sock:closed() then
+    if self.sock:closed() then
         return false, 'closed'
     end
 
@@ -429,9 +423,8 @@ function methods:send_file(path, count, offset)
 end
 
 function methods:flush()
-    local mt = getmetatable(self)
-    local resp = mt.resp
-    local sock = mt.sock
+    local resp = self.resp
+    local sock = self.sock
     local data = resp.data
 
     if not resp.head_sent then
@@ -454,9 +447,8 @@ function methods:flush()
 end
 
 function methods:read_body(count, timeout)
-    local mt = getmetatable(self)
-    local body_remain = mt.body_remain
-    local sock = mt.sock
+    local body_remain = self.body_remain
+    local sock = self.sock
 
     if sock:closed() then
         return nil, 'closed'
@@ -487,16 +479,15 @@ function methods:read_body(count, timeout)
         return nil, err
     end
 
-    mt.body_remain = mt.body_remain - #data
+    self.body_remain = self.body_remain - #data
 
     return data
 end
 
 function methods:discard_body()
-    local mt = getmetatable(self)
-    local sock = mt.sock
+    local sock = self.sock
 
-    local _, err = sock:discard(mt.body_remain, 3.0)
+    local _, err = sock:discard(self.body_remain, 3.0)
     if err then
         sock:close()
         return false, err
@@ -506,11 +497,10 @@ function methods:discard_body()
 end
 
 function methods:serve_file(req)
-    local mt = getmetatable(self)
-    local options = mt.options
+    local options = self.options
     local path = req.path
 
-    if mt.sock:closed() then
+    if self.sock:closed() then
         return false, 'closed'
     end
 
@@ -606,12 +596,11 @@ function methods:serve_file(req)
 end
 
 local function handle_connection(con, handler)
-    local mt = getmetatable(con)
-    local sock = mt.sock
-    local peer = mt.peer
+    local sock = con.sock
+    local peer = con.peer
 
     local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
-    local http_keepalive = mt.options.http_keepalive
+    local http_keepalive = con.options.http_keepalive
     local read_timeout = 3.0
 
     local method, path, major_version, minor_version
@@ -691,7 +680,7 @@ local function handle_connection(con, handler)
         end
     end
 
-    mt.body_remain = tonumber(headers['content-length'] or 0)
+    con.body_remain = tonumber(headers['content-length'] or 0)
 
     local resp = {
         major_version = major_version,
@@ -709,7 +698,7 @@ local function handle_connection(con, handler)
         resp.headers['keep-alive'] = string.format('timeout=%d', http_keepalive)
     end
 
-    mt.resp = resp
+    con.resp = resp
 
     local req = {
         method = method,
@@ -788,6 +777,8 @@ local function set_socket_options(sock, options)
     end
 end
 
+local metatable = { __index = methods }
+
 function M.listen(ipaddr, port, options, handler)
     options = options or {}
 
@@ -832,7 +823,7 @@ function M.listen(ipaddr, port, options, handler)
             log.debug(peer.ipaddr .. ':' .. peer.port .. ': new connection')
 
             eco.run(function(c)
-                local con = setmetatable({}, {
+                local con = setmetatable({
                     sock = c,
                     resp = {
                         code = 200,
@@ -841,9 +832,8 @@ function M.listen(ipaddr, port, options, handler)
                         }
                     },
                     peer = peer,
-                    options = options,
-                    __index = methods
-                })
+                    options = options
+                }, metatable)
 
                 while not c:closed() do
                     if not handle_connection(con, handler) then
