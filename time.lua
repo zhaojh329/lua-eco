@@ -42,33 +42,32 @@ end
 local timer_methods = {}
 
 function timer_methods:cancel()
-    local mt = getmetatable(self)
-    mt.w:cancel()
+    self.w:cancel()
 end
 
 function timer_methods:set(delay)
-    local mt = getmetatable(self)
-    local w = mt.w
+    local w = self.w
 
     w:cancel()
 
     eco.run(function(...)
         if w:wait(delay) then
-            mt.cb(...)
+            self.cb(...)
         end
-    end, self, table.unpack(mt.arguments))
+    end, self, table.unpack(self.arguments))
 end
+
+local metatable = { __index = timer_methods }
 
 -- The timer function is similar to `at`, but will not be started immediately.
 function M.timer(cb, ...)
     assert(type(cb) == 'function')
 
-    return setmetatable({}, {
+    return setmetatable({
         w = new_timer(),
         cb = cb,
-        arguments = { ... },
-        __index = timer_methods
-    })
+        arguments = { ... }
+    }, metatable)
 end
 
 --[[
@@ -95,12 +94,11 @@ function M.on(ts, cb, ...)
     assert(type(ts) == 'number')
     assert(type(cb) == 'function')
 
-    local tmr = setmetatable({}, {
+    local tmr = setmetatable({
         w = new_timer(true),
         cb = cb,
-        arguments = { ... },
-        __index = timer_methods
-    })
+        arguments = { ... }
+    }, metatable)
 
     tmr:set(ts)
 
