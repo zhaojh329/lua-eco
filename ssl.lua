@@ -324,6 +324,7 @@ function server_methods:accept()
 
     local ssock, err = ssl_setmetatable(self.ctx, sock, metatable_cli, SSL_MT_ESTAB)
     if not ssock then
+        sock:close()
         return nil, err
     end
 
@@ -381,7 +382,13 @@ local function ssl_connect(ipaddr, port, insecure, ipv6)
 
     local ctx = essl.context(false)
 
-    return ssl_setmetatable(ctx, sock, metatable_cli, SSL_MT_CLIENT, insecure)
+    local ssock, err = ssl_setmetatable(ctx, sock, metatable_cli, SSL_MT_CLIENT, insecure)
+    if not ssock then
+        sock:close()
+        return nil, err
+    end
+
+    return ssock
 end
 
 function M.connect(ipaddr, port, insecure)
