@@ -22,18 +22,15 @@ local SOCK_MT_ESTAB  = 4
 local M = {}
 
 local function sock_getsockname(sock)
-    local mt = getmetatable(sock)
-    return socket.getsockname(mt.fd)
+    return socket.getsockname(sock.fd)
 end
 
 local function sock_getpeername(sock)
-    local mt = getmetatable(sock)
-    return socket.getpeername(mt.fd)
+    return socket.getpeername(sock.fd)
 end
 
 local function sock_getfd(sock)
-    local mt = getmetatable(sock)
-    return mt.fd
+    return sock.fd
 end
 
 local function sock_setoption(sock, ...)
@@ -47,14 +44,14 @@ local function sock_getoption(sock, ...)
 end
 
 local function sock_close(sock)
-    local mt = getmetatable(sock)
+    local fd = sock.fd
 
-    if mt.fd < 0 then
+    if fd < 0 then
         return
     end
 
-    if mt.name ~= SOCK_MT_ESTAB then
-        local addr = socket.getsockname(mt.fd)
+    if sock.name ~= SOCK_MT_ESTAB then
+        local addr = socket.getsockname(fd)
         if addr and addr.family == socket.AF_UNIX then
             if addr.path and file.access(addr.path) then
                 os.remove(addr.path)
@@ -62,8 +59,8 @@ local function sock_close(sock)
         end
     end
 
-    file.close(mt.fd)
-    mt.fd = -1
+    file.close(fd)
+    sock.fd = -1
 end
 
 local function sock_closed(sock)
@@ -89,16 +86,15 @@ end
     If no argument is specified, then it is assumed to be the pattern '*l', that is, the line reading pattern.
 --]]
 local function sock_recv(sock, pattern, timeout)
-    local mt = getmetatable(sock)
-    local fd = mt.fd
-    local b = mt.b
+    local fd = sock.fd
+    local b = sock.b
 
     if fd < 0 then
         return nil, 'closed'
     end
 
-    if mt.name == SOCK_MT_DGRAM then
-        if not mt.ior:wait(timeout) then
+    if sock.name == SOCK_MT_DGRAM then
+        if not sock.ior:wait(timeout) then
             return nil, 'timeout'
         end
 
@@ -142,9 +138,8 @@ end
     This method will not return until it reads exactly this size of data or an error occurs.
 --]]
 local function sock_recvfull(sock, size, timeout)
-    local mt = getmetatable(sock)
-    local fd = mt.fd
-    local b = mt.b
+    local fd = sock.fd
+    local b = sock.b
 
     if fd < 0 then
         return nil, 'closed'
@@ -156,9 +151,8 @@ local function sock_recvfull(sock, size, timeout)
 end
 
 local function sock_discard(sock, size, timeout)
-    local mt = getmetatable(sock)
-    local fd = mt.fd
-    local b = mt.b
+    local fd = sock.fd
+    local b = sock.b
 
     if fd < 0 then
         return nil, 'closed'
@@ -174,9 +168,8 @@ local function sock_send(sock, data)
         return nil, 'closed'
     end
 
-    local mt = getmetatable(sock)
-    local iow = mt.iow
-    local fd = mt.fd
+    local iow = sock.iow
+    local fd = sock.fd
     local total = #data
     local sent = 0
     local ok, n, err
@@ -202,9 +195,8 @@ local function sock_sendfile(sock, fd, count, offset)
         return nil, 'closed'
     end
 
-    local mt = getmetatable(sock)
-    local iow = mt.iow
-    local sfd = mt.fd
+    local iow = sock.iow
+    local sfd = sock.fd
     local sent = 0
 
     while count > 0 do
@@ -232,13 +224,11 @@ local function sock_recvfrom(sock, n, timeout)
         return nil, 'closed'
     end
 
-    local mt = getmetatable(sock)
-
-    if not mt.ior:wait(timeout) then
+    if not sock.ior:wait(timeout) then
         return nil, 'timeout'
     end
 
-    return socket.recvfrom(mt.fd, n)
+    return socket.recvfrom(sock.fd, n)
 end
 
 local function sock_sendto(sock, data, ...)
@@ -246,8 +236,7 @@ local function sock_sendto(sock, data, ...)
         return nil, 'closed'
     end
 
-    local mt = getmetatable(sock)
-    local family = mt.family
+    local family = sock.family
     local send
 
     if family == socket.AF_INET then
@@ -262,7 +251,7 @@ local function sock_sendto(sock, data, ...)
         error('invalid family: ' .. family)
     end
 
-    return send(mt.fd, data, ...)
+    return send(sock.fd, data, ...)
 end
 
 local client_methods = {
@@ -280,9 +269,13 @@ local client_methods = {
     getoption = sock_getoption
 }
 
+local client_mt = {
+    __index = client_methods,
+    __gc = sock_close
+}
+
 local function sock_bind(sock, ...)
-    local mt = getmetatable(sock)
-    local family = mt.family
+    local family = sock.family
     local bind
 
     if family == socket.AF_INET then
@@ -297,7 +290,7 @@ local function sock_bind(sock, ...)
         error('invalid family: ' .. family)
     end
 
-    local ok, err = bind(mt.fd, ...)
+    local ok, err = bind(sock.fd, ...)
     if not ok then
         return nil, sys.strerror(err)
     end
@@ -305,35 +298,33 @@ local function sock_bind(sock, ...)
     return true
 end
 
-local function sock_update_mt(sock, methods, name)
-    local mt = getmetatable(sock)
-    mt.name = name
-    mt.__index = methods
+local function sock_update_mt(sock, mt, name)
+    sock.name = name
 
     if name == SOCK_MT_SERVER then
-        mt.iow = nil
+        sock.iow = nil
     else
-        mt.b = bufio.new({ w = mt.ior, is_socket = true })
+        sock.b = bufio.new({ w = sock.ior, is_socket = true })
     end
+
+    setmetatable(sock, mt)
 end
 
-local function sock_setmetatable(fd, family, typ, methods, name)
-    local mt = {
+local function sock_setmetatable(fd, family, typ, mt, name)
+    local o = {
         name = name,
         family = family,
         typ = typ,
         fd = fd,
         ior = eco.watcher(eco.IO, fd),
-        iow = eco.watcher(eco.IO, fd, eco.WRITE),
-        __index = methods,
-        __gc = methods.close
+        iow = eco.watcher(eco.IO, fd, eco.WRITE)
     }
 
     if name == SOCK_MT_ESTAB then
-        mt.b = bufio.new({ w = mt.ior, is_socket = true })
+        o.b = bufio.new({ w = o.ior, is_socket = true })
     end
 
-    return setmetatable({}, mt)
+    return setmetatable(o, mt)
 end
 
 local function sock_accept(sock, timeout)
@@ -341,18 +332,16 @@ local function sock_accept(sock, timeout)
         return nil, 'closed'
     end
 
-    local mt = getmetatable(sock)
-
-    if not mt.ior:wait(timeout) then
+    if not sock.ior:wait(timeout) then
         return nil, 'timeout'
     end
 
-    local fd, addr = socket.accept(mt.fd)
+    local fd, addr = socket.accept(sock.fd)
     if not fd then
         return nil, sys.strerror(addr)
     end
 
-    return sock_setmetatable(fd, mt.family, mt.typ, client_methods, SOCK_MT_ESTAB), addr
+    return sock_setmetatable(fd, sock.family, sock.typ, client_mt, SOCK_MT_ESTAB), addr
 end
 
 local server_methods = {
@@ -365,6 +354,11 @@ local server_methods = {
     getoption = sock_getoption
 }
 
+local server_mt = {
+    __index = server_methods,
+    __gc = sock_close
+}
+
 local function sock_listen(sock, backlog)
     local fd = sock_getfd(sock)
     local ok, err = socket.listen(fd, backlog)
@@ -372,16 +366,14 @@ local function sock_listen(sock, backlog)
         return false, sys.strerror(err)
     end
 
-    sock_update_mt(sock, server_methods, SOCK_MT_SERVER)
+    sock_update_mt(sock, server_mt, SOCK_MT_SERVER)
 
     return true
 end
 
 local function sock_connect_ok(sock)
-    local mt = getmetatable(sock)
-
-    if mt.typ == socket.SOCK_STREAM then
-        sock_update_mt(sock, client_methods, SOCK_MT_CLIENT)
+    if sock.typ == socket.SOCK_STREAM then
+        sock_update_mt(sock, client_mt, SOCK_MT_CLIENT)
     end
 
     return true
@@ -392,8 +384,7 @@ local function sock_connect(sock, ...)
         return false, 'closed'
     end
 
-    local mt = getmetatable(sock)
-    local family = mt.family
+    local family = sock.family
     local connect
 
     if family == socket.AF_INET then
@@ -408,14 +399,14 @@ local function sock_connect(sock, ...)
         error('invalid family: ' .. family)
     end
 
-    local ok, err = connect(mt.fd, ...)
+    local ok, err = connect(sock.fd, ...)
     if not ok then
         if err == sys.EINPROGRESS then
-            if not mt.iow:wait(3.0) then
+            if not sock.iow:wait(3.0) then
                 return nil, 'timeout'
             end
 
-            err = socket.getoption(mt.fd, 'error')
+            err = socket.getoption(sock.fd, 'error')
             if err == 0 then
                 return sock_connect_ok(sock)
             end
@@ -463,36 +454,46 @@ local function create_socket(family, typ, protocol, methods, name)
     return sock_setmetatable(fd, family, typ, methods, name)
 end
 
+local stream_mt = {
+    __index = stream_methods,
+    __gc = sock_close
+}
+
+local dgram_mt = {
+    __index = dgram_methods,
+    __gc = sock_close
+}
+
 function M.tcp()
-    return create_socket(socket.AF_INET, socket.SOCK_STREAM, 0, stream_methods, SOCK_MT_STREAM)
+    return create_socket(socket.AF_INET, socket.SOCK_STREAM, 0, stream_mt, SOCK_MT_STREAM)
 end
 
 function M.tcp6()
-    return create_socket(socket.AF_INET6, socket.SOCK_STREAM, 0, stream_methods, SOCK_MT_STREAM)
+    return create_socket(socket.AF_INET6, socket.SOCK_STREAM, 0, stream_mt, SOCK_MT_STREAM)
 end
 
 function M.unix()
-    return create_socket(socket.AF_UNIX, socket.SOCK_STREAM, 0, stream_methods, SOCK_MT_STREAM)
+    return create_socket(socket.AF_UNIX, socket.SOCK_STREAM, 0, stream_mt, SOCK_MT_STREAM)
 end
 
 function M.udp()
-    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, 0, dgram_mt, SOCK_MT_DGRAM)
 end
 
 function M.udp6()
-    return create_socket(socket.AF_INET6, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_INET6, socket.SOCK_DGRAM, 0, dgram_mt, SOCK_MT_DGRAM)
 end
 
 function M.icmp()
-    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, 1, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_INET, socket.SOCK_DGRAM, 1, dgram_mt, SOCK_MT_DGRAM)
 end
 
 function M.unix_dgram()
-    return create_socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0, dgram_mt, SOCK_MT_DGRAM)
 end
 
 function M.netlink(protocol)
-    return create_socket(socket.AF_NETLINK, socket.SOCK_RAW, protocol, dgram_methods, SOCK_MT_DGRAM)
+    return create_socket(socket.AF_NETLINK, socket.SOCK_RAW, protocol, dgram_mt, SOCK_MT_DGRAM)
 end
 
 function M.listen_unix(path, options)
