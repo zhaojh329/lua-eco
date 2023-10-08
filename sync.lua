@@ -7,8 +7,7 @@ local cond_methods = {}
 
 -- waiting to be awakened
 function cond_methods:wait(timeout)
-    local mt = getmetatable(self)
-    local watchers = mt.watchers
+    local watchers = self.watchers
 
     local w = eco.watcher(eco.ASYNC)
 
@@ -19,8 +18,7 @@ end
 
 -- wakes one coroutine waiting on the cond, if there is any.
 function cond_methods:signal()
-    local mt = getmetatable(self)
-    local watchers = mt.watchers
+    local watchers = self.watchers
 
     if #watchers > 0 then
         watchers[1]:send()
@@ -30,53 +28,51 @@ end
 
 -- wakes all coroutines waiting on the cond
 function cond_methods:broadcast()
-    local mt = getmetatable(self)
-
-    for _, w in ipairs(mt.watchers) do
+    for _, w in ipairs(self.watchers) do
         w:send()
     end
 
-    mt.watchers = {}
+    self.watchers = {}
 end
+
+local cond_mt = { __index = cond_methods }
 
 -- implements a condition variable, a rendezvous point for coroutines waiting for or announcing the occurrence of an event.
 function M.cond()
-    return setmetatable({}, {
-        watchers = {},
-        __index = cond_methods
-    })
+    return setmetatable({ watchers = {} }, cond_mt)
 end
 
 local waitgroup_methods = {}
 
 function waitgroup_methods:add(delta)
-   local mt = getmetatable(self)
-   mt.counter = mt.counter + delta
+   self.counter = self.counter + delta
 end
 
 function waitgroup_methods:done()
-    local mt = getmetatable(self)
+    local counter = self.counter
 
-    mt.counter = mt.counter - 1
+    counter = counter - 1
 
-    if mt.counter < 0 then
+    if counter < 0 then
         error('negative wait group counter')
     end
 
-    if mt.counter == 0 then
-        mt.cond:broadcast()
+    self.counter = counter
+
+    if counter == 0 then
+        self.cond:broadcast()
     end
 end
 
 function waitgroup_methods:wait(timeout)
-    local mt = getmetatable(self)
-
-    if mt.counter == 0 then
+    if self.counter == 0 then
         return true
     end
 
-    return mt.cond:wait(timeout)
+    return self.cond:wait(timeout)
 end
+
+local waitgroup_mt = { __index = waitgroup_methods }
 
 --[[
     A waitgroup waits for a collection of coroutines to finish.
@@ -85,11 +81,10 @@ end
     At the same time, wait can be used to block until all coroutines have finished.
 --]]
 function M.waitgroup()
-    return setmetatable({}, {
+    return setmetatable({
         counter = 0,
-        cond = M.cond(),
-        __index = waitgroup_methods
-    })
+        cond = M.cond()
+    }, waitgroup_mt)
 end
 
 return M
