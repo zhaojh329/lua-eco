@@ -150,7 +150,7 @@ function methods:send(event, msg)
     return mt.con:send(event, msg)
 end
 
-function methods:objects(event, msg)
+function methods:objects()
     local mt = getmetatable(self)
 
     if mt.done.v then
