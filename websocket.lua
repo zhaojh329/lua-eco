@@ -30,9 +30,8 @@ local types = {
 local methods = {}
 
 function  methods:recv_frame(timeout)
-    local mt = getmetatable(self)
-    local sock = mt.sock
-    local opts = mt.opts
+    local sock = self.sock
+    local opts = self.opts
 
     local data, err = sock:recvfull(2, timeout)
     if not data then
@@ -221,9 +220,8 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
 end
 
 function methods:send_frame(fin, opcode, payload)
-    local mt = getmetatable(self)
-    local sock = mt.sock
-    local opts = mt.opts
+    local sock = self.sock
+    local opts = self.opts
 
     if not payload then
         payload = ''
@@ -248,7 +246,7 @@ function methods:send_frame(fin, opcode, payload)
         end
     end
 
-    local frame, err = build_frame(fin, opcode, payload_len, payload, mt.masking)
+    local frame, err = build_frame(fin, opcode, payload_len, payload, self.masking)
     if not frame then
         return nil, 'failed to build frame: ' .. err
     end
@@ -287,6 +285,8 @@ end
 function methods:send_pong(data)
     return self:send_frame(true, 0xa, data)
 end
+
+local metatable = { __index = methods }
 
 function M.upgrade(con, req, opts)
     local mt = getmetatable(con)
@@ -355,11 +355,10 @@ function M.upgrade(con, req, opts)
 
     opts.max_payload_len = opts.max_payload_len or 65535
 
-    return setmetatable({}, {
-        __index = methods,
+    return setmetatable({
         sock = mt.sock,
         opts = opts
-    })
+    }, metatable)
 end
 
 function M.connect(uri, opts)
@@ -400,13 +399,12 @@ function M.connect(uri, opts)
 
     opts.max_payload_len = opts.max_payload_len or 65535
 
-    return setmetatable({}, {
-        __index = methods,
+    return setmetatable({
         masking = true,
         hc = hc,
         sock = hc:sock(),
         opts = opts
-    })
+    }, metatable)
 end
 
 return M
