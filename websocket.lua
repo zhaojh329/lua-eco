@@ -289,8 +289,7 @@ end
 local metatable = { __index = methods }
 
 function M.upgrade(con, req, opts)
-    local mt = getmetatable(con)
-    local resp = mt.resp
+    local resp = con.resp
 
     if req.major_version ~= 1 or req.minor_version ~= 1 then
         return nil, 'bad http version'
@@ -356,7 +355,7 @@ function M.upgrade(con, req, opts)
     opts.max_payload_len = opts.max_payload_len or 65535
 
     return setmetatable({
-        sock = mt.sock,
+        sock = con.sock,
         opts = opts
     }, metatable)
 end
