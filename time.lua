@@ -5,25 +5,7 @@ local time = require 'eco.core.time'
 
 local M = {}
 
-local timers = {}
-local timers_periodic = {}
-
-local function new_timer(periodic)
-    local tmrs = periodic and timers_periodic or timers
-    for _, w in ipairs(tmrs) do
-        if not w:active() then
-            return w
-        end
-    end
-
-    local w = eco.watcher(eco.TIMER, periodic)
-
-    if #tmrs < 10 then
-        tmrs[#tmrs + 1] = w
-    end
-
-    return w
-end
+local sleep_timers = {}
 
 -- returns the Unix time, the number of seconds elapsed since January 1, 1970 UTC.
 function M.now()
@@ -35,7 +17,18 @@ end
     A negative or zero delay causes sleep to return immediately.
 --]]
 function M.sleep(delay)
-    local w = new_timer()
+    for _, w in ipairs(sleep_timers) do
+        if not w:active() then
+            return w:wait(delay)
+        end
+    end
+
+    local w = eco.watcher(eco.TIMER)
+
+    if #sleep_timers < 10 then
+        sleep_timers[#sleep_timers + 1] = w
+    end
+
     return w:wait(delay)
 end
 
@@ -64,7 +57,7 @@ function M.timer(cb, ...)
     assert(type(cb) == 'function')
 
     return setmetatable({
-        w = new_timer(),
+        w = eco.watcher(eco.TIMER),
         cb = cb,
         arguments = { ... }
     }, metatable)
@@ -95,7 +88,7 @@ function M.on(ts, cb, ...)
     assert(type(cb) == 'function')
 
     local tmr = setmetatable({
-        w = new_timer(true),
+        w = eco.watcher(eco.TIMER, true),
         cb = cb,
         arguments = { ... }
     }, metatable)
