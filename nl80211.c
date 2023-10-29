@@ -75,6 +75,8 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "CMD_NEW_SCAN_RESULTS", NL80211_CMD_NEW_SCAN_RESULTS);
     lua_add_constant(L, "CMD_SCAN_ABORTED", NL80211_CMD_SCAN_ABORTED);
 
+    lua_add_constant(L, "CMD_GET_SURVEY", NL80211_CMD_GET_SURVEY);
+
     lua_add_constant(L, "CMD_RADAR_DETECT", NL80211_CMD_RADAR_DETECT);
     lua_add_constant(L, "CMD_GET_PROTOCOL_FEATURES", NL80211_CMD_GET_PROTOCOL_FEATURES);
     lua_add_constant(L, "CMD_CH_SWITCH_STARTED_NOTIFY", NL80211_CMD_CH_SWITCH_STARTED_NOTIFY);
@@ -430,6 +432,9 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "RATE_INFO_EHT_MCS", NL80211_RATE_INFO_EHT_MCS);
     lua_add_constant(L, "RATE_INFO_EHT_NSS", NL80211_RATE_INFO_EHT_NSS);
     lua_add_constant(L, "RATE_INFO_EHT_GI", NL80211_RATE_INFO_EHT_GI);
+
+    lua_add_constant(L, "SURVEY_INFO_NOISE", NL80211_SURVEY_INFO_NOISE);
+    lua_add_constant(L, "SURVEY_INFO_IN_USE", NL80211_SURVEY_INFO_IN_USE);
 
     lua_add_constant(L, "PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP", NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP);
 

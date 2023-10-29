@@ -751,6 +751,64 @@ function M.wait_event(grp_name, timeout, cb, data)
     end
 end
 
+function M.get_noise(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local ifidx = socket.if_nametoindex(ifname)
+    if not ifidx then
+        return nil, 'no dev'
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_SURVEY, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    local noise = 0
+
+    while true do
+        msg, err = sock:recv()
+        if not msg then
+            return nil, err
+        end
+
+        while true do
+            local nlh = msg:next()
+            if not nlh then
+                break
+            end
+
+            if nlh.type == nl.NLMSG_ERROR then
+                err = msg:parse_error()
+                return nil, sys.strerror(-err)
+            end
+
+            if nlh.type == nl.NLMSG_DONE then
+                return noise
+            end
+
+            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+            if attrs[nl80211.ATTR_SURVEY_INFO] then
+                local si = nl.parse_attr_nested(attrs[nl80211.ATTR_SURVEY_INFO])
+                if si[nl80211.SURVEY_INFO_NOISE] then
+                    if noise == 0 or si[nl80211.SURVEY_INFO_IN_USE] then
+                        noise = nl.attr_get_s8(si[nl80211.SURVEY_INFO_NOISE])
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function parse_bitrate(attrs)
     local r = {}
     local rate = 0
@@ -967,7 +1025,10 @@ function M.get_station(ifname, mac)
     end
 
     local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
-    return parse_station(attrs, sinfo)
+    local res = parse_station(attrs, sinfo)
+    res.noise = M.get_noise(ifname) or 0
+
+    return res
 end
 
 function M.get_stations(ifname)
@@ -991,6 +1052,8 @@ function M.get_stations(ifname)
     if not ok then
         return nil, err
     end
+
+    local noise = M.get_noise(ifname) or 0
 
     local stations = {}
 
@@ -1020,6 +1083,7 @@ function M.get_stations(ifname)
                 local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
                 local res = parse_station(attrs, sinfo)
                 if res then
+                    res.noise = noise
                     stations[#stations + 1] = res
                 end
             end
