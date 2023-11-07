@@ -769,11 +769,12 @@ int main(int argc, char *const argv[])
 
     signal(SIGPIPE, SIG_IGN);
 
-    srand(time(NULL));
-
     L = luaL_newstate();
 
     luaL_openlibs(L);
+
+    luaL_loadstring(L, "math.randomseed(os.time())");
+    lua_pcall(L, 0, 0, 0);
 
     luaL_loadstring(L,
         "table.keys = function(t)"
