@@ -37,7 +37,7 @@ set(LUA_INSTALL_PREFIX lib/lua/5.3)
 
 option(ECO_SSL_SUPPORT "ssl" ON)
 option(ECO_UBUS_SUPPORT "ubus" ON)
-option(ECO_MQTT_SUPPORT "ubus" ON)
+option(ECO_MQTT_SUPPORT "mqtt" ON)
 
 add_executable(eco eco.c)
 target_link_libraries(eco PRIVATE ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
