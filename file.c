@@ -244,6 +244,9 @@ static int __eco_file_stat(lua_State *L, struct stat *st)
     }
     lua_setfield(L, -2, "type");
 
+    lua_pushinteger(L, st->st_mode & 0777);
+    lua_setfield(L, -2, "mode");
+
     lua_pushinteger(L, st->st_atime);
     lua_setfield(L, -2, "atime");
 
