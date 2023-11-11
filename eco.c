@@ -233,7 +233,6 @@ static void eco_watcher_periodic_cb(struct ev_loop *loop, ev_periodic *w, int re
 
     lua_pushboolean(co, true);
     eco_resume(watcher->ctx->L, co, 1);
-    return;
 }
 
 static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -262,7 +261,6 @@ static void eco_watcher_async_cb(struct ev_loop *loop, struct ev_async *w, int r
 
     lua_pushboolean(co, true);
     eco_resume(watcher->ctx->L, co, 1);
-    return;
 }
 
 static void eco_watcher_child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
