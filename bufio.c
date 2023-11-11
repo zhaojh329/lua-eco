@@ -48,8 +48,8 @@ static int eco_bufio_length(lua_State *L)
 static int eco_bufio_read(lua_State *L)
 {
     struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
-    size_t n = luaL_optinteger(L, 2, -1);
-    size_t blen = buffer_length(b);
+    lua_Integer n = luaL_optinteger(L, 2, -1);
+    lua_Integer blen = buffer_length(b);
 
     if (n < 0 || n > blen)
         n = blen;
