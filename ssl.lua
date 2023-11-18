@@ -228,10 +228,6 @@ local function create_bufio(ssock)
     local reader = { ssl = ssock.ssl, ior = ssock.ior, iow = ssock.iow }
 
     function reader:read(n, timeout)
-        if not self.ior:wait(timeout) then
-            return nil, 'timeout'
-        end
-
         local ssl = self.ssl
 
         while true do
@@ -257,10 +253,6 @@ local function create_bufio(ssock)
     function reader:read2b(b, timeout)
         if b:room() == 0 then
             return nil, 'buffer is full'
-        end
-
-        if not self.ior:wait(timeout) then
-            return nil, 'timeout'
         end
 
         local ssl = self.ssl
