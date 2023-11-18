@@ -606,7 +606,7 @@ local function handle_connection(con, handler)
     local method, path, major_version, minor_version
 
     while true do
-        local data, err = sock:recv('*l', http_keepalive > 0 and http_keepalive or read_timeout)
+        local data, err = sock:recv('l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
             if err == 'closed' then
                 log.debug(log_prefix .. err)
@@ -617,7 +617,7 @@ local function handle_connection(con, handler)
         end
 
         if #data > 0 then
-            method, path, major_version, minor_version = data:match('^(%u+)%s+(%S+)%s+HTTP/(%d+)%.(%d+)$')
+            method, path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)\r?$')
             if not method or not path or not major_version or not minor_version then
                 log.err(log_prefix .. 'not a vaild http request start line')
                 return false
@@ -640,17 +640,17 @@ local function handle_connection(con, handler)
     local headers = {}
 
     while true do
-        local data, err = sock:recv('*l', read_timeout)
+        local data, err = sock:recv('l', read_timeout)
         if not data then
             log.err(log_prefix .. 'not a complete http request: ' .. err)
             return false
         end
 
-        if data == '' then
+        if data == '\r' or data == '' then
             break
         end
 
-        local name, value = data:match('^([%w-_]+):%s*(.+)$')
+        local name, value = data:match('([%w%p]+) *: *([%w%p ]+)\r?$')
         if not name or not value then
             log.err(log_prefix .. 'not a vaild http header: ' .. data)
             return false

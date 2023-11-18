@@ -37,7 +37,11 @@ local function exec_read(b, pattern, timeout)
         return b:read(pattern, timeout)
     end
 
-    if pattern == '*a' then
+    if pattern and pattern:sub(1, 1) == '*' then
+        pattern = pattern:sub(2)
+    end
+
+    if pattern == 'a' then
         local data = {}
         local chunk, err
         while true do
@@ -57,8 +61,12 @@ local function exec_read(b, pattern, timeout)
         return nil, err, concat(data)
     end
 
-    if not pattern or pattern == '*l' then
-        return b:readline(timeout)
+    if not pattern then
+        pattern = 'l'
+    end
+
+    if pattern == 'l' or pattern == 'L' then
+        return b:readline(timeout, pattern == 'L')
     end
 
     error('invalid pattern:' .. tostring(pattern))

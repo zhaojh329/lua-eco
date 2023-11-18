@@ -80,10 +80,11 @@ end
 
     If a non-number-like string argument is specified, then it is interpreted as a
     "pattern". The following patterns are supported:
-        '*a': reads from the socket until the connection is closed.
-        '*l': reads a line of text from the socket. Not including the end-of-line bytes("\r\n" or "\n").
+        'a': reads from the socket until the connection is closed.
+        'l': reads the next line skipping the end of line from the socket.
+        'L': reads the next line keeping the end-of-line character (if present) from the socket.
 
-    If no argument is specified, then it is assumed to be the pattern '*l', that is, the line reading pattern.
+    If no argument is specified, then it is assumed to be the pattern 'l', that is, the line reading pattern.
 --]]
 local function sock_recv(sock, pattern, timeout)
     local fd = sock.fd
@@ -106,7 +107,11 @@ local function sock_recv(sock, pattern, timeout)
         return b:read(pattern, timeout)
     end
 
-    if pattern == '*a' then
+    if pattern and str_sub(pattern, 1, 1) == '*' then
+        pattern = str_sub(pattern, 2)
+    end
+
+    if pattern == 'a' then
         local data = {}
         local chunk, err
         while true do
@@ -126,8 +131,12 @@ local function sock_recv(sock, pattern, timeout)
         return nil, err, concat(data)
     end
 
-    if not pattern or pattern == '*l' then
-        return b:readline(timeout)
+    if not pattern then
+        pattern = 'l'
+    end
+
+    if pattern == 'l' or pattern == 'L' then
+        return b:readline(timeout, pattern == 'L')
     end
 
     error('invalid pattern:' .. tostring(pattern))

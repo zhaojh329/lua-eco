@@ -147,8 +147,8 @@ function methods:readfull(n, timeout)
     return concat(data)
 end
 
--- Reads a single line, not including the end-of-line bytes("\r\n" or "\n").
-function methods:readline(timeout)
+-- Reads a single line
+function methods:readline(timeout, keep)
     local reader = self.reader
     local b = self.b
 
@@ -163,20 +163,12 @@ function methods:readline(timeout)
     while true do
         local idx = b:index(0x0a) -- '\n'
         if idx > -1 then
-            local line
+            data[#data + 1] = b:read(idx)
 
-            if idx > 0 then
-                line = b:read(idx)
-            end
-
-            b:skip(1)
-
-            if line then
-                if str_sub(line, #line) == '\r' then
-                    line = str_sub(line, 1, #line - 1)
-                end
-
-                data[#data + 1] = line
+            if keep then
+                data[#data + 1] = b:read(1)
+            else
+                b:skip(1)
             end
 
             return concat(data)

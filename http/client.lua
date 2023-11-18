@@ -91,12 +91,12 @@ local function send_http_request(sock, method, path, headers, body)
 end
 
 local function recv_status_line(sock, timeout)
-    local data, err = sock:recv('*l', timeout)
+    local data, err = sock:recv('l', timeout)
     if not data then
         return nil, err
     end
 
-    local code, status = data:match('^HTTP/1.1%s*(%d+)%s*(.*)')
+    local code, status = data:match('^HTTP/1.1 +(%d+) +([%w%p ]*)\r?$')
     if not code or not status then
         return nil, 'invalid http status line'
     end
@@ -108,14 +108,14 @@ local function recv_http_headers(sock, timeout)
     local headers = {}
 
     while true do
-        local data, err = sock:recv('*l', timeout)
+        local data, err = sock:recv('l', timeout)
         if not data then
             return nil, err
         end
 
-        if data == '' then break end
+        if data == '\r' or data == '' then break end
 
-        local name, value = data:match('([^%s:]+)%s*:%s*([^\r]+)')
+        local name, value = data:match('([%w%p]+) *: *([%w%p ]+)\r?$')
         if not name or not value then
             return nil, 'invalid http header'
         end
@@ -158,12 +158,13 @@ local function receive_chunked_body(resp, sock, timeout, body_to_fd)
 
     while true do
         -- first read chunk size
-        local data, err = sock:recv('*l', deadtime and deadtime - sys.uptime())
+        local data, err = sock:recv('l', deadtime and deadtime - sys.uptime())
         if not data then
             return nil, err
         end
 
-        if not data:match('^%x+$') then
+        data = data:match('^%x+\r?')
+        if not data then
             return nil, 'not a vaild http chunked body'
         end
 
@@ -177,7 +178,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_fd)
         end
 
         -- second read chunk data
-        local data, err = sock:recvfull(chunk_size, deadtime and deadtime - sys.uptime())
+        data, err = sock:recvfull(chunk_size, deadtime and deadtime - sys.uptime())
         if not data then
             return nil, err
         end
@@ -188,7 +189,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_fd)
             body[#body + 1] = data
         end
 
-        data, err = sock:recv('*l', deadtime and deadtime - sys.uptime())
+        data, err = sock:recv('l', deadtime and deadtime - sys.uptime())
         if not data then
             return nil, err
         end

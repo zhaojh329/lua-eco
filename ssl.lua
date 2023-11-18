@@ -140,7 +140,11 @@ function client_methods:recv(pattern, timeout)
         return b:read(pattern, timeout)
     end
 
-    if pattern == '*a' then
+    if pattern and str_sub(pattern, 1, 1) == '*' then
+        pattern = str_sub(pattern, 2)
+    end
+
+    if pattern == 'a' then
         local data = {}
         local chunk, err
         while true do
@@ -160,8 +164,12 @@ function client_methods:recv(pattern, timeout)
         return nil, err, concat(data)
     end
 
-    if not pattern or pattern == '*l' then
-        return b:readline(timeout)
+    if not pattern then
+        pattern = 'l'
+    end
+
+    if pattern == 'l' or pattern == 'L' then
+        return b:readline(timeout, pattern == 'L')
     end
 
     error('invalid pattern:' .. tostring(pattern))
