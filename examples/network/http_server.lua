@@ -5,8 +5,46 @@ local log = require 'eco.log'
 
 log.set_level(log.DEBUG)
 
+local function handle_upload(con, req)
+    local f
+
+    local cbs = {
+        on_part_data_begin = function()
+            print('on_part_data_begin')
+        end,
+
+        on_header = function(name, value)
+            print('on_header:', name, value)
+            if name == 'content-disposition' then
+                local filename = value:match('filename="(.+)"')
+                f = io.open(filename, 'w')
+                if not f then
+                    return false
+                end
+            end
+        end,
+
+        on_headers_complete = function()
+            print('on_headers_complete')
+        end,
+
+        on_part_data = function(data)
+            f:write(data)
+        end,
+
+        on_part_data_end = function()
+            print('on_part_data_end')
+            f:close()
+        end
+    }
+
+    con:read_formdata(req, cbs)
+end
+
 local function handler(con, req)
-    if req.path == '/test' then
+    if req.path == '/upload' then
+        handle_upload(con, req)
+    elseif req.path == '/test' then
         con:add_header('content-type', 'text/html')
 
         con:send('<h1>Lua-eco HTTP server test</h1>\n')

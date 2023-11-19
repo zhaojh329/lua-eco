@@ -484,6 +484,212 @@ function methods:read_body(count, timeout)
     return data
 end
 
+local function formdata_call_cb(ctx, cbs, name, ...)
+    if cbs[name] then
+        if  cbs[name](...) == false then
+            ctx.done = true
+        end
+    end
+end
+
+local function formdata_parse(ctx, boundary, data, cbs)
+    local s_start = 0
+    local s_start_boundary = 1
+    local s_header_field_start = 2
+    local s_header_field = 3
+    local s_headers_almost_done = 4
+    local s_header_value_start = 5
+    local s_header_value = 6
+    local s_header_value_almost_done = 7
+    local s_part_data_start = 8
+    local s_part_data = 9
+    local s_part_data_almost_boundary = 10
+    local s_part_data_boundary = 11
+    local s_part_data_almost_end = 12
+    local s_part_data_end = 13
+    local s_part_data_final_hyphen = 14
+
+    local boundary_length = #boundary
+    local str_sub = string.sub
+    local total = #data
+    local i = 1
+    local mark = 1
+
+    cbs = cbs or {}
+
+    while not ctx.done and i <= total do
+        local state = ctx.state
+        local c = str_sub(data, i, i)
+        local is_last = i == total
+        local skip = false
+
+        if state == s_start then
+            ctx.index = 1
+            ctx.state = s_start_boundary
+            skip = true
+        elseif state == s_start_boundary then
+            if ctx.index == boundary_length + 1 then
+                if c ~= '\r' then return false end
+                ctx.index = ctx.index + 1
+            elseif ctx.index == boundary_length + 2 then
+                if c ~= '\n' then return false end
+
+                formdata_call_cb(ctx, cbs, 'on_part_data_begin')
+
+                ctx.index = 1
+                ctx.state = s_header_field_start
+            else
+                if c ~= str_sub(boundary, ctx.index, ctx.index) then return false end
+                ctx.index = ctx.index + 1
+            end
+        elseif state == s_header_field_start then
+            ctx.state = s_header_field
+            mark = i
+            skip = true
+        elseif state == s_header_field then
+            if c == '\r' then
+                ctx.state = s_headers_almost_done
+            elseif c == ':' then
+                ctx.header_name_cache[#ctx.header_name_cache + 1] = str_sub(data, mark, i - 1)
+                ctx.state = s_header_value_start
+            else
+                c = str_lower(c)
+                if c ~= '-' and (c:byte() <  string.byte('a') or c:byte() > string.byte('z')) then
+                    return false
+                end
+
+                if is_last then
+                    ctx.header_name_cache[#ctx.header_name_cache + 1] = str_sub(data, mark, i)
+                end
+            end
+        elseif state == s_headers_almost_done then
+            if c ~= '\n' then return false end
+            ctx.state = s_part_data_start
+        elseif state == s_header_value_start then
+            if c ~= ' ' then
+                ctx.state = s_header_value
+                mark = i
+                skip = true
+            end
+        elseif state == s_header_value then
+            if c == '\r' then
+                ctx.header_value_cache[#ctx.header_value_cache + 1] = str_sub(data, mark, i - 1)
+                local name = table.concat(ctx.header_name_cache):lower()
+                local value = table.concat(ctx.header_value_cache)
+                formdata_call_cb(ctx, cbs, 'on_header', name, value)
+                ctx.header_name_cache =  {}
+                ctx.header_value_cache = {}
+                ctx.state = s_header_value_almost_done
+            elseif is_last then
+                ctx.header_value_cache[#ctx.header_value_cache + 1] = str_sub(data, mark, i)
+            end
+        elseif state == s_header_value_almost_done then
+            if c ~= '\n' then
+                return false
+            else
+                ctx.state = s_header_field_start
+            end
+        elseif state == s_part_data_start then
+            formdata_call_cb(ctx, cbs, 'on_headers_complete')
+            mark = i
+            skip = true
+            ctx.state = s_part_data
+        elseif state == s_part_data then
+            if c == '\r' then
+                formdata_call_cb(ctx, cbs, 'on_part_data', str_sub(data, mark, i - 1))
+                mark = i
+                ctx.lookbehind = { '\r' }
+                ctx.state = s_part_data_almost_boundary
+            elseif is_last then
+                formdata_call_cb(ctx, cbs, 'on_part_data', str_sub(data, mark, i))
+            end
+        elseif state == s_part_data_almost_boundary then
+            if c == '\n' then
+                ctx.state = s_part_data_boundary
+                ctx.lookbehind[2] = '\n'
+                ctx.index = 1
+            else
+                formdata_call_cb(ctx, cbs, 'on_part_data', '\r')
+                ctx.state = s_part_data
+                mark = i
+                i = i - 1
+            end
+        elseif state == s_part_data_boundary then
+            if str_sub(boundary, ctx.index, ctx.index) ~= c then
+                formdata_call_cb(ctx, cbs, 'on_part_data', concat(ctx.lookbehind))
+                ctx.state = s_part_data
+                mark = i
+                i = i -1
+            else
+                ctx.lookbehind[#ctx.lookbehind + 1] = c
+                ctx.index = ctx.index + 1
+                if ctx.index == boundary_length + 1 then
+                    formdata_call_cb(ctx, cbs, 'on_part_data_end')
+                    ctx.state = s_part_data_almost_end
+                end
+            end
+        elseif state == s_part_data_almost_end then
+            if c == '-' then
+                ctx.state = s_part_data_final_hyphen
+            elseif c == '\r' then
+                ctx.state = s_part_data_end
+            else
+                return false
+            end
+        elseif state == s_part_data_final_hyphen then
+            if c == '-' then
+                ctx.done = true
+                return true
+            else
+                return false
+            end
+        elseif state == s_part_data_end then
+            if c == '\n' then
+                formdata_call_cb(ctx, cbs, 'on_part_data_begin')
+                ctx.state = s_header_field_start
+            else
+                return false
+            end
+        end
+
+        if not skip then i = i + 1 end
+    end
+
+    return true
+end
+
+function methods:read_formdata(req, cbs)
+    if req.method ~= 'POST' then
+        return self:send_error(M.STATUS_METHOD_NOT_ALLOWED)
+    end
+
+    local content_type = req.headers['content-type'] or ''
+    local boundary = content_type:match('multipart/form%-data; *boundary=(----[%w%p]+)')
+    if not boundary then
+        return self:send_error(M.STATUS_BAD_REQUEST)
+    end
+
+    boundary = '--' .. boundary
+
+    local ctx = {
+        done = false,
+        header_name_cache = {},
+        header_value_cache = {},
+        state = 0
+    }
+
+    while not ctx.done do
+        local data = self:read_body(4096)
+        if not data then
+            return self:send_error(M.STATUS_BAD_REQUEST)
+        end
+
+        if not formdata_parse(ctx, boundary, data, cbs) then
+            return self:send_error(M.STATUS_BAD_REQUEST)
+        end
+    end
+end
+
 function methods:discard_body()
     local sock = self.sock
 
