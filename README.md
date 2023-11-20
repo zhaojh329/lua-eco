@@ -41,6 +41,7 @@ Lua-eco also provides some modules for you to build applications quickly:
 * `netlink`: Provides operations for inter-process communication (IPC) between both the kernel and userspace processes.
 * `nl80211`: Show/manipulate wireless devices and their configuration.
 * `termios`: Bind unix API for terminal/serial I/O.
+* `ssh`: Bind libssh2.
 
 Would you like to try it? Kinda interesting.
 
