@@ -457,17 +457,34 @@ function M.new(ipaddr, port, username, password)
         end
     end
 
-    while true do
-        ok, err = session:userauth_password(username, password)
-        if ok then break end
+    local userauth_list
 
-        if err ~= ssh.ERROR_EAGAIN then
-            err = session:last_error()
+    while true do
+        userauth_list, err = session:userauth_list(username)
+        if userauth_list or err == '' then break end
+
+        if session:last_errno() ~= ssh.ERROR_EAGAIN then
             return nil, err
         end
 
         if not waitsocket(obj, 5.0) then
-            return nil, 'authentication timeout'
+            return nil, 'userauth_list timeout'
+        end
+    end
+
+    if userauth_list and userauth_list:match('password') then
+        while true do
+            ok, err = session:userauth_password(username, password)
+            if ok then break end
+
+            if err ~= ssh.ERROR_EAGAIN then
+                err = session:last_error()
+                return nil, err
+            end
+
+            if not waitsocket(obj, 5.0) then
+                return nil, 'authentication timeout'
+            end
         end
     end
 

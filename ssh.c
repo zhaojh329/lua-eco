@@ -72,6 +72,30 @@ static int lua_ssh_session_handshake(lua_State *L)
     return 1;
 }
 
+static int lua_ssh_session_userauth_list(lua_State *L)
+{
+    struct eco_ssh_session *session = luaL_checkudata(L, 1, ECO_SSH_SESSION_MT);
+    const char *username = luaL_checkstring(L, 2);
+    char *userauthlist;
+
+    if (!session->session)
+        return luaL_error(L, "session freed");
+
+    userauthlist = libssh2_userauth_list(session->session, username, strlen(username));
+    if (!userauthlist) {
+        char *err_msg;
+
+        libssh2_session_last_error(session->session, &err_msg, NULL, 0);
+        lua_pushnil(L);
+        lua_pushstring(L, err_msg);
+
+        return 2;
+    }
+
+    lua_pushstring(L, userauthlist);
+    return 1;
+}
+
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_session_userauth_password(lua_State *L)
 {
@@ -516,6 +540,7 @@ done:
 static const luaL_Reg session_methods[] = {
     {"block_directions", lua_ssh_session_block_directions},
     {"handshake", lua_ssh_session_handshake},
+    {"userauth_list", lua_ssh_session_userauth_list},
     {"userauth_password", lua_ssh_session_userauth_password},
     {"open_channel", lua_ssh_session_open_channel},
     {"scp_recv", lua_ssh_session_scp_recv},
