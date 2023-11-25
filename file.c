@@ -336,8 +336,7 @@ static int eco_file_dir_iter(lua_State *L)
     if (!*d)
         return 0;
 
-    lua_pushvalue(L, lua_upvalueindex(2));
-    path = lua_tostring(L, -1);
+    path = lua_tostring(L, lua_upvalueindex(2));
 
     if ((e = readdir(*d))) {
         struct stat st;
