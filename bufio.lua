@@ -2,10 +2,8 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local buffer = require 'eco.core.bufio'
-local file = require 'eco.core.file'
 local sys = require 'eco.core.sys'
-local concat = table.concat
-local str_sub = string.sub
+local file = require 'eco.file'
 
 local M = {}
 
@@ -19,9 +17,29 @@ function methods:length()
     return self.b:length()
 end
 
--- Returns the next n bytes without advancing the reader
-function methods:peek(n, timeout)
-    local reader = self.reader
+function methods:room()
+    return self.b:room()
+end
+
+function methods:tail()
+    return self.b:tail()
+end
+
+function methods:add(n)
+    return self.b:add(n)
+end
+
+-- Set the timeout value in seconds for subsequent read operations
+function methods:settimeout(seconds)
+    self.timeout = seconds
+end
+
+-- Returns the next n bytes without advancing read
+function methods:peek(n)
+    if self.eof then
+        return nil, self.eof_err
+    end
+
     local b = self.b
     local blen = b:length()
 
@@ -34,9 +52,9 @@ function methods:peek(n, timeout)
             b:slide()
         end
 
-        local _, err = reader:read2b(b, timeout)
-        if err then
-            return nil, err, b:peek(n)
+        local r, err = self:fill()
+        if not r then
+            return nil, err
         end
     end
 
@@ -48,25 +66,20 @@ end
     If successful, returns `n`. In case of error, the method returns nil followed by
     an error message, followed a number indicate how many bytes have been discarded.
 --]]
-function methods:discard(n, timeout)
-    local reader = self.reader
+function methods:discard(n)
+    if self.eof then
+        return nil, self.eof_err
+    end
+
     local b = self.b
 
-    if n < 1 then
-        return 0
-    end
+    if n < 1 then return 0 end
 
     local skiped = b:skip(n)
 
-    local deadtime
-
-    if timeout then
-        deadtime = sys.uptime() + timeout
-    end
-
     while skiped < n do
-        local _, err = reader:read2b(b, deadtime and (deadtime - sys.uptime()))
-        if err then
+        local r, err = self:fill()
+        if not r then
             return nil, err, skiped
         end
         skiped = skiped + b:skip(n - skiped)
@@ -75,94 +88,69 @@ function methods:discard(n, timeout)
     return n
 end
 
--- Reads at most n bytes.
-function methods:read(n, timeout)
-    local reader = self.reader
+--[[
+    Reads according to the given pattern, which specify what to read.
+
+    In case of success, it returns the data received; in case of error, it returns
+    nil with a string describing the error.
+
+    The available pattern are:
+        'a': reads the whole file or until the connection is closed.
+        'l': reads the next line skipping the end of line character.
+        'L': reads the next line keeping the end-of-line character (if present).
+        number: reads a string with up to this number of bytes.
+--]]
+function methods:read(pattern)
+    if self.eof then
+        return nil, self.eof_err
+    end
+
     local b = self.b
 
-    if n == 0 then
-        return ''
-    end
+    if type(pattern) == 'number' then
+        assert(pattern > 0)
 
-    if b:length() == 0 then
-        if n > b:size() then
-            return reader:read(n, timeout)
-        end
-
-        local _, err = reader:read2b(b, timeout)
-        if err then
-            return nil, err
-        end
-    end
-
-    return b:read(n)
-end
-
--- Reads exactly n bytes. Returns nil followed by
--- an error message if fewer bytes were read.
-function methods:readfull(n, timeout)
-    local reader = self.reader
-    local b = self.b
-    local blen = b:length()
-
-    if blen >= n then
-        return b:read(n)
-    end
-
-    if blen + b:room() < n then
-        b:slide()
-    end
-
-    local data = {}
-
-    local deadtime
-
-    if timeout then
-        deadtime = sys.uptime() + timeout
-    end
-
-    local size = b:size()
-
-    while n > 0 do
-        local _, err = reader:read2b(b, deadtime and (deadtime - sys.uptime()))
-        if err then
-            local chunk = b:read(n)
-            data[#data + 1] = chunk
-
-            local partial = concat(data)
-            if #partial > 0 then
-                return nil, err, partial
+        if b:length() == 0 then
+            local r, err = self:fill()
+            if not r then
+                return nil, err
             end
-            return nil, err
         end
 
-        local blen = b:length()
-        if blen == size or blen >= n then
-            local chunk = b:read(n)
-            data[#data + 1] = chunk
-            n = n - #chunk
+        return b:read(pattern)
+    end
+
+    assert(type(pattern) == 'string')
+
+    -- skip optional '*' (for compatibility)
+    if pattern:sub(1, 1) == '*' then
+        pattern = pattern:sub(2)
+    end
+
+    if pattern == 'a' then
+        local data = {}
+
+        while true do
+            data[#data+1] = b:read()
+
+            local r, err = self:fill()
+            if not r then
+                if self.eof then break end
+                return nil, err
+            end
         end
+
+        return table.concat(data)
     end
 
-    return concat(data)
-end
+    assert(pattern == 'l' or pattern == 'L')
 
--- Reads a single line
-function methods:readline(timeout, keep)
-    local reader = self.reader
-    local b = self.b
-
-    local deadtime
-
-    if timeout then
-        deadtime = sys.uptime() + timeout
-    end
-
+    local keep = pattern == 'L'
     local data = {}
 
     while true do
         local idx = b:index(0x0a) -- '\n'
-        if idx > -1 then
+        if idx then
             data[#data + 1] = b:read(idx)
 
             if keep then
@@ -171,92 +159,147 @@ function methods:readline(timeout, keep)
                 b:skip(1)
             end
 
-            return concat(data)
+            break
         end
 
         if b:room() == 0 then
             data[#data + 1] = b:read()
         end
 
-        local _, err = reader:read2b(b, deadtime and (deadtime - sys.uptime()))
-        if err then
-            data[#data + 1] = b:read()
-            return nil, err, concat(data)
+        local r, err = self:fill()
+        if not r then
+            if self.eof then
+                data[#data + 1] = b:read()
+                break
+            end
+            return nil, err
         end
     end
+
+    return table.concat(data)
 end
 
-local function default_read(rd, n, timeout)
-    if not rd.w:wait(timeout) then
-        return nil, 'timeout'
+-- Reads exactly n bytes. Returns nil followed by an error message if fewer bytes were read.
+function methods:readfull(n)
+    if self.eof then
+        return nil, self.eof_err
     end
 
-    local data, err = file.read(rd.fd, n, timeout)
-    if not data then
-        return nil, err
+    local b = self.b
+    local blen = b:length()
+
+    if blen >= n then
+        return b:read(n)
     end
 
-    if #data == 0 then
-        return nil, rd.is_socket and 'closed' or 'eof'
+    local data = {}
+
+    while true do
+        local chunk = b:read(n)
+
+        data[#data + 1] = chunk
+        n = n - #chunk
+
+        if n == 0 then break end
+
+        local r, err = self:fill()
+        if not r then
+            return nil, err
+        end
     end
 
-    return data
+    return table.concat(data)
 end
 
-local function default_read2b(rd, b, timeout)
-    if b:room() == 0 then
-        return nil, 'buffer is full'
+--[[
+    Read the data stream until it sees the specified pattern or an error occurs.
+    The function can be called multiple times.
+    It returns the received data on each invocation followed a boolean `true` if the specified pattern occurs.
+--]]
+function methods:readuntil(pattern)
+    if self.eof then
+        return nil, self.eof_err
     end
 
-    if not rd.w:wait(timeout) then
-        return nil, 'timeout'
-    end
+    local pattern_len = #pattern
+    local b = self.b
 
-    local r, err = file.read_to_buffer(rd.fd, b, timeout)
-    if not r then
-        return nil, err
-    end
+    while true do
+        local idx = b:find(pattern)
+        if idx then
+            local data = b:read(idx)
+            b:skip(pattern_len)
+            return data, true
+        end
 
-    if r == 0 then
-        return nil, 'closed'
-    end
+        local blen = b:length()
+        if blen > pattern_len then
+            return b:read(blen - pattern_len + 1)
+        end
 
-    return r, err
+        b:slide()
+
+        local r, err = self:fill()
+        if not r then
+            return nil, err
+        end
+    end
 end
 
 local metatable = { __index = methods }
 
-function M.new(reader, size)
-    if type(reader) ~= 'table' then
-        error('"reader" must be a table')
+local function create_default_fill(fd)
+    local w = eco.watcher(eco.IO, fd)
+
+    local st, err = file.fstat(fd)
+    if not st then
+        return nil, err
     end
 
-    local read = reader.read
-    local read2b = reader.read2b
+    local eof_err = st['type'] == 'SOCK' and 'closed' or 'eof'
 
-    if type(read) ~= 'function' or type(read2b) ~= 'function' then
-        local w = reader.w
+    return function(self)
+        if self.eof then return nil, eof_err end
 
-        if type(w) ~= 'userdata' or not w.getfd then
-            error('not found IO watcher "w" in reader')
+        if not w:wait(self.timeout) then
+            return nil, 'timeout'
         end
 
-        reader.fd = w:getfd()
-    end
+        local r, err = self.b:fill(fd)
+        if not r then
+            return nil, sys.strerror(err)
+        end
 
-    if type(read) ~= 'function' then
-        reader.read = default_read
-    end
+        if r == 0 then
+            self.eof = true
+            self.eof_err = eof_err
+            return nil, eof_err
+        end
 
-    if type(read2b) ~= 'function' then
-        reader.read2b = default_read2b
+        return r
+    end
+end
+
+function M.new(source, size)
+    local fill, err
+
+    if type(source) == 'function' then
+        fill = source
+    elseif type(source) == 'number' then
+        fill, err = create_default_fill(source)
+        if not fill then
+            return nil, err
+        end
+    else
+        error('invalid source')
     end
 
     local b = buffer.new(size)
 
     return setmetatable({
         b = b,
-        reader = reader,
+        eof = false,
+        fill = fill
     }, metatable)
 end
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env eco
 
+local bufio = require 'eco.bufio'
 local file = require 'eco.file'
 local ssl = require 'eco.ssl'
 local sys = require 'eco.sys'
@@ -14,16 +15,21 @@ if not s then
     error(err)
 end
 
+local b = bufio.new(0)
+
 while true do
     file.write(1, 'Please input: ')
-    local data = file.read(0, 1024)
 
-    s:send(data)
+    local data = b:read('l')
 
-    local data, err = s:recv('*l')
-    if not data then
-        print(err)
-        break
+    if data ~= '' then
+        s:send(data)
+
+        local data, err = s:recv(100)
+        if not data then
+            print(err)
+            break
+        end
+        print('Read from server:', data)
     end
-    print('Read from server:', data)
 end

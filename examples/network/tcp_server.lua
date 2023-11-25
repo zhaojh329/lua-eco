@@ -26,13 +26,13 @@ while true do
 
     eco.run(function(c)
         while true do
-            local data, err = c:recv('*l')
+            local data, err = c:recv(100)
             if not data then
                 print(err)
                 break
             end
             print('read:', data)
-            c:send('I am eco:' .. data .. '\n')
+            c:send('I am eco:' .. data)
         end
     end, c)
 end

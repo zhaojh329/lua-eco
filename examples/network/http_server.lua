@@ -8,37 +8,38 @@ log.set_level(log.DEBUG)
 local function handle_upload(con, req)
     local f
 
-    local cbs = {
-        on_part_data_begin = function()
-            print('on_part_data_begin')
-        end,
+    while true do
+        local typ, data = con:read_formdata(req)
+        if typ == 'header' then
+            if data[1] == 'content-disposition' then
+                local filename = data[2]:match('filename="(.+)"')
+                if not filename then
+                    return con:send_error(http.STATUS_BAD_REQUEST)
+                end
 
-        on_header = function(name, value)
-            print('on_header:', name, value)
-            if name == 'content-disposition' then
-                local filename = value:match('filename="(.+)"')
                 f = io.open(filename, 'w')
                 if not f then
-                    return false
+                    return con:send_error(http.STATUS_FORBIDDEN)
                 end
             end
-        end,
+        elseif typ == 'body' then
+            if not f then
+                return con:send_error(http.STATUS_BAD_REQUEST)
+            end
 
-        on_headers_complete = function()
-            print('on_headers_complete')
-        end,
+            f:write(data[1])
 
-        on_part_data = function(data)
-            f:write(data)
-        end,
-
-        on_part_data_end = function()
-            print('on_part_data_end')
-            f:close()
+            if data[2] then
+                f:close()
+            end
+        elseif typ == 'end' then
+            break
         end
-    }
 
-    con:read_formdata(req, cbs)
+        if not typ then
+            return con:send_error(http.STATUS_BAD_REQUEST)
+        end
+    end
 end
 
 local function handler(con, req)
@@ -84,8 +85,8 @@ local options = {
 }
 
 -- https
-options.cert = 'cert.pem'
-options.key = 'key.pem'
+-- options.cert = 'cert.pem'
+-- options.key = 'key.pem'
 
 local srv, err = http.listen(nil, 8080, options, handler)
 if not srv then

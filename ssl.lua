@@ -5,11 +5,6 @@ local file = require 'eco.core.file'
 local socket = require 'eco.socket'
 local essl = require 'eco.core.ssl'
 local sys = require 'eco.core.sys'
-local bufio = require 'eco.bufio'
-
-local str_sub = string.sub
-local concat = table.concat
-local type = type
 
 local SSL_MT_SERVER = 0
 local SSL_MT_CLIENT = 1
@@ -43,6 +38,11 @@ local client_methods = {
 
 local metatable_cli = { __index = client_methods, __gc = ssl_close }
 
+-- Set the timeout value in seconds for subsequent socket operations
+function client_methods:settimeout(seconds)
+    self.timeout = seconds
+end
+
 function client_methods:closed()
     return self.__closed
 end
@@ -65,7 +65,7 @@ function client_methods:send(data)
             return nil, err, sent
         end
 
-        n, err, errs = ssl:write(str_sub(data, sent + 1))
+        n, err, errs = ssl:write(data:sub(sent + 1))
         if not n then
             if err == essl.ERROR then
                 return nil, errs, sent
@@ -128,80 +128,37 @@ function client_methods:sendfile(fd, count, offset)
     return sent
 end
 
-function client_methods:recv(pattern, timeout)
-    local b = self.b
-
-    if self.__closed then
-        return nil, 'closed'
-    end
-
-    if type(pattern) == 'number' then
-        if pattern <= 0 then return '' end
-        return b:read(pattern, timeout)
-    end
-
-    if pattern and str_sub(pattern, 1, 1) == '*' then
-        pattern = str_sub(pattern, 2)
-    end
-
-    if pattern == 'a' then
-        local data = {}
-        local chunk, err
-        while true do
-            chunk, err = b:read(4096)
-            if not chunk then break end
-            data[#data + 1] = chunk
-        end
-
-        if #data == 0 then
-            return nil, err
-        end
-
-        if err == 'closed' then
-            return concat(data)
-        end
-
-        return nil, err, concat(data)
-    end
-
-    if not pattern then
-        pattern = 'l'
-    end
-
-    if pattern == 'l' or pattern == 'L' then
-        return b:readline(timeout, pattern == 'L')
-    end
-
-    error('invalid pattern:' .. tostring(pattern))
-end
-
-function client_methods:recvfull(size, timeout)
-    local b = self.b
-
-    if self.__closed then
-        return nil, 'closed'
-    end
-
-    if size <= 0 then return '' end
-
-    return b:readfull(size, timeout)
-end
-
-function client_methods:discard(size, timeout)
-    local b = self.b
-
-    if self.__closed then
-        return nil, 'closed'
-    end
-
-    if size <= 0 then return 0 end
-
-    return b:discard(size, timeout)
-end
-
 local function ssl_wait(err, ior, iow, timeout)
     local w = err == essl.WANT_READ and ior or iow
     return w:wait(timeout)
+end
+
+function client_methods:recv(n)
+    if self.__closed then
+        return nil, 'closed'
+    end
+
+    local ior, iow = self.ior, self.iow
+    local ssl = self.ssl
+
+    while true do
+        local data, err, errs = ssl:read(n)
+        if not data then
+            if err == essl.ERROR then
+                return nil, errs
+            end
+
+            if not ssl_wait(err, ior, iow, self.timeout) then
+                return nil, 'timeout'
+            end
+        else
+            if #data == 0 then
+                return nil, 'closed'
+            end
+
+            return data
+        end
+    end
 end
 
 local function ssl_negotiate(ssock, deadtime)
@@ -224,62 +181,6 @@ local function ssl_negotiate(ssock, deadtime)
     end
 end
 
-local function create_bufio(ssock)
-    local reader = { ssl = ssock.ssl, ior = ssock.ior, iow = ssock.iow }
-
-    function reader:read(n, timeout)
-        local ssl = self.ssl
-
-        while true do
-            local data, err, errs = ssl:read(n)
-            if not data then
-                if err == essl.ERROR then
-                    return nil, errs
-                end
-
-                if not ssl_wait(err, self.ior, self.iow, timeout) then
-                    return nil, 'timeout'
-                end
-            else
-                if #data == 0 then
-                    return nil, 'closed'
-                end
-
-                return data
-            end
-        end
-    end
-
-    function reader:read2b(b, timeout)
-        if b:room() == 0 then
-            return nil, 'buffer is full'
-        end
-
-        local ssl = self.ssl
-
-        while true do
-            local r, err, errs = ssl:read_to_buffer(b)
-            if not r then
-                if err == essl.ERROR then
-                    return nil, errs
-                end
-
-                if not ssl_wait(err, self.ior, self.iow, timeout) then
-                    return nil, 'timeout'
-                end
-            else
-                if r == 0 then
-                    return nil, 'closed'
-                end
-
-                return r
-            end
-        end
-    end
-
-    return bufio.new(reader)
-end
-
 local function ssl_setmetatable(ctx, sock, mt, name, insecure)
     local fd = sock:getfd()
 
@@ -298,7 +199,6 @@ local function ssl_setmetatable(ctx, sock, mt, name, insecure)
     else
         ssock.ssl = ctx:new(fd, insecure)
         ssock.iow = eco.watcher(eco.IO, fd, eco.WRITE)
-        ssock.b = create_bufio(ssock)
     end
 
     local ok, err = ssl_negotiate(ssock, sys.uptime() + 3.0)
@@ -397,6 +297,38 @@ end
 
 function M.connect6(ipaddr, port, insecure)
     return ssl_connect(ipaddr, port, insecure, true)
+end
+
+function M.create_bufio_fill(self)
+    local ior, iow = self.ior, self.iow
+    local ssl = self.ssl
+
+    return function(b)
+        if self.eof then return nil, 'closed' end
+
+        while true do
+            local r, err, errs = ssl:readto(b:tail(), b:room())
+            if not r then
+                if err == essl.ERROR then
+                    return nil, errs
+                end
+
+                if not ssl_wait(err, ior, iow, b.timeout) then
+                    return nil, 'timeout'
+                end
+            else
+                if r == 0 then
+                    b.eof = true
+                    b.eof_err = 'closed'
+                    return nil, 'closed'
+                end
+
+                b:add(r)
+
+                return r
+            end
+        end
+    end
 end
 
 return M

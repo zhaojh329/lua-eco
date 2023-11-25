@@ -13,7 +13,6 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "bufio.h"
 #include "eco.h"
 
 #define ECO_FILE_DIR_MT "eco{file-dir}"
@@ -82,35 +81,6 @@ again:
 
     lua_pushlstring(L, buf, ret);
     free(buf);
-
-    return 1;
-}
-
-static int eco_file_read_to_buffer(lua_State *L)
-{
-    int fd = luaL_checkinteger(L, 1);
-    struct eco_bufio *b = luaL_checkudata(L, 2, ECO_BUFIO_MT);
-    size_t n = buffer_room(b);
-    ssize_t ret;
-
-    if (n == 0) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "buffer is full");
-        return 2;
-    }
-
-again:
-    ret = read(fd, b->data + b->w, n);
-    if (unlikely(ret < 0)) {
-        if (errno == EINTR)
-            goto again;
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
-
-    b->w += ret;
-    lua_pushinteger(L, ret);
 
     return 1;
 }
@@ -454,7 +424,6 @@ static const luaL_Reg funcs[] = {
     {"open", eco_file_open},
     {"close", eco_file_close},
     {"read", eco_file_read},
-    {"read_to_buffer", eco_file_read_to_buffer},
     {"write", eco_file_write},
     {"sendfile", eco_file_sendfile},
     {"lseek", eco_file_lseek},
