@@ -105,4 +105,15 @@ function M.flock(fd, operation, timeout)
     end
 end
 
+function M.sync()
+    local pid, err = sys.exec('sync')
+    if not pid then
+        return nil, err
+    end
+
+    eco.watcher(eco.CHILD, pid):wait()
+
+    return true
+end
+
 return setmetatable(M, { __index = file })

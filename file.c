@@ -434,12 +434,6 @@ static int eco_file_basename(lua_State *L)
     return 1;
 }
 
-static int eco_file_sync(lua_State *L)
-{
-    sync();
-    return 0;
-}
-
 static int eco_file_flock(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
@@ -472,7 +466,6 @@ static const luaL_Reg funcs[] = {
     {"chown", eco_file_chown},
     {"dirname", eco_file_dirname},
     {"basename", eco_file_basename},
-    {"sync", eco_file_sync},
     {"flock", eco_file_flock},
     {NULL, NULL}
 };
