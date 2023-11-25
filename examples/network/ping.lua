@@ -84,7 +84,7 @@ while true do
     if icmp_type then
         if icmp_type == ICMP_ECHOREPLY then
             if id == local_id then
-                print(string.format('%d bytes from %s: icmp_seq=%d time=%.2f ms', n, dest_ip, seq, elapsed))
+                print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', n, dest_ip, seq, elapsed * 1000))
             end
         else
             print('Got ICMP packet with type ' .. icmp_type)
