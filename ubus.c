@@ -439,6 +439,8 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     if (lua_isnumber(L, -1))
 		rv = lua_tonumber(L, -1);
 
+    lua_pop(L, 1);
+
     return rv;
 }
 
