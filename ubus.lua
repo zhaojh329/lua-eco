@@ -5,6 +5,8 @@ local ubus = require 'eco.core.ubus'
 
 local M = {}
 
+local call_timeout = 30.0
+
 local function process_msg(con, w, done)
     while not done.v do
         if not w:wait() then
@@ -58,7 +60,7 @@ function methods:call(object, method, params)
         return nil, err
     end
 
-    local ok = w:wait(30)
+    local ok = w:wait(call_timeout)
     if not ok then
         req:abort()
         return nil, 'timeout'
@@ -208,6 +210,10 @@ function M.objects()
     end
 
     return nil, err
+end
+
+function M.settimeout(timeout)
+    call_timeout = timeout
 end
 
 return setmetatable(M, { __index = ubus })
