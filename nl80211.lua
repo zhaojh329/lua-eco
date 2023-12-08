@@ -717,10 +717,14 @@ function M.wait_event(grp_name, timeout, cb, data)
 
     sock:add_membership(grp)
 
-    sock:settimeout(timeout)
+    local deadtime
+
+    if timeout then
+        deadtime = sys.uptime() + timeout
+    end
 
     while true do
-        local msg, err = sock:recv()
+        local msg, err = sock:recv(nil, deadtime and (deadtime - sys.uptime()))
         if not msg then
             return nil, err
         end

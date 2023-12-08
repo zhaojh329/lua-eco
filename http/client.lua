@@ -4,8 +4,8 @@
 local base64 = require 'eco.encoding.base64'
 local file = require 'eco.core.file'
 local socket = require 'eco.socket'
+local sys = require 'eco.core.sys'
 local URL = require 'eco.http.url'
-local bufio = require 'eco.bufio'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 
@@ -31,8 +31,7 @@ local function build_http_headers(data, headers)
     end
 end
 
-local function send_http_request(self, method, path, headers, body)
-    local sock = self:sock()
+local function send_http_request(sock, method, path, headers, body)
     local data = {}
 
     data[#data + 1] = string.format('%s %s HTTP/1.1\r\n', method, path)
@@ -91,8 +90,8 @@ local function send_http_request(self, method, path, headers, body)
     return true
 end
 
-local function recv_status_line(self)
-    local data, err = self.b:read('l')
+local function recv_status_line(sock, timeout)
+    local data, err = sock:recv('l', timeout)
     if not data then
         return nil, err
     end
@@ -105,11 +104,11 @@ local function recv_status_line(self)
     return tonumber(code), status
 end
 
-local function recv_http_headers(self)
+local function recv_http_headers(sock, timeout)
     local headers = {}
 
     while true do
-        local data, err = self.b:read('l')
+        local data, err = sock:recv('l', timeout)
         if not data then
             return nil, err
         end
@@ -127,12 +126,11 @@ local function recv_http_headers(self)
     return headers
 end
 
-local function receive_body(resp, self, length, body_to_fd)
-    local b = self.b
+local function receive_body(resp, sock, length, timeout, body_to_fd)
     local body = {}
 
     while length > 0 do
-        local data, err = b:read(length > 4096 and 4096 or length)
+        local data, err = sock:recv(length > 4096 and 4096 or length, timeout)
         if not data then
             return false, 'read body fail: ' .. err
         end
@@ -153,14 +151,14 @@ local function receive_body(resp, self, length, body_to_fd)
     return true
 end
 
-local function receive_chunked_body(resp, self, body_to_fd)
-    local b = self.b
+local function receive_chunked_body(resp, sock, timeout, body_to_fd)
+    local deadtime = sys.uptime() + timeout
     local chunk_size
     local body = {}
 
     while true do
         -- first read chunk size
-        local data, err = b:read('l')
+        local data, err = sock:recv('l', deadtime and deadtime - sys.uptime())
         if not data then
             return nil, err
         end
@@ -180,7 +178,7 @@ local function receive_chunked_body(resp, self, body_to_fd)
         end
 
         -- second read chunk data
-        data, err = b:readfull(chunk_size)
+        data, err = sock:recvfull(chunk_size, deadtime and deadtime - sys.uptime())
         if not data then
             return nil, err
         end
@@ -191,15 +189,15 @@ local function receive_chunked_body(resp, self, body_to_fd)
             body[#body + 1] = data
         end
 
-        data, err = b:read('l')
+        data, err = sock:recv('l', deadtime and deadtime - sys.uptime())
         if not data then
             return nil, err
         end
     end
 end
 
-local function do_http_request(self, method, path, headers, body, opts)
-    local ok, err = send_http_request(self, method, path, headers, body)
+local function do_http_request(sock, method, path, headers, body, opts)
+    local ok, err = send_http_request(sock, method, path, headers, body)
     if not ok then
         return nil, err
     end
@@ -210,14 +208,12 @@ local function do_http_request(self, method, path, headers, body, opts)
         timeout = 30
     end
 
-    self.b:settimeout(timeout)
-
-    local code, status = recv_status_line(self)
+    local code, status = recv_status_line(sock, timeout)
     if not code then
         return nil, status
     end
 
-    headers, err = recv_http_headers(self)
+    headers, err = recv_http_headers(sock, timeout)
     if not headers then
         return nil, err
     end
@@ -253,9 +249,9 @@ local function do_http_request(self, method, path, headers, body, opts)
 
         local ok
         if chunked then
-            ok, err = receive_chunked_body(resp, self, body_to_fd)
+            ok, err = receive_chunked_body(resp, sock, timeout, body_to_fd)
         else
-            ok, err = receive_body(resp, self, content_length, body_to_fd)
+            ok, err = receive_body(resp, sock, content_length, timeout, body_to_fd)
         end
 
         if body_to_fd then
@@ -416,17 +412,7 @@ function methods:request(method, url, body, opts)
 
     self.__sock = sock
 
-    local bs
-
-    if scheme_info.use_ssl then
-        bs = ssl.create_bufio_fill(sock)
-    else
-        bs = sock:getfd()
-    end
-
-    self.b = bufio.new(bs)
-
-    return do_http_request(self, method, path, headers, body, opts)
+    return do_http_request(sock, method, path, headers, body, opts)
 end
 
 local metatable = {

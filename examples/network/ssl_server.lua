@@ -25,7 +25,7 @@ while true do
 
     eco.run(function(c)
         while true do
-            local data, err = c:recv(100)
+            local data, err = c:recv('*l')
             if not data then
                 print(err)
                 break

@@ -30,7 +30,7 @@ while true do
 
     eco.run(function(c)
         while true do
-            local data, err = c:recv(100)
+            local data, err = c:recv('*l')
             if not data then
                 if err ~= 'closed' then
                     print(err)
@@ -38,7 +38,7 @@ while true do
                 c:close()
                 break
             end
-            c:send(data)
+            c:send(data .. '\n')
         end
     end, c)
 end

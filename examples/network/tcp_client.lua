@@ -1,7 +1,6 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
-local bufio = require 'eco.bufio'
 local file = require 'eco.file'
 local sys = require 'eco.sys'
 
@@ -15,21 +14,16 @@ if not sock then
     error(err)
 end
 
-local b = bufio.new(0)
-
 while true do
     file.write(1, 'Please input: ')
+    local data = file.read(0, 1024)
 
-    local data = b:read('l')
+    sock:send(data)
 
-    if data ~= '' then
-        sock:send(data)
-
-        local data, err = sock:recv(100)
-        if not data then
-            print(err)
-            break
-        end
-        print('Read from server:', data)
+    local data, err = sock:recv('*l')
+    if not data then
+        print(err)
+        break
     end
+    print('Read from server:', data)
 end

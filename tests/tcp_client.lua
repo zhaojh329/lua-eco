@@ -21,7 +21,7 @@ while cnt < 100 do
         while true do
             sock:send(i .. ': eco socket test\n')
 
-            local data, err = sock:recv(100)
+            local data, err = sock:recv('*l')
             if not data then
                 print(err)
                 sock:close()

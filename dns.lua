@@ -420,7 +420,7 @@ local function query(s, id, req, nameserver)
         return nil, string.format('sendto "%s:%d" fail: %s', host, port, err)
     end
 
-    local data, err = s:recvfrom(512)
+    local data, err = s:recvfrom(512, 3.0)
     if not data then
         return nil, string.format('recv from "%s:%d" fail: %s', host, port, err)
     end
@@ -515,8 +515,6 @@ function M.query(qname, opts)
         if not s then
             return err
         end
-
-        s:settimeout(3.0)
 
         local answers
         answers, err = query(s, id, req, nameserver)

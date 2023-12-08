@@ -3,30 +3,11 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
-#include <unistd.h>
 #include <errno.h>
 #include <time.h>
 
+#include "bufio.h"
 #include "eco.h"
-
-#define ECO_BUFIO_MT "eco{bufio}"
-
-struct eco_bufio {
-    size_t size;
-    size_t r, w;
-    char data[0];
-};
-
-#define buffer_skip(b, n)    \
-    do {                     \
-        b->r += n;           \
-        if (b->r == b->w)    \
-            b->r = b->w = 0; \
-    } while(0)
-
-#define buffer_length(b) (b->w - b->r)
-#define buffer_data(b) (b->data + b->r)
-#define buffer_room(b) (b->size - b->w)
 
 static int eco_bufio_new(lua_State *L)
 {
@@ -64,49 +45,6 @@ static int eco_bufio_length(lua_State *L)
     return 1;
 }
 
-static int eco_bufio_tail(lua_State *L)
-{
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
-    lua_pushlightuserdata(L, b->data + b->w);
-    return 1;
-}
-
-static int eco_bufio_add(lua_State *L)
-{
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
-    size_t n = luaL_checkinteger(L, 2);
-
-    b->w += n;
-    return 1;
-}
-
-/* In case of success, it returns length, in case of error，it returns nil with an error code */
-static int eco_bufio_fill(lua_State *L)
-{
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
-    int fd = luaL_checkinteger(L, 2);
-    size_t room = buffer_room(b);
-    int ret;
-
-    if (!room) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "buffer is full");
-        return 2;
-    }
-
-    ret = read(fd, b->data + b->w, room);
-    if (ret < 0) {
-        lua_pushnil(L);
-        lua_pushinteger(L, errno);
-        return 2;
-    }
-
-    b->w += ret;
-
-    lua_pushinteger(L, ret);
-    return 1;
-}
-
 static int eco_bufio_read(lua_State *L)
 {
     struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
@@ -118,6 +56,23 @@ static int eco_bufio_read(lua_State *L)
 
     lua_pushlstring(L, buffer_data(b), n);
     buffer_skip(b, n);
+
+    return 1;
+}
+
+static int eco_bufio_write(lua_State *L)
+{
+    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
+    size_t len;
+    const char *data = luaL_checklstring(L, 2, &len);
+    size_t room = buffer_room(b);
+
+    if (len > room)
+        len = room;
+
+    memcpy(b->data + b->w, data, len);
+    b->w += len;
+    lua_pushinteger(L, len);
 
     return 1;
 }
@@ -164,25 +119,7 @@ static int eco_bufio_index(lua_State *L)
         }
     }
 
-    lua_pushnil(L);
-    return 1;
-}
-
-static int eco_bufio_find(lua_State *L)
-{
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
-    size_t needlelen;
-    const char *needle = luaL_checklstring(L, 2, &needlelen);
-    const char *data = buffer_data(b);
-    size_t blen = buffer_length(b);
-    const char *pos;
-
-    pos = memmem(data, blen, needle, needlelen);
-    if (pos)
-        lua_pushinteger(L, pos - data);
-    else
-        lua_pushnil(L);
-
+    lua_pushinteger(L, -1);
     return 1;
 }
 
@@ -203,14 +140,11 @@ static const struct luaL_Reg buffer_methods[] =  {
     {"size", eco_bufio_size},
     {"room", eco_bufio_room},
     {"length", eco_bufio_length},
-    {"tail", eco_bufio_tail},
-    {"add", eco_bufio_add},
-    {"fill", eco_bufio_fill},
     {"read", eco_bufio_read},
+    {"write", eco_bufio_write},
     {"peek", eco_bufio_peek},
     {"skip", eco_bufio_skip},
     {"index", eco_bufio_index},
-    {"find", eco_bufio_find},
     {"slide", eco_bufio_slide},
     {NULL, NULL}
 };

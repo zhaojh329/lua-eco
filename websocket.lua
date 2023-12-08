@@ -29,19 +29,16 @@ local types = {
 
 local methods = {}
 
--- Set the timeout value in seconds for subsequent socket operations
-function methods:settimeout(seconds)
-    self.b:settimeout(seconds)
-end
-
-function  methods:recv_frame()
+function  methods:recv_frame(timeout)
+    local sock = self.sock
     local opts = self.opts
-    local b = self.b
 
-    local data, err = b:readfull(2)
+    local data, err = sock:recvfull(2, timeout)
     if not data then
         return nil, nil, 'failed to receive the first 2 bytes: ' .. err
     end
+
+    timeout = 1.0
 
     local fst, snd = str_byte(data, 1, 2)
 
@@ -66,7 +63,7 @@ function  methods:recv_frame()
     local payload_len = snd & 0x7f
 
     if payload_len == 126 then
-        data, err = b:readfull(2)
+        data, err = sock:recvfull(2, timeout)
         if not data then
             return nil, nil, 'failed to receive the 2 byte payload length: ' .. err
         end
@@ -74,7 +71,7 @@ function  methods:recv_frame()
         payload_len = string.unpack('>I2', data)
 
     elseif payload_len == 127 then
-        data, err = b:readfull(8)
+        data, err = sock:recvfull(8, timeout)
         if not data then
             return nil, nil, 'failed to receive the 8 byte payload length: ' .. err
         end
@@ -114,7 +111,8 @@ function  methods:recv_frame()
     end
 
     if rest > 0 then
-        data, err = b:readfull(rest)
+        timeout = 10
+        data, err = sock:recvfull(rest, timeout)
         if not data then
             return nil, nil, 'failed to read masking-len and payload: ' .. err
         end
@@ -358,7 +356,6 @@ function M.upgrade(con, req, opts)
 
     return setmetatable({
         sock = con.sock,
-        b = con.b,
         opts = opts
     }, metatable)
 end
@@ -405,7 +402,6 @@ function M.connect(uri, opts)
         masking = true,
         hc = hc,
         sock = hc:sock(),
-        b = hc.b,
         opts = opts
     }, metatable)
 end

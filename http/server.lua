@@ -3,7 +3,6 @@
 
 local socket = require 'eco.socket'
 local url = require 'eco.http.url'
-local bufio = require 'eco.bufio'
 local file = require 'eco.file'
 local ssl = require 'eco.ssl'
 local log = require 'eco.log'
@@ -215,6 +214,10 @@ local month_abbr_map = {
 
 local methods = {}
 
+function methods:closed()
+    return self.sock:closed()
+end
+
 function methods:remote_addr()
     return self.peer
 end
@@ -285,6 +288,10 @@ local function send_http_head(resp)
 end
 
 function methods:send_error(code, status, content)
+    if self.sock:closed() then
+        return false, 'closed'
+    end
+
     if type(code) ~= 'number' then
         error('invalid code: ' .. tostring(code))
     end
@@ -303,6 +310,10 @@ end
 
 function methods:send(...)
     local resp = self.resp
+
+    if self.sock:closed() then
+        return false, 'closed'
+    end
 
     local data = concat({...})
     local len = #data
@@ -371,6 +382,7 @@ function methods:send_file_fd(fd, size, count, offset)
 
     ok, err = http_send_file(sock, fd, size, count, offset)
     if not ok then
+        sock:close()
         return false, err
     end
 
@@ -378,6 +390,10 @@ function methods:send_file_fd(fd, size, count, offset)
 end
 
 function methods:send_file(path, count, offset)
+    if self.sock:closed() then
+        return false, 'closed'
+    end
+
     if count and count < 1 then
         return true
     end
@@ -421,6 +437,7 @@ function methods:flush()
 
     local _, err = sock:send(concat(data))
     if err then
+        sock:close()
         return false, err
     end
 
@@ -429,17 +446,19 @@ function methods:flush()
     return true
 end
 
-function methods:read_body(count)
+function methods:read_body(count, timeout)
     local body_remain = self.body_remain
-    local b = self.b
+    local sock = self.sock
 
-    if b.eof then
+    if sock:closed() then
         return nil, 'closed'
     end
 
     if body_remain == 0 then
         return nil
     end
+
+    timeout = timeout or 3.0
 
     count = count or body_remain
     if count > body_remain then
@@ -450,8 +469,10 @@ function methods:read_body(count)
         return ''
     end
 
-    local data, err, partial = b:readfull(count)
+    local data, err, partial = sock:recvfull(count, timeout)
     if not data then
+        sock:close()
+
         if partial then
             return nil, err, partial
         end
@@ -463,105 +484,231 @@ function methods:read_body(count)
     return data
 end
 
-function methods:read_formdata(req)
-    local b = self.b
-
-    if b.eof then
-        return nil, 'closed'
-    end
-
-    local form = req.form
-
-    if not form.boundary then
-        if req.method ~= 'POST' then
-            return nil, 'not allowed method'
-        end
-
-        local content_type = req.headers['content-type'] or ''
-        local boundary = content_type:match('multipart/form%-data; *boundary=(----[%w%p]+)')
-        if not boundary then
-            return nil, 'bad request'
-        end
-
-        form.boundary = '--' .. boundary
-        form.state = 'init'
-
-        self.formed = true
-    end
-
-    local b = self.b
-
-    if form.state == 'init' then
-        local line, err = b:read('l')
-        if not line then
-            return nil, err
-        end
-
-        if line ~= form.boundary .. '\r' then
-            return nil, 'bad request'
-        end
-
-        form.boundary = '\r\n' .. form.boundary
-
-        form.state = 'header'
-    end
-
-    if form.state == 'header' then
-        local line, err = b:read('l')
-        if not line then
-            return nil, err
-        end
-
-        if line == '\r' then
-            form.state = 'body'
-        else
-            local name, value = line:match('([%w%p]+) *: *([%w%p ]+)\r?$')
-            if not name or not value then
-                return nil, 'invalid http header'
-            end
-
-            return 'header', { name:lower(), value }
+local function formdata_call_cb(ctx, cbs, name, ...)
+    if cbs[name] then
+        if  cbs[name](...) == false then
+            ctx.done = true
         end
     end
+end
 
-    if form.state == 'body' then
-        local data, found = b:readuntil(form.boundary)
-        if not data then
-            return nil, found
-        end
+local function formdata_parse(ctx, boundary, data, cbs)
+    local s_start = 0
+    local s_start_boundary = 1
+    local s_header_field_start = 2
+    local s_header_field = 3
+    local s_headers_almost_done = 4
+    local s_header_value_start = 5
+    local s_header_value = 6
+    local s_header_value_almost_done = 7
+    local s_part_data_start = 8
+    local s_part_data = 9
+    local s_part_data_almost_boundary = 10
+    local s_part_data_boundary = 11
+    local s_part_data_almost_end = 12
+    local s_part_data_end = 13
+    local s_part_data_final_hyphen = 14
 
-        if found then
-            local x, err = b:peek(2)
-            if not x then
-                return nil, err
-            end
+    local boundary_length = #boundary
+    local str_sub = string.sub
+    local total = #data
+    local i = 1
+    local mark = 1
 
-            if x == '--' then
-                form.state = 'end'
+    cbs = cbs or {}
+
+    while not ctx.done and i <= total do
+        local state = ctx.state
+        local c = str_sub(data, i, i)
+        local is_last = i == total
+        local skip = false
+
+        if state == s_start then
+            ctx.index = 1
+            ctx.state = s_start_boundary
+            skip = true
+        elseif state == s_start_boundary then
+            if ctx.index == boundary_length + 1 then
+                if c ~= '\r' then return false end
+                ctx.index = ctx.index + 1
+            elseif ctx.index == boundary_length + 2 then
+                if c ~= '\n' then return false end
+
+                formdata_call_cb(ctx, cbs, 'on_part_data_begin')
+
+                ctx.index = 1
+                ctx.state = s_header_field_start
             else
-                if x ~= '\r\n' then
-                    return nil, 'bad request'
+                if c ~= str_sub(boundary, ctx.index, ctx.index) then return false end
+                ctx.index = ctx.index + 1
+            end
+        elseif state == s_header_field_start then
+            ctx.state = s_header_field
+            mark = i
+            skip = true
+        elseif state == s_header_field then
+            if c == '\r' then
+                ctx.state = s_headers_almost_done
+            elseif c == ':' then
+                ctx.header_name_cache[#ctx.header_name_cache + 1] = str_sub(data, mark, i - 1)
+                ctx.state = s_header_value_start
+            else
+                c = str_lower(c)
+                if c ~= '-' and (c:byte() <  string.byte('a') or c:byte() > string.byte('z')) then
+                    return false
                 end
 
-                b:read(2)
-
-                form.state = 'header'
+                if is_last then
+                    ctx.header_name_cache[#ctx.header_name_cache + 1] = str_sub(data, mark, i)
+                end
+            end
+        elseif state == s_headers_almost_done then
+            if c ~= '\n' then return false end
+            ctx.state = s_part_data_start
+        elseif state == s_header_value_start then
+            if c ~= ' ' then
+                ctx.state = s_header_value
+                mark = i
+                skip = true
+            end
+        elseif state == s_header_value then
+            if c == '\r' then
+                ctx.header_value_cache[#ctx.header_value_cache + 1] = str_sub(data, mark, i - 1)
+                local name = table.concat(ctx.header_name_cache):lower()
+                local value = table.concat(ctx.header_value_cache)
+                formdata_call_cb(ctx, cbs, 'on_header', name, value)
+                ctx.header_name_cache =  {}
+                ctx.header_value_cache = {}
+                ctx.state = s_header_value_almost_done
+            elseif is_last then
+                ctx.header_value_cache[#ctx.header_value_cache + 1] = str_sub(data, mark, i)
+            end
+        elseif state == s_header_value_almost_done then
+            if c ~= '\n' then
+                return false
+            else
+                ctx.state = s_header_field_start
+            end
+        elseif state == s_part_data_start then
+            formdata_call_cb(ctx, cbs, 'on_headers_complete')
+            mark = i
+            skip = true
+            ctx.state = s_part_data
+        elseif state == s_part_data then
+            if c == '\r' then
+                formdata_call_cb(ctx, cbs, 'on_part_data', str_sub(data, mark, i - 1))
+                mark = i
+                ctx.lookbehind = { '\r' }
+                ctx.state = s_part_data_almost_boundary
+            elseif is_last then
+                formdata_call_cb(ctx, cbs, 'on_part_data', str_sub(data, mark, i))
+            end
+        elseif state == s_part_data_almost_boundary then
+            if c == '\n' then
+                ctx.state = s_part_data_boundary
+                ctx.lookbehind[2] = '\n'
+                ctx.index = 1
+            else
+                formdata_call_cb(ctx, cbs, 'on_part_data', '\r')
+                ctx.state = s_part_data
+                mark = i
+                i = i - 1
+            end
+        elseif state == s_part_data_boundary then
+            if str_sub(boundary, ctx.index, ctx.index) ~= c then
+                formdata_call_cb(ctx, cbs, 'on_part_data', concat(ctx.lookbehind))
+                ctx.state = s_part_data
+                mark = i
+                i = i -1
+            else
+                ctx.lookbehind[#ctx.lookbehind + 1] = c
+                ctx.index = ctx.index + 1
+                if ctx.index == boundary_length + 1 then
+                    formdata_call_cb(ctx, cbs, 'on_part_data_end')
+                    ctx.state = s_part_data_almost_end
+                end
+            end
+        elseif state == s_part_data_almost_end then
+            if c == '-' then
+                ctx.state = s_part_data_final_hyphen
+            elseif c == '\r' then
+                ctx.state = s_part_data_end
+            else
+                return false
+            end
+        elseif state == s_part_data_final_hyphen then
+            if c == '-' then
+                ctx.done = true
+                return true
+            else
+                return false
+            end
+        elseif state == s_part_data_end then
+            if c == '\n' then
+                formdata_call_cb(ctx, cbs, 'on_part_data_begin')
+                ctx.state = s_header_field_start
+            else
+                return false
             end
         end
 
-        return 'body', { data, found }
+        if not skip then i = i + 1 end
     end
 
-    return 'end'
+    return true
+end
+
+function methods:read_formdata(req, cbs)
+    if req.method ~= 'POST' then
+        return self:send_error(M.STATUS_METHOD_NOT_ALLOWED)
+    end
+
+    local content_type = req.headers['content-type'] or ''
+    local boundary = content_type:match('multipart/form%-data; *boundary=(----[%w%p]+)')
+    if not boundary then
+        return self:send_error(M.STATUS_BAD_REQUEST)
+    end
+
+    boundary = '--' .. boundary
+
+    local ctx = {
+        done = false,
+        header_name_cache = {},
+        header_value_cache = {},
+        state = 0
+    }
+
+    while not ctx.done do
+        local data = self:read_body(4096)
+        if not data then
+            return self:send_error(M.STATUS_BAD_REQUEST)
+        end
+
+        if not formdata_parse(ctx, boundary, data, cbs) then
+            return self:send_error(M.STATUS_BAD_REQUEST)
+        end
+    end
 end
 
 function methods:discard_body()
-    return self.b:discard(self.body_remain)
+    local sock = self.sock
+
+    local _, err = sock:discard(self.body_remain, 3.0)
+    if err then
+        sock:close()
+        return false, err
+    end
+
+    return true
 end
 
 function methods:serve_file(req)
     local options = self.options
     local path = req.path
+
+    if self.sock:closed() then
+        return false, 'closed'
+    end
 
     if path == '/' then
         path = '/' .. options.index
@@ -655,8 +802,8 @@ function methods:serve_file(req)
 end
 
 local function handle_connection(con, handler)
+    local sock = con.sock
     local peer = con.peer
-    local b = con.b
 
     local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
     local http_keepalive = con.options.http_keepalive
@@ -665,13 +812,11 @@ local function handle_connection(con, handler)
     local method, path, major_version, minor_version
 
     while true do
-        b:settimeout(http_keepalive > 0 and http_keepalive or read_timeout)
-
-        local data, err = b:read('l')
+        local data, err = sock:recv('l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
-            if b.eof then
-                log.debug(log_prefix .. 'closed')
-            elseif err ~= 'timeout' then
+            if err == 'closed' then
+                log.debug(log_prefix .. err)
+            else
                 log.err(log_prefix .. err)
             end
             return false
@@ -700,10 +845,8 @@ local function handle_connection(con, handler)
 
     local headers = {}
 
-    b:settimeout(read_timeout)
-
     while true do
-        local data, err = b:read('l')
+        local data, err = sock:recv('l', read_timeout)
         if not data then
             log.err(log_prefix .. 'not a complete http request: ' .. err)
             return false
@@ -769,13 +912,12 @@ local function handle_connection(con, handler)
         major_version = major_version,
         minor_version = minor_version,
         headers = headers,
-        query = query,
-        form = {}
+        query = query
     }
 
     handler(con, req)
 
-    if b.eof then
+    if sock:closed() then
         log.err(log_prefix .. 'closed')
         return false
     end
@@ -809,9 +951,8 @@ local function handle_connection(con, handler)
         or req_connection == 'close'
         or req_connection == 'upgrade'
         or resp_connection == 'close'
-        or con.formed
     then
-        return false
+        sock:close()
     else
         ok, err = con:discard_body()
         if not ok then
@@ -899,16 +1040,6 @@ function M.listen(ipaddr, port, options, handler)
                     peer = peer,
                     options = options
                 }, metatable)
-
-                local bs
-
-                if options.ssl then
-                    bs = ssl.create_bufio_fill(c)
-                else
-                    bs = c:getfd()
-                end
-
-                con.b = bufio.new(bs)
 
                 while not c:closed() do
                     if not handle_connection(con, handler) then

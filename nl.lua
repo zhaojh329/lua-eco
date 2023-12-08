@@ -8,11 +8,6 @@ local M = {}
 
 local nl_methods = {}
 
--- Set the timeout value in seconds for subsequent read operations
-function nl_methods:settimeout(seconds)
-    self.sock:settimeout(seconds)
-end
-
 function nl_methods:bind(groups, pid)
     local ok, err = self.sock:bind(groups, pid)
     if not ok then
@@ -34,8 +29,8 @@ function nl_methods:send(msg)
     return self.sock:sendto(msg:binary())
 end
 
-function nl_methods:recv(n)
-    local data, addr = self.sock:recvfrom(n or 8192)
+function nl_methods:recv(n, timeout)
+    local data, addr = self.sock:recvfrom(n or 8192, timeout)
     if not data then
         return nil, addr
     end

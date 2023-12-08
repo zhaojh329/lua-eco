@@ -16,6 +16,7 @@ local dest_ip = '127.0.0.1'
 local local_id = math.random(0, 65535)
 local local_seq = 1
 local local_data = 'hello'
+local timeout = 5.0
 
 local function build_icmp_req()
     local data = {
@@ -55,8 +56,6 @@ if not s then
     return
 end
 
-s:settimeout(5.0)
-
 -- s:setoption('bindtodevice', 'eth0')
 
 s:bind(nil, local_id)
@@ -72,7 +71,7 @@ while true do
 
     local start = time.now()
 
-    local resp, peer = s:recvfrom(1024)
+    local resp, peer = s:recvfrom(1024, timeout)
     if not resp then
         print('recv fail:', peer)
         break
