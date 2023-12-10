@@ -8,6 +8,7 @@
 static int eco_time_now(lua_State *L)
 {
     struct eco_context *ctx = luaL_checkudata(L, 1, ECO_CTX_MT);
+	ev_now_update(ctx->loop);
     lua_pushnumber(L, ev_now(ctx->loop));
     return 1;
 }
