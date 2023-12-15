@@ -139,6 +139,15 @@ static int lua_log_set_flags(lua_State *L)
     return 0;
 }
 
+static int lua_log_set_ident(lua_State *L)
+{
+    const char *ident = luaL_checkstring(L, 1);
+
+    set_log_ident(ident);
+
+    return 0;
+}
+
 static const luaL_Reg funcs[] = {
     {"set_level", lua_log_set_level},
     {"debug", lua_log_debug},
@@ -147,6 +156,7 @@ static const luaL_Reg funcs[] = {
     {"log", lua_log},
     {"set_path", lua_log_set_path},
     {"set_flags", lua_log_set_flags},
+    {"set_ident", lua_log_set_ident},
     {NULL, NULL}
 };
 

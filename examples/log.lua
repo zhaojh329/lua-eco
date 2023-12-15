@@ -6,6 +6,8 @@ log.debug('eco')
 log.info('eco')
 log.err('eco')
 
+log.set_ident(arg[0])
+
 -- default is log.INFO
 log.set_level(log.DEBUG)
 
