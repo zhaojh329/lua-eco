@@ -21,7 +21,7 @@ struct sock_opt {
   int (*func)(lua_State *L, int fd);
 };
 
-static void push_socket_addr(lua_State *L, struct sockaddr *addr)
+static void push_socket_addr(lua_State *L, struct sockaddr *addr, socklen_t len)
 {
     int family = addr->sa_family;
     char ip[INET6_ADDRSTRLEN];
@@ -36,7 +36,7 @@ static void push_socket_addr(lua_State *L, struct sockaddr *addr)
         lua_pushinteger(L, nl->nl_pid);
         lua_setfield(L, -2, "pid");
     } if (family == AF_UNIX) {
-        lua_pushstring(L, ((struct sockaddr_un *)addr)->sun_path);
+        lua_pushlstring(L, ((struct sockaddr_un *)addr)->sun_path, len - 2);
         lua_setfield(L, -2, "path");
     } else if (family == AF_INET) {
         struct sockaddr_in *in = (struct sockaddr_in *)addr;
@@ -185,7 +185,7 @@ again:
 
     lua_pushinteger(L, fd);
 
-    push_socket_addr(L, (struct sockaddr *)&addr);
+    push_socket_addr(L, (struct sockaddr *)&addr, addrlen);
 
     return 2;
 }
@@ -382,20 +382,20 @@ static int eco_socket_sendto6(lua_State *L)
 static int eco_socket_sendto_unix(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
-    size_t len;
-    const char *data = luaL_checklstring(L, 2, &len);
-    const char *path = luaL_checkstring(L, 3);
+    size_t datalen, pathlen;
+    const char *data = luaL_checklstring(L, 2, &datalen);
+    const char *path = luaL_checklstring(L, 3, &pathlen);
     int flags = luaL_optinteger(L, 4, 0);
     struct sockaddr_un addr = {
         .sun_family = AF_UNIX
     };
 
-    if (strlen(path) >= sizeof(addr.sun_path))
+    if (pathlen >= sizeof(addr.sun_path))
         luaL_argerror(L, 2, "path too long");
 
-    strcpy(addr.sun_path, path);
+    memcpy(addr.sun_path, path, pathlen);
 
-    return eco_socket_sendto_common(L, fd, data, len, (struct sockaddr *)&addr, SUN_LEN(&addr), flags);
+    return eco_socket_sendto_common(L, fd, data, datalen, (struct sockaddr *)&addr, SUN_LEN(&addr), flags);
 }
 
 static int eco_socket_sendto_nl(lua_State *L)
@@ -452,9 +452,12 @@ again:
     lua_pushlstring(L, buf, ret);
     free(buf);
 
-    push_socket_addr(L, (struct sockaddr *)&addr);
+    if (addrlen) {
+        push_socket_addr(L, (struct sockaddr *)&addr, addrlen);
+        return 2;
+    }
 
-    return 2;
+    return 1;
 }
 
 static int eco_socket_getsockname(lua_State *L)
@@ -473,7 +476,7 @@ static int eco_socket_getsockname(lua_State *L)
         return 2;
     }
 
-    push_socket_addr(L, (struct sockaddr *)&addr);
+    push_socket_addr(L, (struct sockaddr *)&addr, addrlen);
 
     return 1;
 }
@@ -494,7 +497,7 @@ static int eco_socket_getpeername(lua_State *L)
         return 2;
     }
 
-    push_socket_addr(L, (struct sockaddr *)&addr);
+    push_socket_addr(L, (struct sockaddr *)&addr, addrlen);
 
     return 1;
 }
