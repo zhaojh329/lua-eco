@@ -30,10 +30,10 @@ local types = {
 local methods = {}
 
 function  methods:recv_frame(timeout)
-    local sock = self.sock
     local opts = self.opts
+    local sock = self.sock
 
-    local data, err = sock:recvfull(2, timeout)
+    local data, err = sock:readfull(2, timeout)
     if not data then
         return nil, nil, 'failed to receive the first 2 bytes: ' .. err
     end
@@ -63,7 +63,7 @@ function  methods:recv_frame(timeout)
     local payload_len = snd & 0x7f
 
     if payload_len == 126 then
-        data, err = sock:recvfull(2, timeout)
+        data, err = sock:readfull(2, timeout)
         if not data then
             return nil, nil, 'failed to receive the 2 byte payload length: ' .. err
         end
@@ -71,7 +71,7 @@ function  methods:recv_frame(timeout)
         payload_len = string.unpack('>I2', data)
 
     elseif payload_len == 127 then
-        data, err = sock:recvfull(8, timeout)
+        data, err = sock:readfull(2, timeout)
         if not data then
             return nil, nil, 'failed to receive the 8 byte payload length: ' .. err
         end
@@ -111,8 +111,8 @@ function  methods:recv_frame(timeout)
     end
 
     if rest > 0 then
-        timeout = 10
-        data, err = sock:recvfull(rest, timeout)
+        timeout = 10.0
+        data, err = sock:readfull(rest, timeout)
         if not data then
             return nil, nil, 'failed to read masking-len and payload: ' .. err
         end

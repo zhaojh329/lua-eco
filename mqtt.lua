@@ -3,77 +3,13 @@
 
 local mqtt  = require 'eco.core.mqtt'
 local socket = require 'eco.socket'
-local time = require 'eco.time'
 local dns = require 'eco.dns'
 
 local M = {}
 
-local function mqtt_io_loop(con)
-    local done = con.done
-    local __con = con.con
-    local w = con.iow
-
-    while not done.v do
-        local ev = eco.READ
-
-        if __con:want_write() then
-            ev = ev | eco.WRITE
-        end
-
-        w:modify(ev)
-
-        ev = w:wait()
-        if not ev then
-            break
-        end
-
-        if done.v then
-            return
-        end
-
-        if ev & eco.READ > 0 then
-            if not __con:loop_read(1) then
-                break
-            end
-        end
-
-        if ev & eco.WRITE > 0 then
-            if not __con:loop_write(1) then
-                break
-            end
-        end
-    end
-
-    done.v = true
-end
-
-local function check_keepalive_loop(con)
-    local done = con.done
-    local __con = con.con
-
-    while not done.v do
-        if not __con:loop_misc() then
-            break
-        end
-        time.sleep(1)
-    end
-
-    done.v = true
-end
-
 local methods = {}
 
 function methods:destroy()
-    self.done.v = true
-
-    if self.ior then
-        self.ior:cancel()
-    end
-
-    if self.iow then
-        self.iow:cancel()
-    end
-
     return self.con:destroy()
 end
 
@@ -151,12 +87,6 @@ local function try_connect(con, address, port, keepalive)
         return false, err
     end
 
-    con.iow = eco.watcher(eco.IO, __con:socket(), eco.WRITE)
-    con.done.v = false
-
-    eco.run(mqtt_io_loop, con)
-    eco.run(check_keepalive_loop, con)
-
     return true
 end
 
@@ -181,17 +111,13 @@ function methods:connect(host, port, keepalive)
 end
 
 local metatable = {
-    __index = methods,
-    __gc = methods.destroy
+    __index = methods
 }
 
 function M.new(id, clean_session)
-    local con = mqtt.new(eco.context(), id, clean_session)
+    local con = mqtt.new(id, clean_session)
 
-    return setmetatable({
-        con = con,
-        done = { v = true }
-    }, metatable)
+    return setmetatable({ con = con }, metatable)
 end
 
 return setmetatable(M, { __index = mqtt })

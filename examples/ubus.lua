@@ -40,22 +40,18 @@ con:add('eco', {
     },
     defer = {
         function(req)
-            con:reply(req, { message = 'deferred reply' })
             time.sleep(1)
-            con:reply(req, { message = 'deferred done' })
+            con:reply(req, { message = 'deferred reply' })
         end
     }
 })
 
 time.at(1, function()
-    res, err = ubus.call('eco', 'defer')
-    if not res then
-        print('call fail:', err)
-        return
-    end
+    local res = ubus.call('eco', 'echo', { text = 'hello' })
+    print('call eco.echo:', res.text)
 
-    print(res[1].message)
-    print(res[2].message)
+    res = ubus.call('eco', 'defer')
+    print('call eco.defer:', res.message)
 end)
 
 

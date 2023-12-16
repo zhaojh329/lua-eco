@@ -7,11 +7,6 @@ local M = {}
 
 local sleep_timers = {}
 
--- returns the Unix time, the number of seconds elapsed since January 1, 1970 UTC.
-function M.now()
-    return time.now(eco.context())
-end
-
 --[[
     pauses the current coroutine for at least the delay seconds.
     A negative or zero delay causes sleep to return immediately.

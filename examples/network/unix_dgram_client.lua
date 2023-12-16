@@ -10,8 +10,15 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = socket.connect_unix('/tmp/eco.sock')
+local s, err = socket.unix_dgram()
 if not s then
+    error(err)
+end
+
+s:bind('')
+
+local ok, err = s:connect('/tmp/eco.sock')
+if not ok then
     error(err)
 end
 
@@ -24,12 +31,7 @@ while true do
 
     if data ~= '' then
         s:send(data)
-
-        local data, err = s:recv(100)
-        if not data then
-            print(err)
-            break
-        end
-        print('Read from server:', data)
+        local data = s:recv(100)
+        print('recv:', data)
     end
 end

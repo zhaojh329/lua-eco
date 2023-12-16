@@ -2,7 +2,7 @@
 
 local http = require 'eco.http.client'
 
-local resp, err = http.get('https://127.0.0.1:8080/test', { insecure = true })
+local resp, err = http.get('http://127.0.0.1:8080/test')
 if not resp then
     print(err)
     return

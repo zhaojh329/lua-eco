@@ -3,6 +3,7 @@
 
 local file = require 'eco.core.file'
 local sys = require 'eco.core.sys'
+local bufio = require 'eco.bufio'
 local time = require 'eco.time'
 
 local M = {}
@@ -13,8 +14,12 @@ function M.readfile(path, m)
         return nil, err
     end
 
-    local data = f:read(m or '*a')
+    local data, err = f:read(m or '*a')
     f:close()
+
+    if not data then
+        return nil, err
+    end
 
     return data
 end
@@ -34,50 +39,10 @@ function M.writefile(path, data, append)
     local n, err = f:write(data)
     f:close()
 
-    return n, err
-end
-
-function M.read(fd, n, timeout)
-    if n <= 0 then return '' end
-
-    local w, err = eco.watcher(eco.IO, fd)
-    if not w then
+    if not n then
         return nil, err
     end
-
-    if not w:wait(timeout) then
-        return nil, 'timeout'
-    end
-
-    return file.read(fd, n)
-end
-
-function M.read_to_buffer(fd, b, timeout)
-    if b:room() == 0 then
-        return nil, 'buffer is full'
-    end
-
-    local w, err = eco.watcher(eco.IO, fd)
-    if not w then
-        return nil, err
-    end
-
-    if not w:wait(timeout) then
-        return nil, 'timeout'
-    end
-
-    return file.read_to_buffer(fd, b)
-end
-
-function M.write(fd, data)
-    local w, err = eco.watcher(eco.IO, fd, eco.WRITE)
-    if not w then
-        return nil, err
-    end
-
-    w:wait()
-
-    return file.write(fd, data)
+    return n
 end
 
 function M.flock(fd, operation, timeout)

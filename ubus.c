@@ -10,19 +10,16 @@
 #include "eco.h"
 
 struct eco_ubus_context {
+    struct eco_context *eco;
     struct ubus_context ctx;
-    lua_State *L;
-};
-
-struct eco_ubus_request {
-    struct ubus_context *ctx;
-    struct ubus_request req;
-    lua_State *co;
-    int ref[2];
-};
-
-struct eco_ubus_event {
-    struct ubus_event_handler e;
+    struct ev_timer tmr;
+    struct ev_io io;
+    struct {
+        struct ubus_request req;
+        lua_State *L;
+        bool has_data;
+        double timeout;
+    } req;
 };
 
 struct eco_ubus_object {
@@ -32,9 +29,15 @@ struct eco_ubus_object {
 };
 
 #define ECO_UBUS_CTX_MT "eco{ubus-ctx}"
-#define ECO_UBUS_REQ_MT "eco{ubus-req}"
 
 static const char *obj_registry = "eco.ubus{obj}";
+
+static void lua_push_ubus_ctx(lua_State *L, struct eco_ubus_context *ctx)
+{
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
+    lua_rawgetp(L, -1, ctx);
+    lua_remove(L, -2);
+}
 
 static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool is_array)
 {
@@ -183,19 +186,15 @@ static void blob_to_lua_table(lua_State *L, struct blob_attr *attr, size_t len, 
     }
 }
 
-static void eco_push_ubus_ctx(lua_State *L, struct eco_ubus_context *ctx)
-{
-    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
-    lua_rawgetp(L, -1, ctx);
-    lua_remove(L, -2);
-}
-
-static int eco_ubus_close(lua_State *L)
+static int lua_ubus_close(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
 
     if (ctx->ctx.sock.eof)
         return 0;
+
+    ev_io_stop(ctx->eco->loop, &ctx->io);
+    ev_timer_stop(ctx->eco->loop, &ctx->tmr);
 
     ubus_shutdown(&ctx->ctx);
 
@@ -212,71 +211,90 @@ static int eco_ubus_close(lua_State *L)
     return 0;
 }
 
-static int eco_ubus_req_close(lua_State *L)
+static void ev_io_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
-    struct eco_ubus_request *req = luaL_checkudata(L, 1, ECO_UBUS_REQ_MT);
+    struct eco_ubus_context *ctx = container_of(w, struct eco_ubus_context, io);
 
-    if (!req->co)
-        return 0;
+    ubus_handle_event(&ctx->ctx);
+}
 
-    req->co = NULL;
+static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+    struct eco_ubus_context *ctx = container_of(w, struct eco_ubus_context, tmr);
+    lua_State *L = ctx->req.L;
 
-    luaL_unref(L, LUA_REGISTRYINDEX, req->ref[0]);
-    luaL_unref(L, LUA_REGISTRYINDEX, req->ref[1]);
+    if (!L)
+        return;
 
+    ctx->req.L = NULL;
+
+    ubus_abort_request(&ctx->ctx, &ctx->req.req);
+
+    lua_pushnil(L);
+    lua_pushliteral(L, "timeout");
+    eco_resume(ctx->eco->L, L, 2);
+}
+
+static int lua_ubus_settimeout(lua_State *L)
+{
+    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+    double timeout = luaL_checknumber(L, 2);
+
+    ctx->req.timeout = timeout;
     return 0;
 }
 
-static int eco_ubus_req_abort(lua_State *L)
+static void lua_ubus_call_data_cb(struct ubus_request *req, int type, struct blob_attr *msg)
 {
-    struct eco_ubus_request *req = luaL_checkudata(L, 1, ECO_UBUS_REQ_MT);
-    ubus_abort_request(req->ctx, &req->req);
-    return eco_ubus_req_close(L);
+    struct eco_ubus_context *ctx = container_of(req, struct eco_ubus_context, req.req);
+
+    /* I don't support multiple messages */
+    if (ctx->req.has_data)
+        return;
+
+    blob_to_lua_table(ctx->req.L, blob_data(msg), blob_len(msg), false);
+
+    ctx->req.has_data = true;
 }
 
-static int eco_ubus_req_gc(lua_State *L)
+static void lua_ubus_call_complete_cb(struct ubus_request *req, int ret)
 {
-    return eco_ubus_req_close(L);
+    struct eco_ubus_context *ctx = container_of(req, struct eco_ubus_context, req.req);
+    lua_State *L = ctx->req.L;
+    int nret = 1;
+
+    if (!L)
+        return;
+
+    ctx->req.L = NULL;
+
+    ev_timer_stop(ctx->eco->loop, &ctx->tmr);
+
+    if (ret) {
+        lua_pushnil(L);
+        lua_pushstring(L, ubus_strerror(ret));
+        nret++;
+    } else if (!ctx->req.has_data) {
+        lua_newtable(L);
+    }
+
+    eco_resume(ctx->eco->L, L, nret);
 }
 
-static const struct luaL_Reg ubus_req_methods[] = {
-    {"close", eco_ubus_req_close},
-    {"abort", eco_ubus_req_abort},
-    {"__gc", eco_ubus_req_gc},
-    {NULL, NULL}
-};
-
-static void eco_ubus_call_data_cb(struct ubus_request *req, int type, struct blob_attr *msg)
-{
-    struct eco_ubus_request *ereq = container_of(req, struct eco_ubus_request, req);
-    lua_State *co = ereq->co;
-
-    lua_rawgeti(co, LUA_REGISTRYINDEX, ereq->ref[0]);
-    blob_to_lua_table(co, blob_data(msg), blob_len(msg), false);
-    lua_call(co, 1, 0);
-}
-
-static void eco_ubus_call_complete_cb(struct ubus_request *req, int ret)
-{
-    struct eco_ubus_request *ereq = container_of(req, struct eco_ubus_request, req);
-    lua_State *co = ereq->co;
-
-    lua_rawgeti(co, LUA_REGISTRYINDEX, ereq->ref[1]);
-    lua_pushinteger(co, ret);
-    lua_call(co, 1, 0);
-}
-
-static int eco_ubus_call(lua_State *L)
+static int lua_ubus_call(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     const char *path = luaL_checkstring(L, 2);
     const char *func = luaL_checkstring(L, 3);
-    struct eco_ubus_request *req;
     struct blob_buf buf = {};
     uint32_t id;
     int ret;
 
-    luaL_checktype(L, 5, LUA_TFUNCTION);
+    if (ctx->req.L) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "busy");
+        return 2;
+    }
 
     if (ubus_lookup_id(&ctx->ctx, path, &id)) {
         lua_pushnil(L);
@@ -288,20 +306,9 @@ static int eco_ubus_call(lua_State *L)
 
     lua_table_to_blob(L, 4, &buf, false);
 
-    req = lua_newuserdata(L, sizeof(struct eco_ubus_request));
-    eco_new_metatable(L, ECO_UBUS_REQ_MT, ubus_req_methods);
-    lua_setmetatable(L, -2);
+    ctx->req.has_data = false;
 
-    req->ctx = &ctx->ctx;
-    req->co = L;
-
-    lua_pushvalue(L, 5);
-    req->ref[0] = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    lua_pushvalue(L, 6);
-    req->ref[1] = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    ret = ubus_invoke_async(&ctx->ctx, id, func, buf.head, &req->req);
+    ret = ubus_invoke_async(&ctx->ctx, id, func, buf.head, &ctx->req.req);
     if (ret) {
         blob_buf_free(&buf);
         lua_pushnil(L);
@@ -309,16 +316,23 @@ static int eco_ubus_call(lua_State *L)
         return 2;
     }
 
-    req->req.data_cb = eco_ubus_call_data_cb;
-    req->req.complete_cb = eco_ubus_call_complete_cb;
-    ubus_complete_request_async(&ctx->ctx, &req->req);
+    ctx->req.req.data_cb = lua_ubus_call_data_cb;
+    ctx->req.req.complete_cb = lua_ubus_call_complete_cb;
+    ubus_complete_request_async(&ctx->ctx, &ctx->req.req);
 
     blob_buf_free(&buf);
 
-    return 1;
+    ctx->req.L = L;
+
+    if (ctx->req.timeout > 0) {
+        ev_timer_set(&ctx->tmr, ctx->req.timeout, 0);
+        ev_timer_start(ctx->eco->loop, &ctx->tmr);
+    }
+
+    return lua_yield(L, 0);
 }
 
-static int eco_ubus_send(lua_State *L)
+static int lua_ubus_send(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     const char *event = luaL_checkstring(L, 2);
@@ -337,19 +351,18 @@ static int eco_ubus_send(lua_State *L)
     return 0;
 }
 
-static void eco_ubus_event_handler(struct ubus_context *ctx, struct ubus_event_handler *ev,
+static void lua_ubus_event_handler(struct ubus_context *ctx, struct ubus_event_handler *ev,
             const char *type, struct blob_attr *msg)
 {
     struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
-    struct eco_ubus_event *e = container_of(ev, struct eco_ubus_event, e);
-    lua_State *L = c->L;
+    lua_State *L = c->eco->L;
 
     lua_pushnil(L);
 
-    eco_push_ubus_ctx(L, c);
+    lua_push_ubus_ctx(L, c);
     lua_getuservalue(L, -1);
 
-    lua_pushlightuserdata(L, e);
+    lua_pushlightuserdata(L, ev);
     lua_rawget(L, -2);
 
     lua_getuservalue(L, -1);
@@ -367,33 +380,33 @@ static void eco_ubus_event_handler(struct ubus_context *ctx, struct ubus_event_h
     lua_call(L, 2, 0);
 }
 
-static int eco_ubus_listen(lua_State *L)
+static int lua_ubus_listen(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     const char *event = luaL_checkstring(L, 2);
-    struct eco_ubus_event *e;
+    struct ubus_event_handler *e;
     int ret;
 
     luaL_checktype(L, 3, LUA_TFUNCTION);
 
-    e = lua_newuserdata(L, sizeof(struct eco_ubus_event));
+    e = lua_newuserdata(L, sizeof(struct ubus_event_handler));
     lua_newtable(L);
     lua_pushvalue(L, 3);
     lua_rawseti(L, -2, 1);
     lua_setuservalue(L, -2);
 
-    memset(e, 0, sizeof(struct eco_ubus_event));
+    memset(e, 0, sizeof(struct ubus_event_handler));
 
-    e->e.cb = eco_ubus_event_handler;
+    e->cb = lua_ubus_event_handler;
 
-    ret = ubus_register_event_handler(&ctx->ctx, &e->e, event);
+    ret = ubus_register_event_handler(&ctx->ctx, e, event);
     if (ret) {
         lua_pushnil(L);
         lua_pushstring(L, ubus_strerror(ret));
         return 2;
     }
 
-    eco_push_ubus_ctx(L, ctx);
+    lua_push_ubus_ctx(L, ctx);
     lua_getuservalue(L, -1);
 
     lua_pushlightuserdata(L, e);
@@ -412,12 +425,14 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
     struct eco_ubus_object *o = container_of(obj, struct eco_ubus_object, object);
     struct ubus_request_data *new_req;
-    lua_State *L = c->L;
+    lua_State *L = c->eco->L;
     int rv = 0;
+
+    lua_settop(L, 0);
 
     lua_pushnil(L);
 
-    eco_push_ubus_ctx(L, c);
+    lua_push_ubus_ctx(L, c);
     lua_getuservalue(L, -1);
 
     lua_pushlightuserdata(L, o);
@@ -444,7 +459,7 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     return rv;
 }
 
-static int eco_ubus_load_methods(lua_State *L, struct ubus_method *m)
+static int lua_ubus_load_methods(lua_State *L, struct ubus_method *m)
 {
     const char *name = lua_tostring(L, -2);
     struct blobmsg_policy *p;
@@ -507,7 +522,7 @@ static int eco_ubus_load_methods(lua_State *L, struct ubus_method *m)
     return 0;
 }
 
-static void eco_ubus_load_object(lua_State *L, struct eco_ubus_object *o)
+static void lua_ubus_load_object(lua_State *L, struct eco_ubus_object *o)
 {
     struct ubus_object *obj = &o->object;
     struct ubus_object_type *type = &o->type;
@@ -532,7 +547,7 @@ static void eco_ubus_load_object(lua_State *L, struct eco_ubus_object *o)
             continue;
         }
 
-        if (!eco_ubus_load_methods(L, methods + midx))
+        if (!lua_ubus_load_methods(L, methods + midx))
             midx++;
         lua_pop(L, 1);
     }
@@ -540,7 +555,7 @@ static void eco_ubus_load_object(lua_State *L, struct eco_ubus_object *o)
     type->n_methods = obj->n_methods = midx;
 }
 
-static int eco_ubus_add(lua_State *L)
+static int lua_ubus_add(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     struct eco_ubus_object *o;
@@ -556,7 +571,7 @@ static int eco_ubus_add(lua_State *L)
 
     lua_newtable(L);
 
-    eco_ubus_load_object(L, o);
+    lua_ubus_load_object(L, o);
 
     lua_setuservalue(L, -2);
 
@@ -567,7 +582,7 @@ static int eco_ubus_add(lua_State *L)
         return 2;
     }
 
-    eco_push_ubus_ctx(L, ctx);
+    lua_push_ubus_ctx(L, ctx);
     lua_getuservalue(L, -1);
 
     lua_pushlightuserdata(L, o);
@@ -579,7 +594,7 @@ static int eco_ubus_add(lua_State *L)
     return 1;
 }
 
-static int eco_ubus_reply(lua_State *L)
+static int lua_ubus_reply(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     struct ubus_request_data *req = lua_touserdata(L, 2);
@@ -598,7 +613,7 @@ static int eco_ubus_reply(lua_State *L)
     return 0;
 }
 
-static int eco_ubus_complete_deferred_request(lua_State *L)
+static int lua_ubus_complete_deferred_request(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
 	struct ubus_request_data *req = lua_touserdata(L, 2);
@@ -609,10 +624,9 @@ static int eco_ubus_complete_deferred_request(lua_State *L)
 	return 0;
 }
 
-static int eco_ubus_connect(lua_State *L)
+static int lua_ubus_connect(lua_State *L)
 {
-    struct eco_context *eco = luaL_checkudata(L, 1, ECO_CTX_MT);
-    const char *sock = luaL_optstring(L, 2, NULL);
+    const char *sock = luaL_optstring(L, 1, NULL);
     struct eco_ubus_context *ctx;
 
     if (getuid() > 0) {
@@ -623,8 +637,6 @@ static int eco_ubus_connect(lua_State *L)
 
     ctx = lua_newuserdata(L, sizeof(struct eco_ubus_context));
     memset(ctx, 0, sizeof(struct eco_ubus_context));
-
-    ctx->L = eco->L;
 
     if (ubus_connect_ctx(&ctx->ctx, sock)) {
         lua_pushnil(L);
@@ -644,24 +656,17 @@ static int eco_ubus_connect(lua_State *L)
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
+    ctx->eco = eco_get_context(L);
+
+    ev_io_init(&ctx->io, ev_io_cb, ctx->ctx.sock.fd, EV_READ);
+    ev_io_start(ctx->eco->loop, &ctx->io);
+
+    ev_timer_init(&ctx->tmr, ev_timer_cb, 30.0, 0);
+
     return 1;
 }
 
-static int eco_ubus_getfd(lua_State *L)
-{
-    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
-    lua_pushinteger(L, ctx->ctx.sock.fd);
-    return 1;
-}
-
-static int eco_ubus_handle_event(lua_State *L)
-{
-    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
-    ubus_handle_event(&ctx->ctx);
-    return 0;
-}
-
-static void ubus_lua_objects_cb(struct ubus_context *c, struct ubus_object_data *o, void *p)
+static void lua_ubus_objects_cb(struct ubus_context *c, struct ubus_object_data *o, void *p)
 {
     lua_State *L = (lua_State *)p;
 
@@ -669,14 +674,14 @@ static void ubus_lua_objects_cb(struct ubus_context *c, struct ubus_object_data 
     lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
 }
 
-static int eco_ubus_handle_objects(lua_State *L)
+static int lua_ubus_handle_objects(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     int ret;
 
     lua_newtable(L);
 
-    ret = ubus_lookup(&ctx->ctx, NULL, ubus_lua_objects_cb, L);
+    ret = ubus_lookup(&ctx->ctx, NULL, lua_ubus_objects_cb, L);
     if (ret != UBUS_STATUS_OK) {
         lua_pop(L, 1);
         lua_pushnil(L);
@@ -688,20 +693,20 @@ static int eco_ubus_handle_objects(lua_State *L)
 }
 
 static const struct luaL_Reg ubus_methods[] =  {
-    {"call", eco_ubus_call},
-    {"send", eco_ubus_send},
-    {"listen", eco_ubus_listen},
-    {"add", eco_ubus_add},
-    {"reply", eco_ubus_reply},
-    {"complete_deferred_request", eco_ubus_complete_deferred_request},
-    {"close", eco_ubus_close},
-    {"getfd", eco_ubus_getfd},
-    {"handle_event", eco_ubus_handle_event},
-    {"objects", eco_ubus_handle_objects},
+    {"settimeout", lua_ubus_settimeout},
+    {"call", lua_ubus_call},
+    {"send", lua_ubus_send},
+    {"listen", lua_ubus_listen},
+    {"add", lua_ubus_add},
+    {"reply", lua_ubus_reply},
+    {"complete_deferred_request", lua_ubus_complete_deferred_request},
+    {"objects", lua_ubus_handle_objects},
+    {"close", lua_ubus_close},
+    {"__gc", lua_ubus_close},
     {NULL, NULL}
 };
 
-static int eco_ubus_strerror(lua_State *L)
+static int lua_ubus_strerror(lua_State *L)
 {
     int ret = luaL_checkinteger(L, 1);
 
@@ -744,10 +749,10 @@ int luaopen_eco_core_ubus(lua_State *L)
     lua_add_constant(L, "BOOLEAN", BLOBMSG_TYPE_BOOL);
 
     eco_new_metatable(L, ECO_UBUS_CTX_MT, ubus_methods);
-    lua_pushcclosure(L, eco_ubus_connect, 1);
+    lua_pushcclosure(L, lua_ubus_connect, 1);
     lua_setfield(L, -2, "connect");
 
-    lua_pushcfunction(L, eco_ubus_strerror);
+    lua_pushcfunction(L, lua_ubus_strerror);
     lua_setfield(L, -2, "strerror");
 
     return 1;

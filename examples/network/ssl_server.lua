@@ -8,7 +8,7 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = ssl.listen(nil, 8080, { cert = 'cert.pem', key = 'key.pem', reuseaddr = true })
+local s, err = ssl.listen(nil, 8080, { reuseaddr = true, cert = 'cert.pem', key = 'key.pem', insecure = true })
 if not s then
     error(err)
 end
@@ -18,14 +18,15 @@ print('listen...')
 while true do
     local c, peer = s:accept()
     if not c then
-        error(peer)
+        print(peer)
+        break
     end
 
     print('new connection:', peer.ipaddr, peer.port)
 
-    eco.run(function(c)
+    eco.run(function()
         while true do
-            local data, err = c:recv('*l')
+            local data, err = c:recv('l')
             if not data then
                 print(err)
                 break

@@ -10,8 +10,8 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
-local s, err = socket.connect_unix('/tmp/eco.sock')
-if not s then
+local sock, err = socket.connect_udp('127.0.0.1', 8080)
+if not sock then
     error(err)
 end
 
@@ -23,13 +23,10 @@ while true do
     local data = b:read('l')
 
     if data ~= '' then
-        s:send(data)
+        sock:send(data)
 
-        local data, err = s:recv(100)
-        if not data then
-            print(err)
-            break
-        end
-        print('Read from server:', data)
+        local data, peer = sock:recvfrom(1024)
+
+        print('recvfrom:', peer.ipaddr, peer.port, data)
     end
 end

@@ -12,7 +12,7 @@ local function send_at(cmd, fd, b)
     local data = {}
 
     while true do
-        local line, err = b:readline()
+        local line, err = b:readl('l')
         if not line then
             return nil, err
         end
@@ -61,7 +61,7 @@ if not ok then
     return
 end
 
-local b = bufio.new({ w = eco.watcher(eco.IO, fd) })
+local b = bufio.new(fd)
 
 local res, err = send_at('ATI', fd, b)
 if not res then

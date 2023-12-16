@@ -47,7 +47,7 @@ local function parse_resolvconf()
         elseif line:match('nameserver') then
             local nameserver = line:match('nameserver%s+(.+)')
             if nameserver then
-                if socket.is_ip_address(nameserver) then
+                if socket.is_ipv4_address(nameserver) or socket.is_ipv6_address(nameserver) then
                     nameservers[#nameservers + 1] = { nameserver, 53, socket.is_ipv6_address(nameserver) }
                 end
             end
@@ -420,7 +420,7 @@ local function query(s, id, req, nameserver)
         return nil, string.format('sendto "%s:%d" fail: %s', host, port, err)
     end
 
-    local data, err = s:recvfrom(512, 3.0)
+    local data, err = s:recv(512, 5.0)
     if not data then
         return nil, string.format('recv from "%s:%d" fail: %s', host, port, err)
     end
@@ -494,18 +494,15 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local err
+    local s, answers, req, err
 
     for _, nameserver in ipairs(nameservers) do
         local id = get_next_transaction_id()
 
-        local req
         req, err = build_request(qname, id, opts)
         if not req then
             return nil, err
         end
-
-        local s
 
         if nameserver[3] then
             s, err = socket.udp6()
@@ -513,10 +510,9 @@ function M.query(qname, opts)
             s, err = socket.udp()
         end
         if not s then
-            return err
+            return nil, err
         end
 
-        local answers
         answers, err = query(s, id, req, nameserver)
         s:close()
 

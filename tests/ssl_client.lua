@@ -11,17 +11,19 @@ end)
 
 local cnt = 0
 
+local ctx = ssl.context()
+
 while cnt < 100 do
     eco.run(function(i)
-        local sock, err = ssl.connect('127.0.0.1', 8080, true)
+        local sock, err = ssl.connect('127.0.0.1', 8080, { ctx = ctx, insecure = true })
         if not sock then
             error(err)
         end
 
         while true do
-            sock:send(i .. ': eco ssl test\n')
+            sock:send(i .. ': eco ssl test')
 
-            local data, err = sock:recv('*l')
+            local data, err = sock:recv(100)
             if not data then
                 print(err)
                 sock:close()

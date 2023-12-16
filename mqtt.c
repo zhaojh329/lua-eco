@@ -2,12 +2,12 @@
 /*
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  *
- * Referenced from https://github.com/flukso/lua-mosquitto/blob/master/lua-mosquitto.c
  */
 
 #include <mosquitto.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "eco.h"
 
@@ -24,8 +24,11 @@ enum connect_return_codes {
 #define ECO_MQTT_CTX_MT	"eco.mqtt"
 
 struct eco_mqtt_ctx {
-    lua_State *L;
+    struct eco_context *eco;
     struct mosquitto *mosq;
+    struct ev_io ior;
+    struct ev_io iow;
+    struct ev_timer tmr;
     int on_connect;
     int on_disconnect;
     int on_publish;
@@ -93,20 +96,21 @@ static void ctx__on_init(struct eco_mqtt_ctx *ctx)
 
 static void ctx__on_clear(struct eco_mqtt_ctx *ctx)
 {
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_connect);
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_disconnect);
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_publish);
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_message);
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_subscribe);
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_unsubscribe);
-    luaL_unref(ctx->L, LUA_REGISTRYINDEX, ctx->on_log);
+    lua_State *L = ctx->eco->L;
+
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_connect);
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_disconnect);
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_publish);
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_message);
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_subscribe);
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_unsubscribe);
+    luaL_unref(L, LUA_REGISTRYINDEX, ctx->on_log);
 }
 
 static int mosq_new(lua_State *L)
 {
-    struct eco_context *eco = luaL_checkudata(L, 1, ECO_CTX_MT);
-    const char *id = luaL_optstring(L, 2, NULL);
-    bool clean_session = lua_isboolean(L, 3) ? lua_toboolean(L, 3) : true;
+    const char *id = luaL_optstring(L, 1, NULL);
+    bool clean_session = lua_isboolean(L, 2) ? lua_toboolean(L, 2) : true;
     struct eco_mqtt_ctx *ctx;
 
     if (!id && !clean_session)
@@ -122,7 +126,7 @@ static int mosq_new(lua_State *L)
     if (!ctx->mosq)
         return luaL_error(L, strerror(errno));
 
-    ctx->L = eco->L;
+    ctx->eco = eco_get_context(L);
     ctx__on_init(ctx);
 
     return 1;
@@ -254,13 +258,64 @@ static int ctx_option(lua_State *L)
     return mosq__pstatus(L, rc);
 }
 
+static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+    struct eco_mqtt_ctx *ctx = container_of(w, struct eco_mqtt_ctx, tmr);
+
+    mosquitto_loop_misc(ctx->mosq);
+}
+
+static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
+{
+    struct eco_mqtt_ctx *ctx = container_of(w, struct eco_mqtt_ctx, ior);
+    int rc = mosquitto_loop_read(ctx->mosq, 1);
+
+    if (rc) {
+        ev_io_stop(loop, w);
+        ev_io_stop(loop, &ctx->iow);
+        ev_timer_stop(loop, &ctx->tmr);
+        return;
+    }
+
+    if (mosquitto_want_write(ctx->mosq))
+        ev_io_start(loop, &ctx->iow);
+}
+
+static void ev_io_write_cb(struct ev_loop *loop, ev_io *w, int revents)
+{
+    struct eco_mqtt_ctx *ctx = container_of(w, struct eco_mqtt_ctx, iow);
+
+    if (!mosquitto_want_write(ctx->mosq)) {
+        ev_io_stop(loop, w);
+        return;
+    }
+
+    mosquitto_loop_write(ctx->mosq, 1);
+}
+
 static int ctx_connect(lua_State *L)
 {
     struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
     const char *host = luaL_optstring(L, 2, "localhost");
     int port = luaL_optinteger(L, 3, 1883);
     int keepalive = luaL_optinteger(L, 4, 60);
-    int rc =  mosquitto_connect(ctx->mosq, host, port, keepalive);
+    int rc =  mosquitto_connect_async(ctx->mosq, host, port, keepalive);
+
+    if (rc == MOSQ_ERR_SUCCESS) {
+        int sock = mosquitto_socket(ctx->mosq);
+
+        fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
+
+        ev_timer_init(&ctx->tmr, ev_timer_cb, 3.0, 3.0);
+        ev_timer_start(ctx->eco->loop, &ctx->tmr);
+
+        ev_io_init(&ctx->ior, ev_io_read_cb, sock, EV_READ);
+        ev_io_start(ctx->eco->loop, &ctx->ior);
+
+        ev_io_init(&ctx->iow, ev_io_write_cb, sock, EV_WRITE);
+        ev_io_start(ctx->eco->loop, &ctx->iow);
+    }
+
     return mosq__pstatus(L, rc);
 }
 
@@ -268,6 +323,7 @@ static int ctx_disconnect(lua_State *L)
 {
     struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
     int rc = mosquitto_disconnect(ctx->mosq);
+    ev_io_start(ctx->eco->loop, &ctx->iow);
     return mosq__pstatus(L, rc);
 }
 
@@ -292,7 +348,9 @@ static int ctx_publish(lua_State *L)
     if (rc != MOSQ_ERR_SUCCESS)
         return mosq__pstatus(L, rc);
 
+    ev_io_start(ctx->eco->loop, &ctx->iow);
     lua_pushinteger(L, mid);
+
     return 1;
 }
 
@@ -308,6 +366,7 @@ static int ctx_subscribe(lua_State *L)
     if (rc != MOSQ_ERR_SUCCESS)
         return mosq__pstatus(L, rc);
 
+    ev_io_start(ctx->eco->loop, &ctx->iow);
     lua_pushinteger(L, mid);
     return 1;
 }
@@ -320,56 +379,18 @@ static int ctx_unsubscribe(lua_State *L)
 
     rc = mosquitto_unsubscribe(ctx->mosq, &mid, sub);
 
-    if (rc != MOSQ_ERR_SUCCESS) {
+    if (rc != MOSQ_ERR_SUCCESS)
         return mosq__pstatus(L, rc);
-    } else {
-        lua_pushinteger(L, mid);
-        return 1;
-    }
-}
 
-static int ctx_socket(lua_State *L)
-{
-    struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
-    int fd = mosquitto_socket(ctx->mosq);
-
-    lua_pushinteger(L, fd);
-    return 1;
-}
-
-static int ctx_loop_read(lua_State *L)
-{
-    struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
-    int max_packets = luaL_optinteger(L, 2, 1);
-    int rc = mosquitto_loop_read(ctx->mosq, max_packets);
-    return mosq__pstatus(L, rc);
-}
-
-static int ctx_loop_write(lua_State *L)
-{
-    struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
-    int max_packets = luaL_optinteger(L, 2, 1);
-    int rc = mosquitto_loop_write(ctx->mosq, max_packets);
-    return mosq__pstatus(L, rc);
-}
-
-static int ctx_loop_misc(lua_State *L)
-{
-    struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
-    int rc = mosquitto_loop_misc(ctx->mosq);
-    return mosq__pstatus(L, rc);
-}
-
-static int ctx_want_write(lua_State *L)
-{
-    struct eco_mqtt_ctx *ctx = luaL_checkudata(L, 1, ECO_MQTT_CTX_MT);
-    lua_pushboolean(L, mosquitto_want_write(ctx->mosq));
+    ev_io_start(ctx->eco->loop, &ctx->iow);
+    lua_pushinteger(L, mid);
     return 1;
 }
 
 static void ctx_on_connect(struct mosquitto *mosq, void *obj, int rc)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
     bool success = false;
     char *str = "reserved for future use";
 
@@ -404,19 +425,20 @@ static void ctx_on_connect(struct mosquitto *mosq, void *obj, int rc)
             break;
     }
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_connect);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_connect);
 
-    lua_pushboolean(ctx->L, success);
-    lua_pushinteger(ctx->L, rc);
-    lua_pushstring(ctx->L, str);
+    lua_pushboolean(L, success);
+    lua_pushinteger(L, rc);
+    lua_pushstring(L, str);
 
-    lua_call(ctx->L, 3, 0);
+    lua_call(L, 3, 0);
 }
 
 
 static void ctx_on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
     bool success = true;
     char *str = "client-initiated disconnect";
 
@@ -425,74 +447,79 @@ static void ctx_on_disconnect(struct mosquitto *mosq, void *obj, int rc)
         str = "unexpected disconnect";
     }
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_disconnect);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_disconnect);
 
-    lua_pushboolean(ctx->L, success);
-    lua_pushinteger(ctx->L, rc);
-    lua_pushstring(ctx->L, str);
+    lua_pushboolean(L, success);
+    lua_pushinteger(L, rc);
+    lua_pushstring(L, str);
 
-    lua_call(ctx->L, 3, 0);
+    lua_call(L, 3, 0);
 }
 
 static void ctx_on_publish(struct mosquitto *mosq, void *obj, int mid)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_publish);
-    lua_pushinteger(ctx->L, mid);
-    lua_call(ctx->L, 1, 0);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_publish);
+    lua_pushinteger(L, mid);
+    lua_call(L, 1, 0);
 }
 
 static void ctx_on_message(struct mosquitto *mosq, void *obj,
         const struct mosquitto_message *msg)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_message);
+    lua_rawgeti(ctx->eco->L, LUA_REGISTRYINDEX, ctx->on_message);
 
-    lua_pushinteger(ctx->L, msg->mid);
-    lua_pushstring(ctx->L, msg->topic);
-    lua_pushlstring(ctx->L, msg->payload, msg->payloadlen);
-    lua_pushinteger(ctx->L, msg->qos);
-    lua_pushboolean(ctx->L, msg->retain);
+    lua_pushinteger(L, msg->mid);
+    lua_pushstring(L, msg->topic);
+    lua_pushlstring(L, msg->payload, msg->payloadlen);
+    lua_pushinteger(L, msg->qos);
+    lua_pushboolean(L, msg->retain);
 
-    lua_call(ctx->L, 5, 0);
+    lua_call(L, 5, 0);
 }
 
 static void ctx_on_subscribe(struct mosquitto *mosq, void *obj, int mid,
         int qos_count, const int *granted_qos)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
     int i;
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_subscribe);
-    lua_pushinteger(ctx->L, mid);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_subscribe);
+    lua_pushinteger(L, mid);
 
     for (i = 0; i < qos_count; i++)
-        lua_pushinteger(ctx->L, granted_qos[i]);
+        lua_pushinteger(L, granted_qos[i]);
 
-    lua_call(ctx->L, qos_count + 1, 0);
+    lua_call(L, qos_count + 1, 0);
 }
 
 static void ctx_on_unsubscribe(struct mosquitto *mosq, void *obj, int mid)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_unsubscribe);
-    lua_pushinteger(ctx->L, mid);
-    lua_call(ctx->L, 1, 0);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_unsubscribe);
+    lua_pushinteger(L, mid);
+    lua_call(L, 1, 0);
 }
 
 static void ctx_on_log(struct mosquitto *mosq, void *obj, int level, const char *str)
 {
     struct eco_mqtt_ctx *ctx = obj;
+    lua_State *L = ctx->eco->L;
 
-    lua_rawgeti(ctx->L, LUA_REGISTRYINDEX, ctx->on_log);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_log);
 
-    lua_pushinteger(ctx->L, level);
-    lua_pushstring(ctx->L, str);
+    lua_pushinteger(L, level);
+    lua_pushstring(L, str);
 
-    lua_call(ctx->L, 2, 0);
+    lua_call(L, 2, 0);
 }
 
 static int ctx_callback_set(lua_State *L)
@@ -535,28 +562,23 @@ static int ctx_callback_set(lua_State *L)
 }
 
 static const struct luaL_Reg methods[] = {
-    {"destroy",			ctx_destroy},
-    {"reinitialise",	ctx_reinitialise},
-    {"will_set",		ctx_will_set},
-    {"will_clear",		ctx_will_clear},
-    {"login_set",		ctx_login_set},
-    {"tls_insecure_set",	ctx_tls_insecure_set},
-    {"tls_set",		ctx_tls_set},
-    {"tls_psk_set",		ctx_tls_psk_set},
-    {"tls_opts_set",	ctx_tls_opts_set},
-    {"option",		ctx_option},
+    {"destroy",         ctx_destroy},
+    {"reinitialise",    ctx_reinitialise},
+    {"will_set",        ctx_will_set},
+    {"will_clear",      ctx_will_clear},
+    {"login_set",       ctx_login_set},
+    {"tls_insecure_set",ctx_tls_insecure_set},
+    {"tls_set",         ctx_tls_set},
+    {"tls_psk_set",     ctx_tls_psk_set},
+    {"tls_opts_set",    ctx_tls_opts_set},
+    {"option",          ctx_option},
     {"connect",			ctx_connect},
     {"disconnect",		ctx_disconnect},
     {"publish",			ctx_publish},
     {"subscribe",		ctx_subscribe},
     {"unsubscribe",		ctx_unsubscribe},
-    {"socket",			ctx_socket},
-    {"loop_read",			ctx_loop_read},
-    {"loop_write",			ctx_loop_write},
-    {"loop_misc",			ctx_loop_misc},
-    {"want_write",		ctx_want_write},
-    {"callback_set",	ctx_callback_set},
-    {NULL,		NULL}
+    {"callback_set",    ctx_callback_set},
+    {NULL, NULL}
 };
 
 int luaopen_eco_core_mqtt(lua_State *L)
@@ -572,26 +594,26 @@ int luaopen_eco_core_mqtt(lua_State *L)
 
     lua_add_constant(L, "LOG_NONE",	MOSQ_LOG_NONE);
     lua_add_constant(L, "LOG_INFO",	MOSQ_LOG_INFO);
-    lua_add_constant(L, "LOG_NOTICE",	MOSQ_LOG_NOTICE);
-    lua_add_constant(L, "LOG_WARNING",	MOSQ_LOG_WARNING);
-    lua_add_constant(L, "LOG_ERROR",	MOSQ_LOG_ERR);
-    lua_add_constant(L, "LOG_DEBUG",	MOSQ_LOG_DEBUG);
-    lua_add_constant(L, "LOG_ALL",		MOSQ_LOG_ALL);
+    lua_add_constant(L, "LOG_NOTICE", MOSQ_LOG_NOTICE);
+    lua_add_constant(L, "LOG_WARNING", MOSQ_LOG_WARNING);
+    lua_add_constant(L, "LOG_ERROR", MOSQ_LOG_ERR);
+    lua_add_constant(L, "LOG_DEBUG", MOSQ_LOG_DEBUG);
+    lua_add_constant(L, "LOG_ALL", MOSQ_LOG_ALL);
 
     lua_add_constant(L, "OPT_PROTOCOL_VERSION",MOSQ_OPT_PROTOCOL_VERSION);
-    lua_add_constant(L, "OPT_SSL_CTX",		MOSQ_OPT_SSL_CTX);
+    lua_add_constant(L, "OPT_SSL_CTX", MOSQ_OPT_SSL_CTX);
     lua_add_constant(L, "OPT_SSL_CTX_WITH_DEFAULTS", MOSQ_OPT_SSL_CTX_WITH_DEFAULTS);
-    lua_add_constant(L, "OPT_RECEIVE_MAXIMUM",	MOSQ_OPT_RECEIVE_MAXIMUM);
-    lua_add_constant(L, "OPT_SEND_MAXIMUM",	MOSQ_OPT_SEND_MAXIMUM);
-    lua_add_constant(L, "OPT_TLS_KEYFORM",	MOSQ_OPT_TLS_KEYFORM);
-    lua_add_constant(L, "OPT_TLS_ENGINE",	MOSQ_OPT_TLS_ENGINE);
+    lua_add_constant(L, "OPT_RECEIVE_MAXIMUM", MOSQ_OPT_RECEIVE_MAXIMUM);
+    lua_add_constant(L, "OPT_SEND_MAXIMUM", MOSQ_OPT_SEND_MAXIMUM);
+    lua_add_constant(L, "OPT_TLS_KEYFORM", MOSQ_OPT_TLS_KEYFORM);
+    lua_add_constant(L, "OPT_TLS_ENGINE", MOSQ_OPT_TLS_ENGINE);
     lua_add_constant(L, "OPT_TLS_ENGINE_KPASS_SHA1", MOSQ_OPT_TLS_ENGINE_KPASS_SHA1);
     lua_add_constant(L, "OPT_TLS_OCSP_REQUIRED", MOSQ_OPT_TLS_OCSP_REQUIRED);
     lua_add_constant(L, "OPT_TLS_ALPN",	MOSQ_OPT_TLS_ALPN);
 
     lua_add_constant(L, "PROTOCOL_V31",	MQTT_PROTOCOL_V31);
-    lua_add_constant(L, "PROTOCOL_V311",	MQTT_PROTOCOL_V311);
-    lua_add_constant(L, "PROTOCOL_V5",	MQTT_PROTOCOL_V5);
+    lua_add_constant(L, "PROTOCOL_V311", MQTT_PROTOCOL_V311);
+    lua_add_constant(L, "PROTOCOL_V5", MQTT_PROTOCOL_V5);
 
     return 1;
 }

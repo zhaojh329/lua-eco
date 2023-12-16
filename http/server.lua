@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+local file = require 'eco.core.file'
 local socket = require 'eco.socket'
 local url = require 'eco.http.url'
-local file = require 'eco.file'
 local ssl = require 'eco.ssl'
 local log = require 'eco.log'
 
@@ -214,10 +214,6 @@ local month_abbr_map = {
 
 local methods = {}
 
-function methods:closed()
-    return self.sock:closed()
-end
-
 function methods:remote_addr()
     return self.peer
 end
@@ -288,10 +284,6 @@ local function send_http_head(resp)
 end
 
 function methods:send_error(code, status, content)
-    if self.sock:closed() then
-        return false, 'closed'
-    end
-
     if type(code) ~= 'number' then
         error('invalid code: ' .. tostring(code))
     end
@@ -310,10 +302,6 @@ end
 
 function methods:send(...)
     local resp = self.resp
-
-    if self.sock:closed() then
-        return false, 'closed'
-    end
 
     local data = concat({...})
     local len = #data
@@ -334,7 +322,58 @@ function methods:send(...)
     return true
 end
 
-local function http_send_file(sock, fd, size, count, offset)
+-- used for ssl
+local function sendfile(sock, path, count, offset)
+    local f, err = io.open(path)
+    if not f then
+        return nil, err
+    end
+
+    if offset then
+        f:seek('set', offset)
+    end
+
+    local chunk = 4096
+    local sent = 0
+    local data
+
+    while count > 0 do
+        data, err = f:read(chunk > count and count or chunk)
+        if not data then
+            break
+        end
+
+        _, err = sock:send(data)
+        if err then
+            break
+        end
+
+        sent = sent + #data
+        count = count - #data
+    end
+
+    f:close()
+
+    if err then
+        return nil, err
+    end
+
+    return sent
+end
+
+local function http_send_file(self, path, size, count, offset)
+    local resp = self.resp
+    local sock = self.sock
+
+    if not resp.head_sent then
+        send_http_head(resp)
+    end
+
+    local ok, err = self:flush()
+    if not ok then
+        return false, err
+    end
+
     if offset and offset > -1 then
         size = size - offset
     end
@@ -347,57 +386,34 @@ local function http_send_file(sock, fd, size, count, offset)
 
     local _, err = sock:send(string.format('%x\r\n', count))
     if err then
-        return false, err
+        return nil, err
     end
 
-    _, err = sock:sendfile(fd, count, offset)
-    if err then
-        return false, err
+    local ret
+
+    if sock.sendfile then
+        local fd, err = file.open(path)
+        if not fd then
+            return nil, err
+        end
+        ret, err = sock:sendfile(fd, count, offset)
+        file.close(fd)
+    else
+        ret, err = sendfile(sock, path, count, offset)
+    end
+    if not ret then
+        return nil, err
     end
 
     _, err = sock:send('\r\n')
     if err then
-        return false, err
-    end
-
-    return true
-end
-
-function methods:send_file_fd(fd, size, count, offset)
-    local resp = self.resp
-    local sock = self.sock
-
-    if count and count < 1 then
-        return true
-    end
-
-    if not resp.head_sent then
-        send_http_head(resp)
-    end
-
-    local ok, err = self:flush()
-    if not ok then
-        return false, err
-    end
-
-    ok, err = http_send_file(sock, fd, size, count, offset)
-    if not ok then
-        sock:close()
-        return false, err
+        return nil, err
     end
 
     return true
 end
 
 function methods:send_file(path, count, offset)
-    if self.sock:closed() then
-        return false, 'closed'
-    end
-
-    if count and count < 1 then
-        return true
-    end
-
     local st, err = file.stat(path)
     if not st then
         return false, err
@@ -407,19 +423,8 @@ function methods:send_file(path, count, offset)
         return false, 'forbidden'
     end
 
-    local fd, err = file.open(path)
-    if not fd then
-        return false, err
-    end
 
-    _, err = self:send_file_fd(fd, st.size, count, offset)
-    file.close(fd)
-
-    if err then
-        return false, err
-    end
-
-    return true
+    return http_send_file(self, path, st.size, count, offset)
 end
 
 function methods:flush()
@@ -437,7 +442,6 @@ function methods:flush()
 
     local _, err = sock:send(concat(data))
     if err then
-        sock:close()
         return false, err
     end
 
@@ -450,254 +454,118 @@ function methods:read_body(count, timeout)
     local body_remain = self.body_remain
     local sock = self.sock
 
-    if sock:closed() then
-        return nil, 'closed'
-    end
-
     if body_remain == 0 then
-        return nil
+        return ''
     end
-
-    timeout = timeout or 3.0
 
     count = count or body_remain
     if count > body_remain then
         count = body_remain
     end
 
-    if count < 1 then
-        return ''
-    end
-
-    local data, err, partial = sock:recvfull(count, timeout)
+    local data, err = sock:readfull(count, timeout)
     if not data then
-        sock:close()
-
-        if partial then
-            return nil, err, partial
-        end
         return nil, err
     end
 
-    self.body_remain = self.body_remain - #data
+    self.body_remain = self.body_remain - count
 
     return data
 end
 
-local function formdata_call_cb(ctx, cbs, name, ...)
-    if cbs[name] then
-        if  cbs[name](...) == false then
-            ctx.done = true
-        end
-    end
-end
+function methods:read_formdata(req, timeout)
+    local sock = self.sock
 
-local function formdata_parse(ctx, boundary, data, cbs)
-    local s_start = 0
-    local s_start_boundary = 1
-    local s_header_field_start = 2
-    local s_header_field = 3
-    local s_headers_almost_done = 4
-    local s_header_value_start = 5
-    local s_header_value = 6
-    local s_header_value_almost_done = 7
-    local s_part_data_start = 8
-    local s_part_data = 9
-    local s_part_data_almost_boundary = 10
-    local s_part_data_boundary = 11
-    local s_part_data_almost_end = 12
-    local s_part_data_end = 13
-    local s_part_data_final_hyphen = 14
+    local form = req.form
 
-    local boundary_length = #boundary
-    local str_sub = string.sub
-    local total = #data
-    local i = 1
-    local mark = 1
-
-    cbs = cbs or {}
-
-    while not ctx.done and i <= total do
-        local state = ctx.state
-        local c = str_sub(data, i, i)
-        local is_last = i == total
-        local skip = false
-
-        if state == s_start then
-            ctx.index = 1
-            ctx.state = s_start_boundary
-            skip = true
-        elseif state == s_start_boundary then
-            if ctx.index == boundary_length + 1 then
-                if c ~= '\r' then return false end
-                ctx.index = ctx.index + 1
-            elseif ctx.index == boundary_length + 2 then
-                if c ~= '\n' then return false end
-
-                formdata_call_cb(ctx, cbs, 'on_part_data_begin')
-
-                ctx.index = 1
-                ctx.state = s_header_field_start
-            else
-                if c ~= str_sub(boundary, ctx.index, ctx.index) then return false end
-                ctx.index = ctx.index + 1
-            end
-        elseif state == s_header_field_start then
-            ctx.state = s_header_field
-            mark = i
-            skip = true
-        elseif state == s_header_field then
-            if c == '\r' then
-                ctx.state = s_headers_almost_done
-            elseif c == ':' then
-                ctx.header_name_cache[#ctx.header_name_cache + 1] = str_sub(data, mark, i - 1)
-                ctx.state = s_header_value_start
-            else
-                c = str_lower(c)
-                if c ~= '-' and (c:byte() <  string.byte('a') or c:byte() > string.byte('z')) then
-                    return false
-                end
-
-                if is_last then
-                    ctx.header_name_cache[#ctx.header_name_cache + 1] = str_sub(data, mark, i)
-                end
-            end
-        elseif state == s_headers_almost_done then
-            if c ~= '\n' then return false end
-            ctx.state = s_part_data_start
-        elseif state == s_header_value_start then
-            if c ~= ' ' then
-                ctx.state = s_header_value
-                mark = i
-                skip = true
-            end
-        elseif state == s_header_value then
-            if c == '\r' then
-                ctx.header_value_cache[#ctx.header_value_cache + 1] = str_sub(data, mark, i - 1)
-                local name = table.concat(ctx.header_name_cache):lower()
-                local value = table.concat(ctx.header_value_cache)
-                formdata_call_cb(ctx, cbs, 'on_header', name, value)
-                ctx.header_name_cache =  {}
-                ctx.header_value_cache = {}
-                ctx.state = s_header_value_almost_done
-            elseif is_last then
-                ctx.header_value_cache[#ctx.header_value_cache + 1] = str_sub(data, mark, i)
-            end
-        elseif state == s_header_value_almost_done then
-            if c ~= '\n' then
-                return false
-            else
-                ctx.state = s_header_field_start
-            end
-        elseif state == s_part_data_start then
-            formdata_call_cb(ctx, cbs, 'on_headers_complete')
-            mark = i
-            skip = true
-            ctx.state = s_part_data
-        elseif state == s_part_data then
-            if c == '\r' then
-                formdata_call_cb(ctx, cbs, 'on_part_data', str_sub(data, mark, i - 1))
-                mark = i
-                ctx.lookbehind = { '\r' }
-                ctx.state = s_part_data_almost_boundary
-            elseif is_last then
-                formdata_call_cb(ctx, cbs, 'on_part_data', str_sub(data, mark, i))
-            end
-        elseif state == s_part_data_almost_boundary then
-            if c == '\n' then
-                ctx.state = s_part_data_boundary
-                ctx.lookbehind[2] = '\n'
-                ctx.index = 1
-            else
-                formdata_call_cb(ctx, cbs, 'on_part_data', '\r')
-                ctx.state = s_part_data
-                mark = i
-                i = i - 1
-            end
-        elseif state == s_part_data_boundary then
-            if str_sub(boundary, ctx.index, ctx.index) ~= c then
-                formdata_call_cb(ctx, cbs, 'on_part_data', concat(ctx.lookbehind))
-                ctx.state = s_part_data
-                mark = i
-                i = i -1
-            else
-                ctx.lookbehind[#ctx.lookbehind + 1] = c
-                ctx.index = ctx.index + 1
-                if ctx.index == boundary_length + 1 then
-                    formdata_call_cb(ctx, cbs, 'on_part_data_end')
-                    ctx.state = s_part_data_almost_end
-                end
-            end
-        elseif state == s_part_data_almost_end then
-            if c == '-' then
-                ctx.state = s_part_data_final_hyphen
-            elseif c == '\r' then
-                ctx.state = s_part_data_end
-            else
-                return false
-            end
-        elseif state == s_part_data_final_hyphen then
-            if c == '-' then
-                ctx.done = true
-                return true
-            else
-                return false
-            end
-        elseif state == s_part_data_end then
-            if c == '\n' then
-                formdata_call_cb(ctx, cbs, 'on_part_data_begin')
-                ctx.state = s_header_field_start
-            else
-                return false
-            end
+    if not form.boundary then
+        if req.method ~= 'POST' then
+            return nil, 'not allowed method'
         end
 
-        if not skip then i = i + 1 end
+        local content_type = req.headers['content-type'] or ''
+        local boundary = content_type:match('multipart/form%-data; *boundary=(----[%w%p]+)')
+        if not boundary then
+            return nil, 'bad request'
+        end
+
+        form.boundary = '--' .. boundary
+        form.state = 'init'
+
+        self.formed = true
     end
 
-    return true
-end
+    if form.state == 'init' then
+        local line, err = sock:recv('l', timeout)
+        if not line then
+            return nil, err
+        end
 
-function methods:read_formdata(req, cbs)
-    if req.method ~= 'POST' then
-        return self:send_error(M.STATUS_METHOD_NOT_ALLOWED)
+        if line ~= form.boundary .. '\r' then
+            return nil, 'bad request'
+        end
+
+        form.boundary = '\r\n' .. form.boundary
+
+        form.state = 'header'
     end
 
-    local content_type = req.headers['content-type'] or ''
-    local boundary = content_type:match('multipart/form%-data; *boundary=(----[%w%p]+)')
-    if not boundary then
-        return self:send_error(M.STATUS_BAD_REQUEST)
+    if form.state == 'header' then
+        local line, err = sock:recv('l', timeout)
+        if not line then
+            return nil, err
+        end
+
+        if line == '\r' then
+            form.state = 'body'
+        else
+            local name, value = line:match('([%w%p]+) *: *(.+)\r?$')
+            if not name or not value then
+                return nil, 'invalid http header'
+            end
+
+            return 'header', { name:lower(), value }
+        end
     end
 
-    boundary = '--' .. boundary
-
-    local ctx = {
-        done = false,
-        header_name_cache = {},
-        header_value_cache = {},
-        state = 0
-    }
-
-    while not ctx.done do
-        local data = self:read_body(4096)
+    if form.state == 'body' then
+        local data, found = sock:readuntil(form.boundary, timeout)
         if not data then
-            return self:send_error(M.STATUS_BAD_REQUEST)
+            return nil, found
         end
 
-        if not formdata_parse(ctx, boundary, data, cbs) then
-            return self:send_error(M.STATUS_BAD_REQUEST)
+        if found then
+            local x, err = sock:peek(2)
+            if not x then
+                return nil, err
+            end
+
+            if x == '--' then
+                form.state = 'end'
+            else
+                if x ~= '\r\n' then
+                    return nil, 'bad request'
+                end
+
+                sock:recv(2)
+
+                form.state = 'header'
+            end
         end
+
+        return 'body', { data, found }
     end
+
+    return 'end'
 end
 
 function methods:discard_body()
-    local sock = self.sock
-
-    local _, err = sock:discard(self.body_remain, 3.0)
-    if err then
-        sock:close()
-        return false, err
+    local ok, err = self.sock:discard(self.body_remain)
+    if not ok then
+        return nil, err
     end
+
+    self.body_remain = 0
 
     return true
 end
@@ -705,10 +573,6 @@ end
 function methods:serve_file(req)
     local options = self.options
     local path = req.path
-
-    if self.sock:closed() then
-        return false, 'closed'
-    end
 
     if path == '/' then
         path = '/' .. options.index
@@ -786,19 +650,7 @@ function methods:serve_file(req)
         return true
     end
 
-    local fd, err = file.open(phy_path)
-    if not fd then
-        return self:send_error(M.STATUS_INTERNAL_SERVER_ERROR, nil, string.format('open "%s" fail: %s', phy_path, err))
-    end
-
-    _, err = self:send_file_fd(fd, st.size)
-    file.close(fd)
-
-    if err then
-        return false, err
-    end
-
-    return true
+    return http_send_file(self, phy_path, st.size)
 end
 
 local function handle_connection(con, handler)
@@ -814,9 +666,7 @@ local function handle_connection(con, handler)
     while true do
         local data, err = sock:recv('l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
-            if err == 'closed' then
-                log.debug(log_prefix .. err)
-            else
+            if err ~= 'timeout' then
                 log.err(log_prefix .. err)
             end
             return false
@@ -912,13 +762,11 @@ local function handle_connection(con, handler)
         major_version = major_version,
         minor_version = minor_version,
         headers = headers,
-        query = query
+        query = query,
+        form = {}
     }
 
-    handler(con, req)
-
-    if sock:closed() then
-        log.err(log_prefix .. 'closed')
+    if handler(con, req) == false then
         return false
     end
 
@@ -951,8 +799,9 @@ local function handle_connection(con, handler)
         or req_connection == 'close'
         or req_connection == 'upgrade'
         or resp_connection == 'close'
+        or con.formed
     then
-        sock:close()
+        return false
     else
         ok, err = con:discard_body()
         if not ok then
@@ -962,25 +811,6 @@ local function handle_connection(con, handler)
     end
 
     return true
-end
-
-local function set_socket_options(sock, options)
-    if options.ssl then
-        sock = sock:socket()
-    end
-
-    if options.tcp_nodelay then
-        sock:setoption('tcp_nodelay', true)
-    end
-
-    local tcp_keepalive = options.tcp_keepalive or 0
-    if tcp_keepalive > 0 then
-        sock:setoption('keepalive', true)
-        sock:setoption('tcp_keepidle', 1)
-        sock:setoption('tcp_keepcnt', 3)
-        sock:setoption('tcp_keepintvl', tcp_keepalive)
-        sock:setoption('tcp_fastopen', 5)
-    end
 end
 
 local metatable = { __index = methods }
@@ -997,56 +827,46 @@ function M.listen(ipaddr, port, options, handler)
     options.index = options.index or 'index.html'
     options.http_keepalive = options.http_keepalive or 30
 
-    local sock, err, listen
+    local sock, err
 
     if options.cert and options.key then
         options.ssl = true
-        if options.ipv6 then
-            options.ipv6_v6only = true
-            listen = ssl.listen6
-        else
-            listen = ssl.listen
-        end
+        sock, err = ssl.listen(ipaddr, port, options, options.ipv6)
     else
-        if options.ipv6 then
-            options.ipv6_v6only = true
-            listen = socket.listen_tcp6
-        else
-            listen = socket.listen_tcp
-        end
+        sock, err = socket.listen_tcp(ipaddr, port, options, options.ipv6)
     end
 
-    sock, err = listen(ipaddr, port, options)
     if not sock then
         return nil, err
     end
 
-    set_socket_options(sock, options)
+    log.debug('listen on:', ipaddr, port, options.ssl and 'ssl' or '')
 
     while true do
         local c, peer = sock:accept()
         if c then
             log.debug(peer.ipaddr .. ':' .. peer.port .. ': new connection')
 
-            eco.run(function(c)
-                local con = setmetatable({
-                    sock = c,
-                    resp = {
-                        code = 200,
-                        headers = {
-                            server = 'Lua-eco/' .. eco.VERSION
-                        }
-                    },
-                    peer = peer,
-                    options = options
-                }, metatable)
+            local con = setmetatable({
+                sock = c,
+                resp = {
+                    code = 200,
+                    headers = {
+                        server = 'Lua-eco/' .. eco.VERSION
+                    }
+                },
+                peer = peer,
+                options = options
+            }, metatable)
 
-                while not c:closed() do
+            eco.run(function()
+                while true do
                     if not handle_connection(con, handler) then
                         c:close()
+                        break
                     end
                 end
-            end, c)
+            end)
         else
             log.err('accept fail: ' .. peer)
         end

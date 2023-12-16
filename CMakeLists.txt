@@ -40,15 +40,19 @@ option(ECO_UBUS_SUPPORT "ubus" ON)
 option(ECO_MQTT_SUPPORT "mqtt" ON)
 option(ECO_SSH_SUPPORT "ssh" ON)
 
+add_library(libeco SHARED libeco.c)
+set_target_properties(libeco PROPERTIES OUTPUT_NAME eco)
+
 add_executable(eco eco.c)
-target_link_libraries(eco PRIVATE ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
+target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
 target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(time MODULE time.c)
-target_link_libraries(time PRIVATE ${LIBEV_LIBRARY})
+target_link_libraries(time PRIVATE libeco ${LIBEV_LIBRARY})
 set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
 
 add_library(bufio MODULE bufio.c)
+target_link_libraries(bufio PRIVATE ${LIBEV_LIBRARY})
 set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
 
 add_library(sys MODULE sys.c)
@@ -58,6 +62,7 @@ add_library(file MODULE file.c)
 set_target_properties(file PROPERTIES OUTPUT_NAME file PREFIX "")
 
 add_library(socket MODULE socket.c)
+target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY})
 set_target_properties(socket PROPERTIES OUTPUT_NAME socket PREFIX "")
 
 add_library(termios MODULE termios.c)
@@ -91,7 +96,7 @@ if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
         add_library(essl MODULE ssl.c)
-        target_link_libraries(essl PRIVATE ${SSL_TARGET})
+        target_link_libraries(essl PRIVATE libeco ${SSL_TARGET})
         set_target_properties(essl PROPERTIES OUTPUT_NAME ssl PREFIX "")
 
         install(
@@ -112,7 +117,7 @@ if (ECO_UBUS_SUPPORT)
     find_library(UBUS NAMES ubus)
     if (UBUS)
         add_library(lubus MODULE ubus.c)
-        target_link_libraries(lubus PRIVATE ubus)
+        target_link_libraries(lubus PRIVATE libeco ubus)
         set_target_properties(lubus PROPERTIES OUTPUT_NAME ubus PREFIX "")
 
         install(
@@ -174,17 +179,22 @@ if (ECO_SSH_SUPPORT)
 endif()
 
 install(
+    TARGETS libeco
+    DESTINATION lib
+)
+
+install(
     TARGETS eco
     DESTINATION bin
 )
 
 install(
-    TARGETS log termios rtnl
+    TARGETS log termios rtnl bufio
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
-    TARGETS sys file time bufio socket nl genl nl80211
+    TARGETS sys file time nl genl socket nl80211
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
@@ -204,7 +214,7 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua bufio.lua dns.lua socket.lua
+    FILES time.lua sys.lua file.lua dns.lua socket.lua
         websocket.lua sync.lua nl.lua genl.lua ip.lua nl80211.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )

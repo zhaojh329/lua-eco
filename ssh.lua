@@ -336,8 +336,8 @@ function session_methods:scp_sendfile(source, dest)
         return nil, size
     end
 
-    local fd, err = file.open(source)
-    if not fd then
+    local f, err = io.open(source)
+    if not f then
         channel_free(self, channel)
         return nil, err
     end
@@ -346,16 +346,14 @@ function session_methods:scp_sendfile(source, dest)
     local data
 
     while true do
-        data, err = file.read(fd, 1024)
+        data, err = f:read(1024)
         if not data then break end
-
-        if #data == 0 then break end
 
         ok, err = scp_send_data(self, channel, data)
         if not ok then break end
     end
 
-    file.close(fd)
+    f:close()
 
     channel_send_eof(self, channel)
     channel_wait_eof(self, channel)

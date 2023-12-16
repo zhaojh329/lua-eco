@@ -26,16 +26,16 @@ function nl_methods:drop_membership(group)
 end
 
 function nl_methods:send(msg)
-    return self.sock:sendto(msg:binary())
+    return self.sock:send(msg:binary())
 end
 
 function nl_methods:recv(n, timeout)
-    local data, addr = self.sock:recvfrom(n or 8192, timeout)
+    local data, err = self.sock:recv(n or 8192, timeout)
     if not data then
-        return nil, addr
+        return nil, err
     end
 
-    return nl.nlmsg_ker(data), addr
+    return nl.nlmsg_ker(data)
 end
 
 function nl_methods:close()
@@ -47,7 +47,7 @@ local metatable = { __index = nl_methods }
 function M.open(protocol)
     local sock, err = socket.netlink(protocol)
     if not sock then
-        return nil, 'create netlink socket fail: ' .. err
+        return nil, err
     end
 
     return setmetatable({ sock = sock }, metatable)

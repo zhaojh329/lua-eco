@@ -17,8 +17,6 @@ else
     print('"/etc/shadow" is not readable')
 end
 
-file.write(1, 'I am eco\n')
-file.write(1, 'Please input: ')
+print(file.readfile('/etc/os-release'))
 
-local data = file.read(0, 100)
-file.write(1, 'You inputed: ' .. data)
+file.writefile('/tmp/eco-test', 'I am eco\n')

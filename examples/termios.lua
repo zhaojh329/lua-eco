@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local termios = require 'eco.termios'
+local bufio = require 'eco.bufio'
 local file = require 'eco.file'
 local sys = require 'eco.sys'
 
@@ -30,13 +31,12 @@ if not ok then
     return
 end
 
-while not done do
-    local data, err = file.read(fd, 1024)
-    if not data then
-        print('read file:', err)
-        break
-    end
+local b = bufio.new(fd)
 
+local data, err = b:read(1024)
+if not data then
+    print('read file:', err)
+else
     print('read:', data)
 end
 

@@ -24,9 +24,9 @@ while true do
 
     print('new connection:', peer.ipaddr, peer.port)
 
-    eco.run(function(c)
+    eco.run(function()
         while true do
-            local data, err = c:recv('*l')
+            local data, err = c:recv('l')
             if not data then
                 print(err)
                 break
@@ -34,5 +34,5 @@ while true do
             print('read:', data)
             c:send('I am eco:' .. data .. '\n')
         end
-    end, c)
+    end)
 end

@@ -2,10 +2,9 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local base64 = require 'eco.encoding.base64'
-local file = require 'eco.core.file'
 local socket = require 'eco.socket'
-local sys = require 'eco.core.sys'
 local URL = require 'eco.http.url'
+local file = require 'eco.file'
 local ssl = require 'eco.ssl'
 local dns = require 'eco.dns'
 
@@ -55,21 +54,14 @@ local function send_http_request(sock, method, path, headers, body)
             return false, 'send body fail: ' .. err
         end
     else
-        local fd, err = file.open(body.name)
-        if not fd then
+        local f, err = io.open(body.name)
+        if not f then
             return false, 'open body file fail: ' .. err
         end
 
-        local data
-
         while true do
-            data, err = file.read(fd, 4096)
+            data = f:read(4096)
             if not data then
-                err = 'read body file fail: ' .. err
-                break
-            end
-
-            if #data == 0 then
                 break
             end
 
@@ -80,7 +72,7 @@ local function send_http_request(sock, method, path, headers, body)
             end
         end
 
-        file.close(fd)
+        f:close()
 
         if err then
             return false, err
@@ -126,7 +118,7 @@ local function recv_http_headers(sock, timeout)
     return headers
 end
 
-local function receive_body(resp, sock, length, timeout, body_to_fd)
+local function receive_body(resp, sock, timeout, length, body_to_file)
     local body = {}
 
     while length > 0 do
@@ -137,28 +129,27 @@ local function receive_body(resp, sock, length, timeout, body_to_fd)
 
         length = length - #data
 
-        if body_to_fd then
-            file.write(body_to_fd, data)
+        if body_to_file then
+            body_to_file:write(data)
         else
             body[#body+1] = data
         end
     end
 
-    if not body_to_fd then
+    if not body_to_file then
         resp.body = concat(body)
     end
 
     return true
 end
 
-local function receive_chunked_body(resp, sock, timeout, body_to_fd)
-    local deadtime = sys.uptime() + timeout
+local function receive_chunked_body(resp, sock, timeout, body_to_file)
     local chunk_size
     local body = {}
 
     while true do
         -- first read chunk size
-        local data, err = sock:recv('l', deadtime and deadtime - sys.uptime())
+        local data, err = sock:recv('l', timeout)
         if not data then
             return nil, err
         end
@@ -171,32 +162,34 @@ local function receive_chunked_body(resp, sock, timeout, body_to_fd)
         chunk_size = tonumber(data, 16)
 
         if chunk_size == 0 then
-            if not body_to_fd then
+            if not body_to_file then
                 resp.body = concat(body)
             end
             return true
         end
 
         -- second read chunk data
-        data, err = sock:recvfull(chunk_size, deadtime and deadtime - sys.uptime())
+        data, err = sock:readfull(chunk_size, timeout)
         if not data then
             return nil, err
         end
 
-        if body_to_fd then
-            file.write(body_to_fd, data)
+        if body_to_file then
+            body_to_file:write(data)
         else
             body[#body + 1] = data
         end
 
-        data, err = sock:recv('l', deadtime and deadtime - sys.uptime())
+        data, err = sock:recv('l', timeout)
         if not data then
             return nil, err
         end
     end
 end
 
-local function do_http_request(sock, method, path, headers, body, opts)
+local function do_http_request(self, method, path, headers, body, opts)
+    local sock = self:sock()
+
     local ok, err = send_http_request(sock, method, path, headers, body)
     if not ok then
         return nil, err
@@ -237,25 +230,23 @@ local function do_http_request(sock, method, path, headers, body, opts)
 
     if chunked or content_length then
         local body_to_file = opts.body_to_file
-        local body_to_fd
 
         if body_to_file then
-            body_to_fd, err = file.open(body_to_file,
-                file.O_WRONLY | file.O_CREAT | file.O_TRUNC, file.S_IRUSR | file.S_IWUSR | file.S_IRGRP | file.S_IROTH)
-            if not body_to_fd then
+            local f, err = io.open(body_to_file, 'w')
+            if not f then
                 return false, 'create "' .. body_to_file .. '" fail: ' .. err
             end
+            body_to_file = f
         end
 
-        local ok
         if chunked then
-            ok, err = receive_chunked_body(resp, sock, timeout, body_to_fd)
+            ok, err = receive_chunked_body(resp, sock, timeout, body_to_file)
         else
-            ok, err = receive_body(resp, sock, content_length, timeout, body_to_fd)
+            ok, err = receive_body(resp, sock, timeout, content_length, body_to_file)
         end
 
-        if body_to_fd then
-            file.close(body_to_fd)
+        if body_to_file then
+            body_to_file:close()
         end
 
         if not ok then
@@ -382,17 +373,11 @@ function methods:request(method, url, body, opts)
     for _, a in ipairs(addresses) do
         local connect = socket.connect_tcp
         if scheme_info.use_ssl then
-            connect = ssl.connect
+            sock, err = ssl.connect(a.address, port, opts, a.type == dns.TYPE_AAAA)
+        else
+            sock, err = socket.connect_tcp(a.address, port, a.type == dns.TYPE_AAAA)
         end
 
-        if a.type == dns.TYPE_AAAA then
-            connect = socket.connect_tcp6
-            if scheme_info.use_ssl then
-                connect = ssl.connect6
-            end
-        end
-
-        sock, err = connect(a.address, port, opts.insecure)
         if sock then
             break
         end
@@ -412,7 +397,7 @@ function methods:request(method, url, body, opts)
 
     self.__sock = sock
 
-    return do_http_request(sock, method, path, headers, body, opts)
+    return do_http_request(self, method, path, headers, body, opts)
 end
 
 local metatable = {
