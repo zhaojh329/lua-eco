@@ -94,7 +94,7 @@ again:
     return ret;
 }
 
-static int eco_bufio_new(lua_State *L)
+static int lua_bufio_new(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     const char *eof_error = NULL;
@@ -158,7 +158,7 @@ static int eco_bufio_new(lua_State *L)
     return 1;
 }
 
-static int eco_bufio_size(lua_State *L)
+static int lua_bufio_size(lua_State *L)
 {
     struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
 
@@ -167,7 +167,7 @@ static int eco_bufio_size(lua_State *L)
     return 1;
 }
 
-static int eco_bufio_length(lua_State *L)
+static int lua_bufio_length(lua_State *L)
 {
     struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
 
@@ -291,7 +291,7 @@ fill:
     'L': reads the next line keeping the end-of-line character (if present).
     number: reads any data with up to this number of bytes.
 */
-static int lua_read(lua_State *L)
+static int lua_bufio_read(lua_State *L)
 {
     struct eco_bufio *b = read_check(L);
 
@@ -350,7 +350,7 @@ fill:
 }
 
 /* Returns the next n bytes without moving read position */
-static int lua_peek(lua_State *L)
+static int lua_bufio_peek(lua_State *L)
 {
     struct eco_bufio *b = read_check(L);
 
@@ -418,7 +418,7 @@ fill:
 }
 
 /* Reads until it reads exactly desired size of data or an error occurs. */
-static int lua_readfull(lua_State *L)
+static int lua_bufio_readfull(lua_State *L)
 {
     struct eco_bufio *b = read_check(L);
 
@@ -483,7 +483,7 @@ static int lua_readuntilk(lua_State *L, int status, lua_KContext ctx)
  It returns the received data on each invocation followed a boolean `true` if
  the specified pattern occurs.
 */
-static int lua_readuntil(lua_State *L)
+static int lua_bufio_readuntil(lua_State *L)
 {
     struct eco_bufio *b = read_check(L);
 
@@ -529,7 +529,7 @@ static int lua_discardk(lua_State *L, int status, lua_KContext ctx)
     return lua_discardk(L, 0, ctx);
 }
 
-static int lua_discard(lua_State *L)
+static int lua_bufio_discard(lua_State *L)
 {
     struct eco_bufio *b = read_check(L);
 
@@ -543,13 +543,13 @@ static int lua_discard(lua_State *L)
 }
 
 static const struct luaL_Reg methods[] =  {
-    {"size", eco_bufio_size},
-    {"length", eco_bufio_length},
-    {"read", lua_read},
-    {"peek", lua_peek},
-    {"readfull", lua_readfull},
-    {"readuntil", lua_readuntil},
-    {"discard", lua_discard},
+    {"size", lua_bufio_size},
+    {"length", lua_bufio_length},
+    {"read", lua_bufio_read},
+    {"peek", lua_bufio_peek},
+    {"readfull", lua_bufio_readfull},
+    {"readuntil", lua_bufio_readuntil},
+    {"discard", lua_bufio_discard},
     {NULL, NULL}
 };
 
@@ -558,7 +558,7 @@ int luaopen_eco_bufio(lua_State *L)
     lua_newtable(L);
 
     eco_new_metatable(L, ECO_BUFIO_MT, methods);
-    lua_pushcclosure(L, eco_bufio_new, 1);
+    lua_pushcclosure(L, lua_bufio_new, 1);
     lua_setfield(L, -2, "new");
 
     return 1;
