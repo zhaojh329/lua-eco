@@ -86,8 +86,8 @@ function methods:sendto(data, ...)
     return self.sock:sendto(data, ...)
 end
 
-function methods:sendfile(fd, len, offset)
-    return self.sock:sendfile(fd, len, offset)
+function methods:sendfile(path, len, offset)
+    return self.sock:sendfile(path, len, offset)
 end
 
 --[[

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include <sys/sendfile.h>
 #include <sys/socket.h>
@@ -549,6 +550,8 @@ again:
             return lua_yieldk(L, 0, ctx, lua_sendfilek);
         }
 
+        close(sock->snd.fd);
+
         if (errno == EPIPE)
             lua_pushliteral(L, "closed");
         else
@@ -558,11 +561,13 @@ again:
 
     sent += ret;
 
-    if (sent < len) {
+    if (ret && sent < len) {
         sock->snd.sent = sent;
         sock->snd.offset = offset;
         return lua_sendfilek(L, 0, ctx);
     }
+
+    close(sock->snd.fd);
 
     lua_pushinteger(L, sent);
 
@@ -576,6 +581,8 @@ again:
 static int lua_sendfile(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    const char *path;
+    int fd;
 
     if (sock->L) {
         lua_pushnil(L);
@@ -583,8 +590,17 @@ static int lua_sendfile(lua_State *L)
         return 2;
     }
 
+    path = luaL_checkstring(L, 2);
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
     sock->snd.sent = 0;
-    sock->snd.fd = luaL_checkinteger(L, 2);
+    sock->snd.fd = fd;
     sock->snd.len = luaL_checkinteger(L, 3);
     sock->snd.offset = luaL_optinteger(L, 4, -1);
 

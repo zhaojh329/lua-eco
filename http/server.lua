@@ -392,12 +392,7 @@ local function http_send_file(self, path, size, count, offset)
     local ret
 
     if sock.sendfile then
-        local fd, err = file.open(path)
-        if not fd then
-            return nil, err
-        end
-        ret, err = sock:sendfile(fd, count, offset)
-        file.close(fd)
+        ret, err = sock:sendfile(path, count, offset)
     else
         ret, err = sendfile(sock, path, count, offset)
     end
