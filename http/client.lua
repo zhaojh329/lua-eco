@@ -371,7 +371,6 @@ function methods:request(method, url, body, opts)
     local sock
 
     for _, a in ipairs(addresses) do
-        local connect = socket.connect_tcp
         if scheme_info.use_ssl then
             sock, err = ssl.connect(a.address, port, opts, a.type == dns.TYPE_AAAA)
         else
