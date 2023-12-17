@@ -568,14 +568,8 @@ again:
     }
 
     close(sock->snd.fd);
-
     lua_pushinteger(L, sent);
-
-    if (offset < 0)
-        return 1;
-
-    lua_pushinteger(L, offset);
-    return 2;
+    return 1;
 }
 
 static int lua_sendfile(lua_State *L)
