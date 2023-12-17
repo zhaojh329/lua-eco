@@ -4,6 +4,7 @@
 local socket = require 'eco.socket'
 local ssl = require 'eco.core.ssl'
 local bufio = require 'eco.bufio'
+local file = require 'eco.file'
 
 local M = {}
 
@@ -39,6 +40,46 @@ end
 
 function cli_methods:write(data)
     return self:send(data)
+end
+
+function cli_methods:sendfile(path, len, offset)
+    local fd, err = file.open(path)
+    if not fd then
+        return nil, err
+    end
+
+    if offset then
+        file.lseek(fd, offset, file.SEEK_SET)
+    end
+
+    local b = bufio.new(fd)
+
+    local chunk = 4096
+    local sent = 0
+    local data
+
+    while len > 0 do
+        data, err = b:read(chunk > len and len or chunk)
+        if not data then
+            break
+        end
+
+        _, err = self:send(data)
+        if err then
+            break
+        end
+
+        sent = sent + #data
+        len = len - #data
+    end
+
+    file.close(fd)
+
+    if not err or err == 'eof' then
+        return sent
+    end
+
+    return nil, err
 end
 
 --[[

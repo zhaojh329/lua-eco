@@ -322,45 +322,6 @@ function methods:send(...)
     return true
 end
 
--- used for ssl
-local function sendfile(sock, path, count, offset)
-    local f, err = io.open(path)
-    if not f then
-        return nil, err
-    end
-
-    if offset then
-        f:seek('set', offset)
-    end
-
-    local chunk = 4096
-    local sent = 0
-    local data
-
-    while count > 0 do
-        data, err = f:read(chunk > count and count or chunk)
-        if not data then
-            break
-        end
-
-        _, err = sock:send(data)
-        if err then
-            break
-        end
-
-        sent = sent + #data
-        count = count - #data
-    end
-
-    f:close()
-
-    if err then
-        return nil, err
-    end
-
-    return sent
-end
-
 local function http_send_file(self, path, size, count, offset)
     local resp = self.resp
     local sock = self.sock
@@ -391,11 +352,7 @@ local function http_send_file(self, path, size, count, offset)
 
     local ret
 
-    if sock.sendfile then
-        ret, err = sock:sendfile(path, count, offset)
-    else
-        ret, err = sendfile(sock, path, count, offset)
-    end
+    ret, err = sock:sendfile(path, count, offset)
     if not ret then
         return nil, err
     end
