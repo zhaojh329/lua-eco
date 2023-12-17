@@ -384,7 +384,7 @@ local function http_send_file(self, path, size, count, offset)
         count = size
     end
 
-    local _, err = sock:send(string.format('%x\r\n', count))
+    _, err = sock:send(string.format('%x\r\n', count))
     if err then
         return nil, err
     end
