@@ -50,33 +50,12 @@ local function send_http_request(sock, method, path, headers, body)
 
     if type(body) == 'string' then
         _, err = sock:send(body)
-        if err then
-            return false, 'send body fail: ' .. err
-        end
     else
-        local f, err = io.open(body.name)
-        if not f then
-            return false, 'open body file fail: ' .. err
-        end
+        _, err = sock:sendfile(body.name, body.size)
+    end
 
-        while true do
-            data = f:read(4096)
-            if not data then
-                break
-            end
-
-            _, err = sock:send(data)
-            if err then
-                err = 'send body fail: ' .. err
-                break
-            end
-        end
-
-        f:close()
-
-        if err then
-            return false, err
-        end
+    if err then
+        return false, 'send body fail: ' .. err
     end
 
     return true
