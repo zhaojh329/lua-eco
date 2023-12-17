@@ -12,25 +12,35 @@ local function handle_upload(con, req)
         local typ, data = con:read_formdata(req)
         if typ == 'header' then
             if data[1] == 'content-disposition' then
-                local filename = data[2]:match('filename="(.+)"')
-                if not filename then
-                    return con:send_error(http.STATUS_BAD_REQUEST)
+                local name = data[2]:match('name="([^\"]+)"')
+                if not name then
+                    return con:send_error(http.STATUS_FORBIDDEN)
                 end
 
-                f = io.open(filename, 'w')
-                if not f then
-                    return con:send_error(http.STATUS_FORBIDDEN)
+                print('part name:', name)
+
+                if name == 'file' then
+                    local filename = data[2]:match('filename="([^\"]+)"')
+                    if not filename then
+                        return con:send_error(http.STATUS_BAD_REQUEST)
+                    end
+
+                    f = io.open(filename, 'w')
+                    if not f then
+                        return con:send_error(http.STATUS_FORBIDDEN)
+                    end
                 end
             end
         elseif typ == 'body' then
-            if not f then
-                return con:send_error(http.STATUS_BAD_REQUEST)
-            end
+            if f then
+                f:write(data[1])
 
-            f:write(data[1])
-
-            if data[2] then
-                f:close()
+                if data[2] then
+                    f:close()
+                    f = nil
+                end
+            else
+                print('part data:', data[1])
             end
         elseif typ == 'end' then
             break

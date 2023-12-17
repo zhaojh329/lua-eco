@@ -15,6 +15,15 @@ local rand = math.random
 local M = {}
 
 local BODY_FILE_MT = 'eco-http-body-file'
+local BODY_FORM_MT = 'eco-http-body-form'
+
+local function body_is_file(body)
+    return type(body) == 'table' and getmetatable(body).name == BODY_FILE_MT
+end
+
+local function body_is_form(body)
+    return type(body) == 'table' and getmetatable(body).name == BODY_FORM_MT
+end
 
 local function build_http_headers(data, headers)
     for name, value in pairs(headers) do
@@ -50,8 +59,18 @@ local function send_http_request(sock, method, path, headers, body)
 
     if type(body) == 'string' then
         _, err = sock:send(body)
-    else
+    elseif body_is_file(body) then
         _, err = sock:sendfile(body.name, body.size)
+    elseif body_is_form(body) then
+        for _, content in ipairs(body.contents) do
+            if type(content) == 'string' then
+                _, err = sock:send(content)
+            else
+                _, err = sock:sendfile(content.path, content.size)
+            end
+
+            if err then break end
+        end
     end
 
     if err then
@@ -322,8 +341,17 @@ function methods:request(method, url, body, opts)
     end
 
     if body then
-        headers["content-length"] = type(body) == 'string' and #body or body.size
-        headers['content-type'] = 'text/plain'
+        if body_is_form(body) then
+            local contents = body.contents
+            contents[#contents + 1] = '--' .. body.boundary .. '--\r\n'
+            body.length = body.length + #contents[#contents]
+
+            headers['content-type'] = 'multipart/form-data; boundary=' .. body.boundary
+            headers["content-length"] = body.length
+        else
+            headers['content-type'] = 'text/plain'
+            headers["content-length"] = type(body) == 'string' and #body or body.size
+        end
     end
 
     for k, v in pairs(opts.headers or {}) do
@@ -387,10 +415,6 @@ function M.new()
     return setmetatable({}, metatable)
 end
 
-local function body_is_file(body)
-    return type(body) == 'table' and getmetatable(body).name == BODY_FILE_MT
-end
-
 --[[
     method: HTTP request method, such as "GET", "POST".
     url: HTTP request url, such as "http://test.com", "https://test.com", "ws://test.com", "wss://test.com".
@@ -411,9 +435,13 @@ end
 --]]
 function M.request(method, url, body, opts)
     if body then
-        if type(body) ~= 'string' and not body_is_file(body) then
+        if type(body) ~= 'string' and not body_is_file(body) and not body_is_form(body) then
             return nil, 'invalid body'
         end
+    end
+
+    if body_is_form(body) and body.length == 0 then
+        body = nil
     end
 
     local c = M.new()
@@ -457,6 +485,87 @@ function M.body_with_file(name)
     }
 
     return setmetatable(o, body_file_mt)
+end
+
+local form_methods = {}
+
+function form_methods:add(name, value)
+    assert(type(name) == 'string')
+    assert(type(value) == 'string')
+
+    local contents = self.contents
+
+    contents[#contents + 1] = '--' .. self.boundary .. '\r\n'
+    self.length = self.length + #contents[#contents]
+
+    contents[#contents + 1] = 'Content-Disposition: form-data; name="' .. name .. '"\r\n\r\n'
+    self.length = self.length + #contents[#contents]
+
+    contents[#contents + 1] = value .. '\r\n'
+    self.length = self.length + #value + 2
+
+    return true
+end
+
+function form_methods:add_file(name, path)
+    assert(type(name) == 'string')
+    assert(type(path) == 'string')
+
+    local contents = self.contents
+
+    local st, err = file.stat(path)
+    if not st then
+        return nil, err
+    end
+
+    if st.type ~= 'REG' then
+        return nil, 'not a regular file'
+    end
+
+    if not file.access(path, 'r') then
+        return nil, 'no permission for read'
+    end
+
+    local filename = file.basename(path)
+
+    contents[#contents + 1] = '--' .. self.boundary .. '\r\n'
+    self.length = self.length + #contents[#contents]
+
+    contents[#contents + 1] = string.format('Content-Disposition: form-data; name="%s"; filename="%s"\r\n', name, filename)
+    self.length = self.length + #contents[#contents]
+
+    contents[#contents + 1] = 'Content-Type: application/octet-stream\r\n\r\n'
+    self.length = self.length + #contents[#contents]
+
+    contents[#contents + 1] = { path = path, size = st.size }
+    self.length = self.length + st.size
+
+    contents[#contents + 1] = '\r\n'
+    self.length = self.length + 2
+
+    return true
+end
+
+local form_metatable = {
+    name = BODY_FORM_MT,
+    __index = form_methods
+}
+
+local function generate_boundary()
+    local characters = "0123456789abcdef"
+    local boundary = {}
+
+    for i = 1, 16 do
+        local idx = math.random(1, #characters)
+        boundary[i] = characters:sub(idx, idx)
+    end
+
+    return '------------------------' .. concat(boundary)
+end
+
+function M.form()
+    local boundary = generate_boundary()
+    return setmetatable({ boundary = boundary, length = 0, contents = {} }, form_metatable)
 end
 
 return M
