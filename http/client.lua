@@ -49,7 +49,7 @@ local function send_http_request(sock, method, path, headers, body)
     end
 
     if type(body) == 'string' then
-        local _, err = sock:send(body)
+        _, err = sock:send(body)
         if err then
             return false, 'send body fail: ' .. err
         end
