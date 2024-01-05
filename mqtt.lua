@@ -82,7 +82,7 @@ local function try_connect(con, address, port, keepalive)
     s:close()
 
     local ok
-    ok, _, err = __con:connect(address, port, keepalive)
+    ok, err = __con:connect(address, port, keepalive)
     if not ok then
         return false, err
     end

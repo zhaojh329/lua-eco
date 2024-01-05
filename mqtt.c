@@ -40,37 +40,14 @@ struct eco_mqtt_ctx {
 
 static int mosq__pstatus(lua_State *L, int mosq_errno)
 {
-    switch (mosq_errno) {
-        case MOSQ_ERR_SUCCESS:
-            lua_pushboolean(L, true);
-            return 1;
-            break;
-
-        case MOSQ_ERR_INVAL:
-        case MOSQ_ERR_NOMEM:
-        case MOSQ_ERR_PROTOCOL:
-        case MOSQ_ERR_NOT_SUPPORTED:
-            return luaL_error(L, mosquitto_strerror(mosq_errno));
-            break;
-
-        case MOSQ_ERR_NO_CONN:
-        case MOSQ_ERR_CONN_LOST:
-        case MOSQ_ERR_PAYLOAD_SIZE:
-            lua_pushnil(L);
-            lua_pushinteger(L, mosq_errno);
-            lua_pushstring(L, mosquitto_strerror(mosq_errno));
-            return 3;
-            break;
-
-        case MOSQ_ERR_ERRNO:
-            lua_pushnil(L);
-            lua_pushinteger(L, errno);
-            lua_pushstring(L, strerror(errno));
-            return 3;
-            break;
+    if (!mosq_errno) {
+        lua_pushboolean(L, true);
+        return 1;
     }
 
-    return 0;
+    lua_pushnil(L);
+    lua_pushstring(L, mosquitto_strerror(mosq_errno));
+    return 2;
 }
 
 static int mosq_version(lua_State *L)
@@ -439,19 +416,12 @@ static void ctx_on_disconnect(struct mosquitto *mosq, void *obj, int rc)
 {
     struct eco_mqtt_ctx *ctx = obj;
     lua_State *L = ctx->eco->L;
-    bool success = true;
-    char *str = "client-initiated disconnect";
-
-    if (rc) {
-        success = false;
-        str = "unexpected disconnect";
-    }
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, ctx->on_disconnect);
 
-    lua_pushboolean(L, success);
+    lua_pushboolean(L, !rc);
     lua_pushinteger(L, rc);
-    lua_pushstring(L, str);
+    lua_pushstring(L, rc ? mosquitto_strerror(rc) : "");
 
     lua_call(L, 3, 0);
 }
