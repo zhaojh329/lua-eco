@@ -174,6 +174,15 @@ err:
     return 1;
 }
 
+static int eco_sys_get_nprocs(lua_State *L)
+{
+    int nprocs = get_nprocs();
+
+    lua_pushinteger(L, nprocs);
+
+    return 1;
+}
+
 static int eco_sys_strerror(lua_State *L)
 {
     int no = luaL_checkinteger(L, 1);
@@ -189,6 +198,7 @@ static const luaL_Reg funcs[] = {
     {"kill", eco_sys_kill},
     {"exec", eco_sys_exec},
     {"spawn", eco_sys_spawn},
+    {"get_nprocs", eco_sys_get_nprocs},
     {"strerror", eco_sys_strerror},
     {NULL, NULL}
 };
