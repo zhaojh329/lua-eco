@@ -85,7 +85,6 @@ end
 
 local options = {
     reuseaddr = true,
-    reuseport = true,
     http_keepalive = 30,
     tcp_keepalive = 5,
     tcp_nodelay = true,
