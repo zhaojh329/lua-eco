@@ -4,6 +4,7 @@
  */
 
 #include <sys/sysinfo.h>
+#include <sys/prctl.h>
 #include <stdbool.h>
 #include <signal.h>
 #include <unistd.h>
@@ -131,6 +132,48 @@ err:
     return 2;
 }
 
+static int eco_sys_spawn(lua_State *L)
+{
+    pid_t pid;
+
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
+    pid = fork();
+    if (pid < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    if (pid == 0) {
+        struct eco_context *ctx = eco_get_context(L);
+        int error;
+
+        prctl(PR_SET_PDEATHSIG, SIGKILL);
+
+        ev_break(ctx->loop, 0);
+
+        lua_getglobal(L, "eco");
+        lua_getfield(L, -1, "run");
+        lua_remove(L, -2);
+        lua_insert(L, 1);
+
+        error = lua_pcall(L, lua_gettop(L) - 1, 0, 0);
+        if (error) {
+            fprintf(stderr, "%s\n", lua_tostring(L, -1));
+            goto err;
+        }
+
+        ev_run(ctx->loop, 0);
+err:
+        ev_default_destroy();
+        exit(0);
+    }
+
+    lua_pushinteger(L, pid);
+    return 1;
+}
+
 static int eco_sys_strerror(lua_State *L)
 {
     int no = luaL_checkinteger(L, 1);
@@ -145,6 +188,7 @@ static const luaL_Reg funcs[] = {
     {"getppid", eco_sys_getppid},
     {"kill", eco_sys_kill},
     {"exec", eco_sys_exec},
+    {"spawn", eco_sys_spawn},
     {"strerror", eco_sys_strerror},
     {NULL, NULL}
 };
