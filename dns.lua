@@ -3,6 +3,7 @@
 
 -- Referenced from https://github.com/openresty/lua-resty-dns/blob/master/lib/resty/dns/resolver.lua
 
+local file = require 'eco.core.file'
 local socket = require 'eco.socket'
 
 local M = {
@@ -37,6 +38,10 @@ local transaction_id_init
 local function parse_resolvconf()
     local nameservers = {}
     local conf = {}
+
+    if not file.access('/etc/resolv.conf') then
+        return nil, 'not found "/etc/resolv.conf"'
+    end
 
     for line in io.lines('/etc/resolv.conf') do
         if line:match('search') then
@@ -480,14 +485,17 @@ function M.query(qname, opts)
         nameservers[#nameservers + 1] = { host, port, socket.is_ipv6_address(host) }
     end
 
-    local resolvconf = parse_resolvconf()
+    local resolvconf, err = parse_resolvconf()
+    if not resolvconf then
+        return nil, err
+    end
 
     for _, nameserver in ipairs(resolvconf.nameservers) do
         nameservers[#nameservers + 1] = nameserver
     end
 
     if #nameservers < 1 then
-        error('not found valid nameservers')
+        return nil, 'not found valid nameservers'
     end
 
     if not qname:match('%.') and resolvconf.search then
