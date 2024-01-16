@@ -270,7 +270,7 @@ function link.get(dev)
     end
 
     if attrs[rtnl.IFLA_MASTER] then
-        local idx = nl.attr_get_str(attrs[rtnl.IFLA_MASTER])
+        local idx = nl.attr_get_u32(attrs[rtnl.IFLA_MASTER])
         res.master = socket.if_indextoname(idx)
     end
 
