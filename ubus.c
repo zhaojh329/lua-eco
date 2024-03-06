@@ -12,10 +12,10 @@
 struct eco_ubus_context {
     struct eco_context *eco;
     struct ubus_context ctx;
-    struct ev_timer tmr;
     struct ev_io io;
     struct {
         struct ubus_request req;
+        struct ev_timer tmr;
         lua_State *L;
         bool has_data;
         double timeout;
@@ -194,7 +194,7 @@ static int lua_ubus_close(lua_State *L)
         return 0;
 
     ev_io_stop(ctx->eco->loop, &ctx->io);
-    ev_timer_stop(ctx->eco->loop, &ctx->tmr);
+    ev_timer_stop(ctx->eco->loop, &ctx->req.tmr);
 
     ubus_shutdown(&ctx->ctx);
 
@@ -218,9 +218,9 @@ static void ev_io_cb(struct ev_loop *loop, ev_io *w, int revents)
     ubus_handle_event(&ctx->ctx);
 }
 
-static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+static void req_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
 {
-    struct eco_ubus_context *ctx = container_of(w, struct eco_ubus_context, tmr);
+    struct eco_ubus_context *ctx = container_of(w, struct eco_ubus_context, req.tmr);
     lua_State *L = ctx->req.L;
 
     if (!L)
@@ -268,7 +268,7 @@ static void lua_ubus_call_complete_cb(struct ubus_request *req, int ret)
 
     ctx->req.L = NULL;
 
-    ev_timer_stop(ctx->eco->loop, &ctx->tmr);
+    ev_timer_stop(ctx->eco->loop, &ctx->req.tmr);
 
     if (ret) {
         lua_pushnil(L);
@@ -325,8 +325,8 @@ static int lua_ubus_call(lua_State *L)
     ctx->req.L = L;
 
     if (ctx->req.timeout > 0) {
-        ev_timer_set(&ctx->tmr, ctx->req.timeout, 0);
-        ev_timer_start(ctx->eco->loop, &ctx->tmr);
+        ev_timer_set(&ctx->req.tmr, ctx->req.timeout, 0);
+        ev_timer_start(ctx->eco->loop, &ctx->req.tmr);
     }
 
     return lua_yield(L, 0);
@@ -661,7 +661,7 @@ static int lua_ubus_connect(lua_State *L)
     ev_io_init(&ctx->io, ev_io_cb, ctx->ctx.sock.fd, EV_READ);
     ev_io_start(ctx->eco->loop, &ctx->io);
 
-    ev_timer_init(&ctx->tmr, ev_timer_cb, 30.0, 0);
+    ev_timer_init(&ctx->req.tmr, req_timeout_cb, 30.0, 0);
 
     return 1;
 }
