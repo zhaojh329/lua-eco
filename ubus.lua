@@ -9,7 +9,7 @@ local global_timeout = 30.0
 
 local methods = {}
 
-for _, method in ipairs({'close', 'call', 'reply', 'send', 'objects', 'settimeout'}) do
+for _, method in ipairs({'close', 'call', 'reply', 'send', 'objects', 'settimeout', 'auto_reconnect'}) do
     methods[method] = function(self, ...)
         local con = self.con
         return con[method](con, ...)

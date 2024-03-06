@@ -12,6 +12,7 @@
 struct eco_ubus_context {
     struct eco_context *eco;
     struct ubus_context ctx;
+    struct ev_timer tmr;
     struct ev_io io;
     struct {
         struct ubus_request req;
@@ -20,6 +21,8 @@ struct eco_ubus_context {
         bool has_data;
         double timeout;
     } req;
+    char *path;
+    char path_data[0];
 };
 
 struct eco_ubus_object {
@@ -242,6 +245,38 @@ static int lua_ubus_settimeout(lua_State *L)
 
     ctx->req.timeout = timeout;
     return 0;
+}
+
+static void reconnect_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+    struct eco_ubus_context *ctx = container_of(w, struct eco_ubus_context, tmr);
+
+    if (ubus_reconnect(&ctx->ctx, ctx->path)) {
+        ev_timer_set(w, 1.0, 0);
+        ev_timer_start(loop, w);
+        return;
+    }
+
+    ev_io_init(&ctx->io, ev_io_cb, ctx->ctx.sock.fd, EV_READ);
+    ev_io_start(loop, &ctx->io);
+}
+
+static void ubus_connection_lost(struct ubus_context *ctx)
+{
+    struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
+    struct ev_loop *loop = c->eco->loop;
+
+    ev_io_stop(loop, &c->io);
+    ev_timer_start(loop, &c->tmr);
+}
+
+static int lua_ubus_auto_reconnect(lua_State *L)
+{
+    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+
+    ctx->ctx.connection_lost = ubus_connection_lost;
+
+    return 1;
 }
 
 static void lua_ubus_call_data_cb(struct ubus_request *req, int type, struct blob_attr *msg)
@@ -626,7 +661,8 @@ static int lua_ubus_complete_deferred_request(lua_State *L)
 
 static int lua_ubus_connect(lua_State *L)
 {
-    const char *sock = luaL_optstring(L, 1, NULL);
+    const char *path = luaL_optstring(L, 1, NULL);
+    size_t size = sizeof(struct eco_ubus_context);
     struct eco_ubus_context *ctx;
 
     if (getuid() > 0) {
@@ -635,13 +671,21 @@ static int lua_ubus_connect(lua_State *L)
         return 2;
     }
 
-    ctx = lua_newuserdata(L, sizeof(struct eco_ubus_context));
+    if (path)
+        size += strlen(path) + 1;
+
+    ctx = lua_newuserdata(L, size);
     memset(ctx, 0, sizeof(struct eco_ubus_context));
 
-    if (ubus_connect_ctx(&ctx->ctx, sock)) {
+    if (ubus_connect_ctx(&ctx->ctx, path)) {
         lua_pushnil(L);
         lua_pushliteral(L, "Failed to connect to ubus");
         return 2;
+    }
+
+    if (path) {
+        strcpy(ctx->path_data, path);
+        ctx->path = ctx->path_data;
     }
 
     lua_pushvalue(L, lua_upvalueindex(1));
@@ -661,6 +705,7 @@ static int lua_ubus_connect(lua_State *L)
     ev_io_init(&ctx->io, ev_io_cb, ctx->ctx.sock.fd, EV_READ);
     ev_io_start(ctx->eco->loop, &ctx->io);
 
+    ev_timer_init(&ctx->tmr, reconnect_cb, 1.0, 0);
     ev_timer_init(&ctx->req.tmr, req_timeout_cb, 30.0, 0);
 
     return 1;
@@ -694,6 +739,7 @@ static int lua_ubus_handle_objects(lua_State *L)
 
 static const struct luaL_Reg ubus_methods[] =  {
     {"settimeout", lua_ubus_settimeout},
+    {"auto_reconnect", lua_ubus_auto_reconnect},
     {"call", lua_ubus_call},
     {"send", lua_ubus_send},
     {"listen", lua_ubus_listen},
