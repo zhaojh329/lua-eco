@@ -62,7 +62,7 @@ static void __lua_log(lua_State *L, int priority)
         }
 
         if (i > 1) {
-            *pos++ = '\t';
+            *pos++ = ' ';
             room--;
         }
 
