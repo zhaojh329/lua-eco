@@ -441,6 +441,7 @@ end
                 in the UDP request. Defaults to false
     nameservers: a list of nameservers to be used. Each nameserver entry can be either a
                 single hostname string or a table holding both the hostname string and the port number.
+    mark: a number used to set SO_MARK to socket
 --]]
 function M.query(qname, opts)
     if string.byte(qname, 1) == string.byte('.') or #qname > 255 then
@@ -519,6 +520,10 @@ function M.query(qname, opts)
         end
         if not s then
             return nil, err
+        end
+
+        if opts.mark then
+            s:setoption('mark', opts.mark)
         end
 
         answers, err = query(s, id, req, nameserver)
