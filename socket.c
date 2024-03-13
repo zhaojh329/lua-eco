@@ -686,6 +686,7 @@ static struct sock_opt optsets[] = {
     {"keepalive", SOL_SOCKET, SO_KEEPALIVE, sockopt_set_boolean},
     {"sndbuf", SOL_SOCKET, SO_SNDBUF, sockopt_set_int},
     {"rcvbuf", SOL_SOCKET, SO_RCVBUF, sockopt_set_int},
+    {"mark", SOL_SOCKET, SO_MARK, sockopt_set_int},
     {"bindtodevice", SOL_SOCKET, SO_BINDTODEVICE, sockopt_set_bindtodevice},
     {"tcp_keepidle", SOL_TCP, TCP_KEEPIDLE, sockopt_set_int},
     {"tcp_keepintvl", SOL_TCP, TCP_KEEPINTVL, sockopt_set_int},
