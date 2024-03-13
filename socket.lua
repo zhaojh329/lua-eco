@@ -148,7 +148,7 @@ function methods:recvfrom(n, timeout)
     return self.sock:recvfrom(n, timeout)
 end
 
-function M.socket(family, domain, protocol)
+function M.socket(family, domain, protocol, options)
     local sock, err = socket.socket(family, domain, protocol)
     if not sock then
         return nil, err
@@ -158,6 +158,24 @@ function M.socket(family, domain, protocol)
 
     if domain == socket.SOCK_STREAM then
         o.b = bufio.new(sock:getfd(), { eof_error = 'closed' })
+    end
+
+    options = options or {}
+
+    if options.reuseaddr then
+        sock:setoption('reuseaddr', true)
+    end
+
+    if options.reuseport then
+        sock:setoption('reuseport', true)
+    end
+
+    if options.ipv6_v6only then
+        sock:setoption('ipv6_v6only', true)
+    end
+
+    if options.mark then
+        sock:setoption('mark', options.mark)
     end
 
     return setmetatable(o, metatable)
@@ -204,24 +222,14 @@ function M.netlink(protocol)
     return M.socket(socket.AF_NETLINK, socket.SOCK_RAW, protocol)
 end
 
-function M.listen_tcp(ipaddr, port, options, ipv6)
-    local sock, err = M.socket(ipv6 and socket.AF_INET6 or socket.AF_INET, socket.SOCK_STREAM)
-    if not sock then
-        return nil, err
-    end
-
+function M.listen_tcp(ipaddr, port, options)
     options = options or {}
 
-    if options.reuseaddr then
-        sock:setoption('reuseaddr', true)
-    end
+    local family = options.ipv6 and socket.AF_INET6 or socket.AF_INET
 
-    if options.reuseport then
-        sock:setoption('reuseport', true)
-    end
-
-    if options.ipv6_v6only then
-        sock:setoption('ipv6_v6only', true)
+    local sock, err = M.socket(family, socket.SOCK_STREAM, nil, options)
+    if not sock then
+        return nil, err
     end
 
     if options.tcp_nodelay then
@@ -257,11 +265,19 @@ function M.listen_tcp(ipaddr, port, options, ipv6)
 end
 
 function M.listen_tcp6(ipaddr, port, options)
-    return M.listen_tcp(ipaddr, port, options, true)
+    options = options or {}
+
+    options.ipv6 = true
+
+    return M.listen_tcp(ipaddr, port, options)
 end
 
-function M.connect_tcp(ipaddr, port, ipv6)
-    local sock, err = M.socket(ipv6 and socket.AF_INET6 or socket.AF_INET, socket.SOCK_STREAM)
+function M.connect_tcp(ipaddr, port, options)
+    options = options or {}
+
+    local family = options.ipv6 and socket.AF_INET6 or socket.AF_INET
+
+    local sock, err = M.socket(family, socket.SOCK_STREAM, nil, options)
     if not sock then
         return nil, err
     end
@@ -269,39 +285,41 @@ function M.connect_tcp(ipaddr, port, ipv6)
     return sock:connect(ipaddr, port)
 end
 
-function M.connect_tcp6(ipaddr, port)
-    return M.connect_tcp(ipaddr, port, true)
-end
-
-function M.listen_udp(ipaddr, port, options, ipv6)
-    local sock, err = M.socket(ipv6 and socket.AF_INET6 or socket.AF_INET, socket.SOCK_DGRAM)
-    if not sock then
-        return nil, err
-    end
-
+function M.connect_tcp6(ipaddr, port, options)
     options = options or {}
 
-    if options.reuseaddr then
-        sock:setoption('reuseaddr', true)
-    end
+    options.ipv6 = true
 
-    if options.reuseport then
-        sock:setoption('reuseport', true)
-    end
+    return M.connect_tcp(ipaddr, port, options)
+end
 
-    if options.ipv6_v6only then
-        sock:setoption('ipv6_v6only', true)
+function M.listen_udp(ipaddr, port, options)
+    options = options or {}
+
+    local family = options.ipv6 and socket.AF_INET6 or socket.AF_INET
+
+    local sock, err = M.socket(family, socket.SOCK_DGRAM, nil, options)
+    if not sock then
+        return nil, err
     end
 
     return sock:bind(ipaddr, port)
 end
 
 function M.listen_udp6(ipaddr, port, options)
-    return M.listen_udp(ipaddr, port, options, true)
+    options = options or {}
+
+    options.ipv6 = true
+
+    return M.listen_udp(ipaddr, port, options)
 end
 
-function M.connect_udp(ipaddr, port, ipv6)
-    local sock, err = M.socket(ipv6 and socket.AF_INET6 or socket.AF_INET, socket.SOCK_DGRAM)
+function M.connect_udp(ipaddr, port, options)
+    options = options or {}
+
+    local family = options.ipv6 and socket.AF_INET6 or socket.AF_INET
+
+    local sock, err = M.socket(family, socket.SOCK_DGRAM, nil, options)
     if not sock then
         return nil, err
     end
@@ -309,8 +327,12 @@ function M.connect_udp(ipaddr, port, ipv6)
     return sock:connect(ipaddr, port)
 end
 
-function M.connect_udp6(ipaddr, port)
-    return M.connect_udp(ipaddr, port, true)
+function M.connect_udp6(ipaddr, port, options)
+    options = options or {}
+
+    options.ipv6 = true
+
+    return M.connect_udp(ipaddr, port, options)
 end
 
 function M.listen_unix(path, options)

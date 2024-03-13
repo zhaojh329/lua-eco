@@ -783,9 +783,9 @@ function M.listen(ipaddr, port, options, handler)
 
     if options.cert and options.key then
         options.ssl = true
-        sock, err = ssl.listen(ipaddr, port, options, options.ipv6)
+        sock, err = ssl.listen(ipaddr, port, options)
     else
-        sock, err = socket.listen_tcp(ipaddr, port, options, options.ipv6)
+        sock, err = socket.listen_tcp(ipaddr, port, options)
     end
 
     if not sock then

@@ -378,10 +378,12 @@ function methods:request(method, url, body, opts)
     local sock
 
     for _, a in ipairs(addresses) do
+        opts.ipv6 = a.type == dns.TYPE_AAAA
+
         if scheme_info.use_ssl then
-            sock, err = ssl.connect(a.address, port, opts, a.type == dns.TYPE_AAAA)
+            sock, err = ssl.connect(a.address, port, opts)
         else
-            sock, err = socket.connect_tcp(a.address, port, a.type == dns.TYPE_AAAA)
+            sock, err = socket.connect_tcp(a.address, port, opts)
         end
 
         if sock then

@@ -181,10 +181,10 @@ local srv_metatable = {
     __gc = srv_methods.close
 }
 
-function M.listen(ipaddr, port, options, ipv6)
+function M.listen(ipaddr, port, options)
     options = options or {}
 
-    local sock, err = socket.listen_tcp(ipaddr, port, options, ipv6)
+    local sock, err = socket.listen_tcp(ipaddr, port, options)
     if not sock then
         return nil, err
     end
@@ -203,10 +203,10 @@ function M.listen(ipaddr, port, options, ipv6)
     return setmetatable({ ctx = ctx, sock = sock, insecure = options.insecure }, srv_metatable)
 end
 
-function M.connect(ipaddr, port, options, ipv6)
+function M.connect(ipaddr, port, options)
     options = options or {}
 
-    local sock, err = socket.connect_tcp(ipaddr, port, ipv6)
+    local sock, err = socket.connect_tcp(ipaddr, port, options)
     if not sock then
         return nil, err
     end
