@@ -264,14 +264,6 @@ function M.listen_tcp(ipaddr, port, options)
     return sock:listen(options.backlog)
 end
 
-function M.listen_tcp6(ipaddr, port, options)
-    options = options or {}
-
-    options.ipv6 = true
-
-    return M.listen_tcp(ipaddr, port, options)
-end
-
 function M.connect_tcp(ipaddr, port, options)
     options = options or {}
 
@@ -283,14 +275,6 @@ function M.connect_tcp(ipaddr, port, options)
     end
 
     return sock:connect(ipaddr, port)
-end
-
-function M.connect_tcp6(ipaddr, port, options)
-    options = options or {}
-
-    options.ipv6 = true
-
-    return M.connect_tcp(ipaddr, port, options)
 end
 
 function M.listen_udp(ipaddr, port, options)
@@ -306,14 +290,6 @@ function M.listen_udp(ipaddr, port, options)
     return sock:bind(ipaddr, port)
 end
 
-function M.listen_udp6(ipaddr, port, options)
-    options = options or {}
-
-    options.ipv6 = true
-
-    return M.listen_udp(ipaddr, port, options)
-end
-
 function M.connect_udp(ipaddr, port, options)
     options = options or {}
 
@@ -325,14 +301,6 @@ function M.connect_udp(ipaddr, port, options)
     end
 
     return sock:connect(ipaddr, port)
-end
-
-function M.connect_udp6(ipaddr, port, options)
-    options = options or {}
-
-    options.ipv6 = true
-
-    return M.connect_udp(ipaddr, port, options)
 end
 
 function M.listen_unix(path, options)

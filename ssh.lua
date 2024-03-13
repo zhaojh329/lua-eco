@@ -420,16 +420,11 @@ local session_metatable = {
 }
 
 function M.new(ipaddr, port, username, password)
-    local sock, err
-
-    if socket.is_ipv4_address(ipaddr) then
-        sock, err = socket.connect_tcp(ipaddr, port)
-    elseif socket.is_ipv6_address(ipaddr) then
-        sock, err = socket.connect_tcp6(ipaddr, port)
-    else
+    if not socket.is_ipv4_address(ipaddr) and not socket.is_ipv6_address(ipaddr) then
         return nil, 'invalid ipaddr: ' .. ipaddr
     end
 
+    local sock, err = socket.connect_tcp(ipaddr, port, { ipv6 = socket.is_ipv6_address(ipaddr) })
     if not sock then
         return nil, err
     end
