@@ -178,6 +178,10 @@ function M.socket(family, domain, protocol, options)
         sock:setoption('mark', options.mark)
     end
 
+    if options.device then
+        sock:setoption('bindtodevice', options.device)
+    end
+
     return setmetatable(o, metatable)
 end
 

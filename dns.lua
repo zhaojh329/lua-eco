@@ -442,6 +442,7 @@ end
     nameservers: a list of nameservers to be used. Each nameserver entry can be either a
                 single hostname string or a table holding both the hostname string and the port number.
     mark: a number used to set SO_MARK to socket
+    device: a string used to set SO_BINDTODEVICE to socket
 --]]
 function M.query(qname, opts)
     if string.byte(qname, 1) == string.byte('.') or #qname > 255 then
@@ -524,6 +525,10 @@ function M.query(qname, opts)
 
         if opts.mark then
             s:setoption('mark', opts.mark)
+        end
+
+        if opts.device then
+            s:setoption('bindtodevice', opts.device)
         end
 
         answers, err = query(s, id, req, nameserver)
