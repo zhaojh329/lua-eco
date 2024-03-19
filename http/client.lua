@@ -360,7 +360,8 @@ function methods:request(method, url, body, opts)
 
     local answers, err = dns.query(host, {
         type = opts.ipv6 and dns.TYPE_AAAA or dns.TYPE_A,
-        mark = opts.mark
+        mark = opts.mark,
+        device = opts.device
     })
     if not answers then
         return nil, 'resolve "' .. host .. '" fail: ' .. err
@@ -430,6 +431,7 @@ end
         ipv6: A boolean, parse ipv6 address for host.
         body_to_file: A string indicates that the body is to be written to the file.
         mark: a number used to set SO_MARK to socket
+        device: a string used to set SO_BINDTODEVICE to socket
 
     In case of failure, the function returns nil followed by an error message.
     If successful, returns a table contains the
