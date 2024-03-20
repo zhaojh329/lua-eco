@@ -492,8 +492,10 @@ function M.query(qname, opts)
         return nil, err
     end
 
-    for _, nameserver in ipairs(resolvconf.nameservers) do
-        nameservers[#nameservers + 1] = nameserver
+    if #nameservers == 0 then
+        for _, nameserver in ipairs(resolvconf.nameservers) do
+            nameservers[#nameservers + 1] = nameserver
+        end
     end
 
     if #nameservers < 1 then
