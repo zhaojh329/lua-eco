@@ -116,6 +116,29 @@ local function recv_http_headers(sock, timeout)
     return headers
 end
 
+local function receive_body_until_closed(resp, sock, timeout, body_to_file)
+    local body = {}
+
+    while true do
+        local data = sock:recv(4096, timeout)
+        if not data then
+            break
+        end
+
+        if body_to_file then
+            body_to_file:write(data)
+        else
+            body[#body+1] = data
+        end
+    end
+
+    if not body_to_file then
+        resp.body = concat(body)
+    end
+
+    return true
+end
+
 local function receive_body(resp, sock, timeout, length, body_to_file)
     local body = {}
 
@@ -219,37 +242,31 @@ local function do_http_request(self, method, path, headers, body, opts)
         return resp
     end
 
-    local chunked = headers['transfer-encoding'] == 'chunked'
-    local content_length
+    local body_to_file = opts.body_to_file
 
-    if not chunked and headers['content-length'] then
-        content_length = tonumber(headers['content-length'])
+    if body_to_file then
+        local f, err = io.open(body_to_file, 'w')
+        if not f then
+            return false, 'create "' .. body_to_file .. '" fail: ' .. err
+        end
+        body_to_file = f
     end
 
-    if chunked or content_length then
-        local body_to_file = opts.body_to_file
+    if headers['transfer-encoding'] == 'chunked' then
+        ok, err = receive_chunked_body(resp, sock, timeout, body_to_file)
+    elseif headers['content-length'] then
+        local content_length = tonumber(headers['content-length'])
+        ok, err = receive_body(resp, sock, timeout, content_length, body_to_file)
+    else
+        ok, err = receive_body_until_closed(resp, sock, timeout, body_to_file)
+    end
 
-        if body_to_file then
-            local f, err = io.open(body_to_file, 'w')
-            if not f then
-                return false, 'create "' .. body_to_file .. '" fail: ' .. err
-            end
-            body_to_file = f
-        end
+    if body_to_file then
+        body_to_file:close()
+    end
 
-        if chunked then
-            ok, err = receive_chunked_body(resp, sock, timeout, body_to_file)
-        else
-            ok, err = receive_body(resp, sock, timeout, content_length, body_to_file)
-        end
-
-        if body_to_file then
-            body_to_file:close()
-        end
-
-        if not ok then
-            return nil, err
-        end
+    if not ok then
+        return nil, err
     end
 
     return resp
