@@ -506,7 +506,7 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local s, answers, req, err
+    local s, answers, req
 
     for _, nameserver in ipairs(nameservers) do
         local id = get_next_transaction_id()
