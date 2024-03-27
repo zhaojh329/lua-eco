@@ -40,7 +40,8 @@ local function parse_resolvconf()
     local conf = {}
 
     if not file.access('/etc/resolv.conf') then
-        return nil, 'not found "/etc/resolv.conf"'
+        conf.nameservers = {{ '127.0.0.1', 53 }}
+        return conf
     end
 
     for line in io.lines('/etc/resolv.conf') do
@@ -57,6 +58,10 @@ local function parse_resolvconf()
                 end
             end
         end
+    end
+
+    if #nameservers == 0 then
+        nameservers[#nameservers + 1] = { '127.0.0.1', 53 }
     end
 
     conf.nameservers = nameservers
@@ -487,10 +492,7 @@ function M.query(qname, opts)
         nameservers[#nameservers + 1] = { host, port, socket.is_ipv6_address(host) }
     end
 
-    local resolvconf, err = parse_resolvconf()
-    if not resolvconf then
-        return nil, err
-    end
+    local resolvconf = parse_resolvconf()
 
     if #nameservers == 0 then
         for _, nameserver in ipairs(resolvconf.nameservers) do
@@ -506,7 +508,7 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local s, answers, req
+    local s, answers, req, err
 
     for _, nameserver in ipairs(nameservers) do
         local id = get_next_transaction_id()
