@@ -680,6 +680,52 @@ static int sockopt_set_bindtodevice(struct eco_socket *sock, lua_State *L, struc
     return sockopt_set(sock, L, o, &ifr, sizeof(ifr));
 }
 
+static int sockopt_set_ip_membership(struct eco_socket *sock, lua_State *L, struct sock_opt *o)
+{
+    struct ip_mreq mreq = {};
+    const char *multiaddr;
+
+    luaL_checktype(L, 3, LUA_TTABLE);
+
+    lua_getfield(L, 3, "multiaddr");
+
+    multiaddr = lua_tostring(L, -1);
+
+    if (!multiaddr || inet_pton(AF_INET, multiaddr, &mreq.imr_multiaddr) != 1)
+        luaL_argerror(L, 3, "multiaddr: not a valid IP address");
+
+    lua_getfield(L, 3, "interface");
+
+    if (lua_isstring(L, -1)) {
+        const char *interface = lua_tostring(L, -1);
+        if (inet_pton(AF_INET, interface, &mreq.imr_interface) != 1)
+            luaL_argerror(L, 3, "interface: not a valid IP address");
+    }
+
+    return sockopt_set(sock, L, o, &mreq, sizeof(mreq));
+}
+
+static int sockopt_set_ipv6_membership(struct eco_socket *sock, lua_State *L, struct sock_opt *o)
+{
+    struct ipv6_mreq mreq;
+    const char *multiaddr;
+
+    luaL_checktype(L, 3, LUA_TTABLE);
+
+    lua_getfield(L, 3, "multiaddr");
+
+    multiaddr = lua_tostring(L, -1);
+
+    if (!multiaddr || inet_pton(AF_INET6, multiaddr, &mreq.ipv6mr_multiaddr) != 1)
+        luaL_argerror(L, 3, "multiaddr: not a valid IPv6 address");
+
+    lua_getfield(L, 3, "interface");
+
+    mreq.ipv6mr_interface = luaL_optinteger(L, -1, 0);
+
+    return sockopt_set(sock, L, o, &mreq, sizeof(mreq));
+}
+
 static struct sock_opt optsets[] = {
     {"reuseaddr", SOL_SOCKET, SO_REUSEADDR, sockopt_set_boolean},
     {"reuseport", SOL_SOCKET, SO_REUSEPORT, sockopt_set_boolean},
@@ -693,7 +739,11 @@ static struct sock_opt optsets[] = {
     {"tcp_keepcnt", SOL_TCP, TCP_KEEPCNT, sockopt_set_int},
     {"tcp_fastopen", SOL_TCP, TCP_FASTOPEN, sockopt_set_int},
     {"tcp_nodelay", SOL_TCP, TCP_NODELAY, sockopt_set_boolean},
+    {"ip_add_membership", SOL_IP, IP_ADD_MEMBERSHIP, sockopt_set_ip_membership},
+    {"ip_drop_membership", SOL_IP, IP_DROP_MEMBERSHIP, sockopt_set_ip_membership},
     {"ipv6_v6only", SOL_IPV6, IPV6_V6ONLY, sockopt_set_boolean},
+    {"ipv6_add_membership", SOL_IPV6, IPV6_ADD_MEMBERSHIP, sockopt_set_ipv6_membership},
+    {"ipv6_drop_membership", SOL_IPV6, IPV6_DROP_MEMBERSHIP, sockopt_set_ipv6_membership},
     {"netlink_add_membership", SOL_NETLINK, NETLINK_ADD_MEMBERSHIP, sockopt_set_int},
     {"netlink_drop_membership", SOL_NETLINK, NETLINK_DROP_MEMBERSHIP, sockopt_set_int},
     {}
