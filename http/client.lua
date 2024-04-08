@@ -451,6 +451,7 @@ end
         mark: a number used to set SO_MARK to socket
         device: a string used to set SO_BINDTODEVICE to socket
         nameservers: see dns.query
+        headers: A table contains headers user customized
 
     In case of failure, the function returns nil followed by an error message.
     If successful, returns a table contains the
