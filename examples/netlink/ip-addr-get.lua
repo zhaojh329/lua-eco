@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local addr = require 'eco.ip'.address
+local socket = require 'eco.socket'
 
 local ifname = 'eth0'
 
@@ -10,6 +11,13 @@ if not res then
     return
 end
 
-for k, v in pairs(res) do
-    print(k .. ':', v)
+for _, info in pairs(res) do
+    if info.family == socket.AF_INET then
+        print(info.ifname, 'inet', info.scope)
+        print('', info.address, info.broadcast)
+    else
+        print(info.ifname, 'inet6', info.scope)
+        print('', info.address)
+    end
+    print()
 end

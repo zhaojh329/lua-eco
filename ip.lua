@@ -452,26 +452,30 @@ function address.get(dev)
                 if not dev_index or dev_index == info.index then
                     res.ifname = socket.if_indextoname(info.index)
                     res.scope = rtscope_to_name[info.scope]
+                    res.family = family
 
                     local attrs = msg:parse_attr(rtnl.IFADDRMSG_SIZE)
+                    local addr_attr
 
-                    if attrs[rtnl.IFA_LOCAL] then
-                        res.address = socket.inet_ntop(family, nl.attr_get_payload(attrs[rtnl.IFA_LOCAL]))
+                    if family == socket.AF_INET then
+                        addr_attr = attrs[rtnl.IFA_LOCAL]
+                    elseif family == socket.AF_INET6 then
+                        addr_attr = attrs[rtnl.IFA_ADDRESS]
                     end
 
-                    if attrs[rtnl.IFA_BROADCAST] then
-                        res.broadcast = socket.inet_ntop(family, nl.attr_get_payload(attrs[rtnl.IFA_BROADCAST]))
-                    end
+                    if addr_attr then
+                        res.address = socket.inet_ntop(family, nl.attr_get_payload(addr_attr))
 
-                    if attrs[rtnl.IFA_LABEL] then
-                        res.label = nl.attr_get_str(attrs[rtnl.IFA_LABEL])
-                    end
+                        if attrs[rtnl.IFA_BROADCAST] then
+                            res.broadcast = socket.inet_ntop(family, nl.attr_get_payload(attrs[rtnl.IFA_BROADCAST]))
+                        end
 
-                    if dev_index then
-                        return res
-                    end
+                        if attrs[rtnl.IFA_LABEL] then
+                            res.label = nl.attr_get_str(attrs[rtnl.IFA_LABEL])
+                        end
 
-                    reses[#reses + 1] = res
+                        reses[#reses + 1] = res
+                    end
                 end
             elseif nlh.type == nl.NLMSG_ERROR then
                 err = msg:parse_error()
@@ -479,7 +483,7 @@ function address.get(dev)
                     return nil, 'RTNETLINK answers: ' .. sys.strerror(-err)
                 end
             elseif nlh.type == nl.NLMSG_DONE then
-                if dev_index then
+                if dev_index and #reses < 1 then
                     return nil, 'not found'
                 end
                 return reses
