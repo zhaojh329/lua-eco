@@ -11,7 +11,7 @@ if not ok then
 end
 
 local res, err = addr.get(ifname)
-if not ok then
+if not res then
     print('get fail:', err)
     return
 end
