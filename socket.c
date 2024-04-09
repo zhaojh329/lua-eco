@@ -738,6 +738,7 @@ static int lua_closed(lua_State *L)
 static int lua_sock_close(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct ev_loop *loop = sock->eco->loop;
 
     if (sock->fd < 0)
         return 0;
@@ -749,6 +750,9 @@ static int lua_sock_close(lua_State *L)
         if (!getsockname(sock->fd, (struct sockaddr *)&un, &addrlen))
             unlink(un.sun_path);
     }
+
+    ev_timer_stop(loop, &sock->tmr);
+    ev_io_stop(loop, &sock->io);
 
     close(sock->fd);
 
