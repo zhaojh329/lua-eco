@@ -203,7 +203,7 @@ static int lua_ubus_close(lua_State *L)
 
     ctx->ctx.sock.eof = true;
 
-    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);;
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
 
     lua_pushlightuserdata(L, ctx);
     lua_pushnil(L);
