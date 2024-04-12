@@ -459,9 +459,13 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
 {
     struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
     struct eco_ubus_object *o = container_of(obj, struct eco_ubus_object, object);
-    struct ubus_request_data *new_req;
+    struct ubus_request_data *dreq;
     lua_State *L = c->eco->L;
     int rv = 0;
+
+    dreq = malloc(sizeof(struct ubus_request_data));
+    if (!dreq)
+        luaL_error(L, "no mem");
 
     lua_settop(L, 0);
 
@@ -479,8 +483,9 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     lua_replace(L, -6);
     lua_settop(L, -5);
 
-    new_req = lua_newuserdata(L, sizeof(struct ubus_request_data));
-    ubus_defer_request(ctx, req, new_req);
+    ubus_defer_request(ctx, req, dreq);
+
+    lua_pushlightuserdata(L, dreq);
 
     blob_to_lua_table(L, blob_data(msg), blob_len(msg), false);
 
@@ -655,6 +660,7 @@ static int lua_ubus_complete_deferred_request(lua_State *L)
     int ret = luaL_checkinteger(L, 3);
 
     ubus_complete_deferred_request(&ctx->ctx, req, ret);
+    free(req);
 
     return 0;
 }
