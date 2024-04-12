@@ -487,7 +487,7 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
     lua_call(L, 2, 1);
 
     if (lua_isnumber(L, -1))
-		rv = lua_tonumber(L, -1);
+        rv = lua_tonumber(L, -1);
 
     lua_pop(L, 1);
 
@@ -651,12 +651,12 @@ static int lua_ubus_reply(lua_State *L)
 static int lua_ubus_complete_deferred_request(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
-	struct ubus_request_data *req = lua_touserdata(L, 2);
-	int ret = luaL_checkinteger(L, 3);
+    struct ubus_request_data *req = lua_touserdata(L, 2);
+    int ret = luaL_checkinteger(L, 3);
 
-	ubus_complete_deferred_request(&ctx->ctx, req, ret);
+    ubus_complete_deferred_request(&ctx->ctx, req, ret);
 
-	return 0;
+    return 0;
 }
 
 static int lua_ubus_connect(lua_State *L)
