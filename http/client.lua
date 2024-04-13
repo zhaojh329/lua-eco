@@ -400,8 +400,6 @@ function methods:request(method, url, body, opts)
     local sock
 
     for _, a in ipairs(addresses) do
-        opts.ipv6 = a.type == dns.TYPE_AAAA
-
         if scheme_info.use_ssl then
             sock, err = ssl.connect(a.address, port, opts)
         else
