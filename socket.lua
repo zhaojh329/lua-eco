@@ -268,10 +268,22 @@ function M.listen_tcp(ipaddr, port, options)
     return sock:listen(options.backlog)
 end
 
+local function ipaddr_to_family(ipaddr)
+    if socket.is_ipv4_address(ipaddr) then
+        return socket.AF_INET
+    elseif socket.is_ipv6_address(ipaddr) then
+        return socket.AF_INET6
+    else
+        return nil
+    end
+end
+
 function M.connect_tcp(ipaddr, port, options)
     options = options or {}
 
-    local family = options.ipv6 and socket.AF_INET6 or socket.AF_INET
+    local family = ipaddr_to_family(ipaddr)
+
+    assert(family, 'not a valid IP address')
 
     local sock, err = M.socket(family, socket.SOCK_STREAM, nil, options)
     if not sock then
@@ -297,7 +309,9 @@ end
 function M.connect_udp(ipaddr, port, options)
     options = options or {}
 
-    local family = options.ipv6 and socket.AF_INET6 or socket.AF_INET
+    local family = ipaddr_to_family(ipaddr)
+
+    assert(family, 'not a valid IP address')
 
     local sock, err = M.socket(family, socket.SOCK_DGRAM, nil, options)
     if not sock then

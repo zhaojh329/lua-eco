@@ -424,7 +424,7 @@ function M.new(ipaddr, port, username, password)
         return nil, 'invalid ipaddr: ' .. ipaddr
     end
 
-    local sock, err = socket.connect_tcp(ipaddr, port, { ipv6 = socket.is_ipv6_address(ipaddr) })
+    local sock, err = socket.connect_tcp(ipaddr, port)
     if not sock then
         return nil, err
     end
