@@ -486,20 +486,18 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
 
     sock->snd.co = NULL;
 
-again:
+    if (sent == len) {
+        lua_pushinteger(L, sent);
+        return 1;
+    }
+
     if (addrlen)
         ret = sendto(sock->fd, data, len - sent, 0, (struct sockaddr *)&sock->snd.addr, addrlen);
     else
         ret = send(sock->fd, data, len - sent, 0);
     if (ret < 0) {
-        if (errno == EINTR)
+        if (errno == EINTR || errno == EAGAIN)
             goto again;
-
-        if (errno == EAGAIN) {
-            sock->snd.co = L;
-            ev_io_start(sock->eco->loop, &sock->snd.io);
-            return lua_yieldk(L, 0, ctx, lua_sendk);
-        }
 
         lua_pushnil(L);
         if (errno == EPIPE)
@@ -509,16 +507,13 @@ again:
         return 2;
     }
 
-    sent += ret;
+    sock->snd.sent += ret;
+    sock->snd.data += ret;
 
-    if (sent < len) {
-        sock->snd.sent = sent;
-        sock->snd.data += ret;
-        return lua_sendk(L, 0, ctx);
-    }
-
-    lua_pushinteger(L, sent);
-    return 1;
+again:
+    sock->snd.co = L;
+    ev_io_start(sock->eco->loop, &sock->snd.io);
+    return lua_yieldk(L, 0, ctx, lua_sendk);
 }
 
 static int lua_send(lua_State *L)
@@ -554,20 +549,19 @@ static int lua_sendfilek(lua_State *L, int status, lua_KContext ctx)
 
     sock->snd.co = NULL;
 
-again:
+    if (sent == len) {
+        close(sock->snd.fd);
+        lua_pushinteger(L, sent);
+        return 1;
+    }
+
     if (offset < 0)
         ret = sendfile(sock->fd, fd, NULL, len - sent);
     else
         ret = sendfile(sock->fd, fd, &offset, len - sent);
     if (ret < 0) {
-        if (errno == EINTR)
+        if (errno == EINTR || errno == EAGAIN)
             goto again;
-
-        if (errno == EAGAIN) {
-            sock->snd.co = L;
-            ev_io_start(sock->eco->loop, &sock->snd.io);
-            return lua_yieldk(L, 0, ctx, lua_sendfilek);
-        }
 
         close(sock->snd.fd);
         lua_pushnil(L);
@@ -578,17 +572,16 @@ again:
         return 2;
     }
 
-    sent += ret;
+    sock->snd.sent += ret;
+    sock->snd.offset = offset;
 
-    if (ret && sent < len) {
-        sock->snd.sent = sent;
-        sock->snd.offset = offset;
-        return lua_sendfilek(L, 0, ctx);
-    }
+    if (ret == 0)
+        sock->snd.len = sock->snd.sent;
 
-    close(sock->snd.fd);
-    lua_pushinteger(L, sent);
-    return 1;
+again:
+    sock->snd.co = L;
+    ev_io_start(sock->eco->loop, &sock->snd.io);
+    return lua_yieldk(L, 0, ctx, lua_sendfilek);
 }
 
 static int lua_sendfile(lua_State *L)

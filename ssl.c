@@ -179,6 +179,11 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
 
     s->L = NULL;
 
+    if (sent == len) {
+        lua_pushinteger(L, sent);
+        return 1;
+    }
+
     ret = ssl_write(s->ssl, data, len - sent);
     if (unlikely(ret < 0)) {
         if (ret == SSL_ERROR) {
@@ -186,23 +191,17 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
             lua_pushstring(L, ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf)));
             return 2;
         }
-
-        s->L = L;
-        ev_io_modify(&s->io, ret == SSL_WANT_READ ? EV_READ : EV_WRITE);
-        ev_io_start(s->ctx->eco->loop, &s->io);
-        return lua_yieldk(L, 0, ctx, lua_sendk);
+        goto again;
     }
 
-    sent += ret;
+    s->snd.sent += ret;
+    s->snd.data += ret;
 
-    if (sent < len) {
-        s->snd.sent = sent;
-        s->snd.data += ret;
-        return lua_sendk(L, 0, ctx);
-    }
-
-    lua_pushinteger(L, sent);
-    return 1;
+again:
+    s->L = L;
+    ev_io_modify(&s->io, ret == SSL_WANT_READ ? EV_READ : EV_WRITE);
+    ev_io_start(s->ctx->eco->loop, &s->io);
+    return lua_yieldk(L, 0, ctx, lua_sendk);
 }
 
 static int lua_send(lua_State *L)
