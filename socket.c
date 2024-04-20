@@ -501,6 +501,7 @@ again:
             return lua_yieldk(L, 0, ctx, lua_sendk);
         }
 
+        lua_pushnil(L);
         if (errno == EPIPE)
             lua_pushliteral(L, "closed");
         else
@@ -569,7 +570,7 @@ again:
         }
 
         close(sock->snd.fd);
-
+        lua_pushnil(L);
         if (errno == EPIPE)
             lua_pushliteral(L, "closed");
         else
