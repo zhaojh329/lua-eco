@@ -208,6 +208,12 @@ static int lua_send(lua_State *L)
 {
     struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
 
+    if (!s->ssl) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
+    }
+
     if (s->L) {
         lua_pushnil(L);
         lua_pushliteral(L, "busy");

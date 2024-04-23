@@ -462,6 +462,12 @@ static int lua_recvfrom(lua_State *L)
 
 static inline int lua_init_snd(struct eco_socket *sock, lua_State *L)
 {
+    if (sock->fd < 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return -1;
+    }
+
     if (sock->snd.co) {
         lua_pushnil(L);
         lua_pushliteral(L, "busy");
@@ -489,6 +495,12 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
     if (sent == len) {
         lua_pushinteger(L, sent);
         return 1;
+    }
+
+    if (sock->fd < 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
     }
 
     if (addrlen)
@@ -555,6 +567,12 @@ static int lua_sendfilek(lua_State *L, int status, lua_KContext ctx)
         return 1;
     }
 
+    if (sock->fd < 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
+    }
+
     if (offset < 0)
         ret = sendfile(sock->fd, fd, NULL, len - sent);
     else
@@ -589,6 +607,12 @@ static int lua_sendfile(lua_State *L)
     struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
     const char *path;
     int fd;
+
+    if (sock->fd < 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
+    }
 
     if (sock->snd.co) {
         lua_pushnil(L);
