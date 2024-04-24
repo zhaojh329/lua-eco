@@ -19,7 +19,6 @@
 
 [lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
-[libmosquitto]: https://github.com/eclipse/mosquitto
 [ubus]: https://openwrt.org/docs/techref/ubus
 
 Lua-eco is a Lua interpreter with a built-in event loop for scheduling lightweight coroutines automatically, enabling efficient concurrency in Lua. Build high-performance, scalable applications.
@@ -34,7 +33,7 @@ Lua-eco also provides some modules for you to build applications quickly:
 * `ssl`: Provides SSL/TLS support for Lua-eco applications, allowing you to establish secure connections to remote servers.
 * `http/https`: Provides a HTTP client and server implementation for Lua-eco applications.
 * `websocket`: Provides a WebSocket client and server implementation for Lua-eco applications, allowing you to build real-time web applications.
-* `mqtt`: Provides an implementation of the MQTT protocol for Lua-eco applications binding [libmosquitto], allowing you to build IoT and messaging applications.
+* `mqtt`: Provides an implementation of the MQTT 3.1.1 protocol for Lua-eco applications.
 * `dns`: Provides a DNS client implementation for Lua-eco applications, allowing you to perform DNS lookups and resolve domain names.
 * `ubus`: Provides a Lua interface to the [ubus] system in OpenWrt, allowing you to interact with system services and daemons.
 * `sync`: Provides operations for synchronization between coroutines.

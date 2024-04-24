@@ -22,7 +22,6 @@
 
 [lua]: https://www.lua.org
 [libev]: http://software.schmorp.de/pkg/libev.html
-[lua-mosquitto]: https://github.com/flukso/lua-mosquitto
 [ubus]: https://openwrt.org/docs/techref/ubus
 
 Lua-eco 是一个内置了事件循环的 Lua 解释器。它能够自动调度轻量级 `Lua 协程`, 从而实现在 Lua 中的高效并发。使用 Lua-eco 可以构建高性能、可扩展的应用程序。
@@ -37,7 +36,7 @@ Lua-eco 还提供了一些有用的模块，方便您快速构建应用程序:
 * `ssl`: 为 Lua-eco 应用程序提供了 SSL/TLS 支持，允许您建立与远程服务器的安全连接。
 * `http/https`: 为 Lua-eco 应用程序提供了 HTTP(S) 客户端和服务器实现。
 * `websocket`: 为 Lua-eco 应用程序提供了一个 WebSocket 客户端和服务器实现，允许您构建实时 Web 应用程序。
-* `mqtt`: 提供了一个 MQTT 协议的 Lua-eco 实现，使用 [lua-mosquitto]，允许您构建物联网和消息应用程序。
+* `mqtt`: 为 Lua-eco 应用程序提供了一个 MQTT 3.1.1 协议的实现。
 * `dns`: 为 Lua-eco 应用程序提供了一个 DNS 客户端实现，允许您执行 DNS 查找和解析域名。
 * `ubus`: 提供了一个 Lua 接口，用于 OpenWrt 中的 [ubus] 系统，允许您与系统服务和守护程序交互。
 * `sync`: 提供了协程间同步的操作。

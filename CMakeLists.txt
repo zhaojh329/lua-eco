@@ -134,29 +134,6 @@ if (ECO_UBUS_SUPPORT)
     endif()
 endif()
 
-if (ECO_MQTT_SUPPORT)
-    find_path(MOSQ_INCLUDE_DIRS mosquitto.h)
-    find_library(MOSQ NAMES mosquitto)
-    if (MOSQ_INCLUDE_DIRS AND MOSQ)
-        add_library(mqtt MODULE mqtt.c)
-        target_include_directories(mqtt PRIVATE ${MOSQ_INCLUDE_DIRS})
-        target_link_libraries(mqtt PRIVATE ${MOSQ})
-        set_target_properties(mqtt PROPERTIES OUTPUT_NAME mqtt PREFIX "")
-
-        install(
-            TARGETS mqtt
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
-        )
-
-        install(
-            FILES mqtt.lua
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco
-        )
-    else()
-        message(WARNING "Not found libmosquitto. Skip build eco.mqtt")
-    endif()
-endif()
-
 if (ECO_SSH_SUPPORT)
     pkg_search_module(LIBSSH2 libssh2)
     if (LIBSSH2_FOUND)
@@ -214,7 +191,7 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua dns.lua socket.lua
+    FILES time.lua sys.lua file.lua dns.lua socket.lua mqtt.lua
         websocket.lua sync.lua nl.lua genl.lua ip.lua nl80211.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )

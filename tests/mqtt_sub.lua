@@ -1,29 +1,27 @@
 #!/usr/bin/env eco
 
 local mqtt = require 'eco.mqtt'
-local time = require 'eco.time'
 
-local con = mqtt.new('eco-' .. os.time())
+local client = mqtt.new({ ipaddr = '127.0.0.1' })
 
-con:set_callback('ON_CONNECT', function(success, rc, str)
-    print('ON_CONNECT:', success, rc, str)
+client:on({
+    conack = function(ack)
+        print('conack:', ack.rc, ack.reason)
 
-    con:subscribe('eco', 2)
-end)
+        if ack.rc ~= mqtt.CONNACK_ACCEPTED then
+            return
+        end
 
-con:set_callback('ON_DISCONNECT', function(success, rc, str)
-    print('ON_DISCONNECT:', success, rc, str)
-end)
+        client:subscribe('eco', mqtt.QOS2)
+    end,
 
-con:set_callback('ON_MESSAGE', function(mid, topic, payload, qos, retain)
-    print('ON_MESSAGE:', mid, topic, payload, qos, retain)
-end)
+    publish = function(msg)
+        print('message:', msg.payload:match('%d+'))
+    end,
 
-local ok, err = con:connect('localhost', 1883)
-if not ok then
-    error(err)
-end
+    error = function(err)
+        print('error:', err)
+    end
+})
 
-while true do
-    time.sleep(1)
-end
+client:run()

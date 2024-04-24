@@ -3,34 +3,51 @@
 local mqtt = require 'eco.mqtt'
 local time = require 'eco.time'
 
-local con = mqtt.new('eco-' .. os.time())
+local client = mqtt.new({ ipaddr = '127.0.0.1' })
 
-local disconnected = false
+local function publish_loop()
+    local data = {}
 
-con:set_callback('ON_CONNECT', function(success, rc, str)
-    print('ON_CONNECT:', success, rc, str)
+    -- build 1MB data
+    for _ = 1, 1024 * 1024 do
+        data[#data + 1] = 'x'
+    end
 
-    eco.run(function()
-        local i = 0
-        while not disconnected do
-            print('pub', i)
-            con:publish('eco', 'hello ' .. i)
-            time.sleep(0.0001)
-            i = i + 1
+    data = table.concat(data)
+
+    local i = 0
+
+    while true do
+        local n = string.format('%010d', i)
+
+        print('pub', n)
+
+        local ok, err = client:publish('eco', n .. data, mqtt.QOS2)
+        if not ok then
+            print('publish:', err)
+            break
         end
-    end)
-end)
 
-con:set_callback('ON_DISCONNECT', function(success, rc, str)
-    print('ON_DISCONNECT:', success, rc, str)
-    disconnected = true
-end)
+        time.sleep(0.001)
 
-local ok, err = con:connect('localhost', 1883)
-if not ok then
-    error(err)
+        i = i + 1
+    end
 end
 
-while true do
-    time.sleep(1)
-end
+client:on({
+    conack = function(ack)
+        print('conack:', ack.rc, ack.reason)
+
+        if ack.rc ~= mqtt.CONNACK_ACCEPTED then
+            return
+        end
+
+        eco.run(publish_loop)
+    end,
+
+    error = function(err)
+        print('error:', err)
+    end
+})
+
+client:run()

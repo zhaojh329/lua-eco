@@ -1,67 +1,74 @@
 #!/usr/bin/env eco
 
+-- Using emqx for testing
+-- docker run -d --name emqx -p 1883:1883 -p 8083:8083 -p 8084:8084 -p 8883:8883 -p 18083:18083 emqx/emqx:latest
+
 local mqtt = require 'eco.mqtt'
 local time = require 'eco.time'
-local log = require 'eco.log'
 
-local auto_reconnect = true
+local auto_reconnect = false
 
-local function reconnect(con)
-    while true do
-        local ok, err = con:connect('localhost', 1883)
-        if ok then return end
+local function on_conack(ack, client)
+    print('conack:', ack.rc, ack.reason, ack.session_present)
 
-        log.err('connect fail:', err)
+    if ack.rc ~= mqtt.CONNACK_ACCEPTED then
+        return
+    end
 
-        if not auto_reconnect then return end
+    client:subscribe('test', mqtt.QOS2)
 
-        log.err('reconnect in 5s...')
-        time.sleep(5)
+    client:publish('eco', 'I am lua-eco MQTT', mqtt.QOS2)
+end
+
+local function on_suback(ack)
+    if ack.rc == mqtt.SUBACK_FAILURE then
+        print('suback:', ack.topic, 'fail')
+    else
+        print('suback:', ack.topic, ack.rc)
     end
 end
 
-local con = mqtt.new('eco-' .. os.time())
+local function on_unsuback(topic)
+    print('unsuback:', topic)
+end
 
-con:set_callback('ON_CONNECT', function(success, rc, str)
-    log.info('ON_CONNECT:', success, rc, str)
+local function on_publish(msg, client)
+    print('message:', msg.topic, msg.payload)
+    client:unsubscribe('test')
+end
 
-    con:subscribe('$SYS/#')
-    con:subscribe('eco', 2)
+local function on_error(err)
+    print('error:', err)
+end
 
-    con:publish('world', 'hello')
-end)
+local client = mqtt.new({
+    ipaddr = '127.0.0.1',
+    clean_session = true
+})
 
-con:set_callback('ON_DISCONNECT', function(success, rc, str)
-    log.info('ON_DISCONNECT:', success, rc, str)
+-- And you can set an option individually
+client:set('keepalive', 5.0)
 
-    if auto_reconnect then
-        time.sleep(5)
-        reconnect(con)
-    end
-end)
+-- You can add multiple event handlers at once
+client:on({
+    conack = on_conack,
+    suback = on_suback,
+    unsuback = on_unsuback,
+    publish = on_publish
+})
 
-con:set_callback('ON_PUBLISH', function(mid)
-    log.info('ON_PUBLISH:', mid)
-end)
-
-con:set_callback('ON_MESSAGE', function(mid, topic, payload, qos, retain)
-    log.info('ON_MESSAGE:', mid, topic, payload, qos, retain)
-end)
-
-con:set_callback('ON_SUBSCRIBE', function(...)
-    log.info('ON_SUBSCRIBE:', ...)
-end)
-
-con:set_callback('ON_UNSUBSCRIBE', function(mid)
-    log.info('ON_UNSUBSCRIBE:', mid)
-end)
-
-con:set_callback('ON_LOG', function(level, str)
-    log.info('ON_LOG:', level, str)
-end)
-
-reconnect(con)
+-- Or add one event handler at a time
+client:on('error', on_error)
 
 while true do
-    time.sleep(1)
+    -- Start handling events until the network connection is closed
+    client:run()
+
+    if not auto_reconnect then
+        break
+    end
+
+    print('reconnect in 5s...')
+
+    time.sleep(5)
 end
