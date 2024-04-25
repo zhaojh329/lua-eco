@@ -86,7 +86,7 @@ local function recv_status_line(sock, timeout)
         return nil, err
     end
 
-    local code, status = data:match('^HTTP/1.1 +(%d+) +([%w%p ]*)\r?$')
+    local code, status = data:match('^HTTP/1.[01] +(%d+) +([%w%p ]*)\r?$')
     if not code or not status then
         return nil, 'invalid http status line'
     end
