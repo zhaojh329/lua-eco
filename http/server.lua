@@ -4,7 +4,6 @@
 local file = require 'eco.core.file'
 local socket = require 'eco.socket'
 local url = require 'eco.http.url'
-local ssl = require 'eco.ssl'
 local log = require 'eco.log'
 
 local str_lower = string.lower
@@ -782,6 +781,7 @@ function M.listen(ipaddr, port, options, handler)
     local sock, err
 
     if options.cert and options.key then
+        local ssl = require 'eco.ssl'
         options.ssl = true
         sock, err = ssl.listen(ipaddr, port, options)
     else

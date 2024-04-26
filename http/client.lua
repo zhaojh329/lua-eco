@@ -1,12 +1,9 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local base64 = require 'eco.encoding.base64'
 local socket = require 'eco.socket'
 local URL = require 'eco.http.url'
 local file = require 'eco.file'
-local ssl = require 'eco.ssl'
-local dns = require 'eco.dns'
 
 local concat = table.concat
 local tonumber = tonumber
@@ -354,6 +351,7 @@ function methods:request(method, url, body, opts)
                                 rand(256) - 1, rand(256) - 1, rand(256) - 1,
                                 rand(256) - 1)
 
+        local base64 = require 'eco.encoding.base64'
         headers['sec-websocket-key'] = base64.encode(bytes)
     end
 
@@ -375,46 +373,48 @@ function methods:request(method, url, body, opts)
         headers[k:lower()] = v
     end
 
-    local answers, err = dns.query(host, {
-        type = opts.ipv6 and dns.TYPE_AAAA or dns.TYPE_A,
-        mark = opts.mark,
-        device = opts.device,
-        nameservers = opts.nameservers
-    })
-    if not answers then
-        return nil, 'resolve "' .. host .. '" fail: ' .. err
-    end
-
     local addresses = {}
 
-    for _, a in ipairs(answers) do
-        if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
-            addresses[#addresses + 1] = a
+    if socket.is_ip_address(host) then
+        addresses[1] = host
+    else
+        local dns = require 'eco.dns'
+        local answers, err = dns.query(host, {
+            type = opts.ipv6 and dns.TYPE_AAAA or dns.TYPE_A,
+            mark = opts.mark,
+            device = opts.device,
+            nameservers = opts.nameservers
+        })
+        if not answers then
+            return nil, 'resolve "' .. host .. '" fail: ' .. err
         end
-    end
 
-    if #addresses < 1 then
-        return nil, 'resolve "' .. host .. '" fail: not found'
+        for _, a in ipairs(answers) do
+            if a.type == dns.TYPE_A or a.type == dns.TYPE_AAAA then
+                addresses[#addresses + 1] = a.address
+            end
+        end
+
+        if #addresses < 1 then
+            return nil, 'resolve "' .. host .. '" fail: not found'
+        end
     end
 
     local sock
 
-    for _, a in ipairs(addresses) do
+    for _, address in ipairs(addresses) do
         if scheme_info.use_ssl then
-            sock, err = ssl.connect(a.address, port, opts)
+            local ssl = require 'eco.ssl'
+            sock, err = ssl.connect(address, port, opts)
         else
-            sock, err = socket.connect_tcp(a.address, port, opts)
+            sock, err = socket.connect_tcp(address, port, opts)
         end
 
         if sock then
             break
         end
 
-        if a.type == dns.TYPE_A then
-            err = string.format('connect "%s:%d" fail: ', a.address, port) .. err
-        else
-            err = string.format('connect "[%s]:%d" fail: ', a.address, port) .. err
-        end
+        err = string.format('connect "%s %d" fail: ', address, port) .. err
     end
 
     if not sock then

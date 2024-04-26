@@ -3,7 +3,6 @@
 
 local socket = require 'eco.socket'
 local time = require 'eco.time'
-local ssl = require 'eco.ssl'
 
 local str_char = string.char
 local str_byte = string.byte
@@ -409,6 +408,7 @@ local function mqtt_connect(self)
     local sock, err
 
     if opts.ssl then
+        local ssl = require 'eco.ssl'
         sock, err = ssl.connect(ipaddr, opts.port or 8883, opts)
     else
         sock, err = socket.connect_tcp(ipaddr, opts.port or 1883, opts)
