@@ -10,8 +10,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # The version number.
 set(ECO_VERSION_MAJOR 3)
-set(ECO_VERSION_MINOR 4)
-set(ECO_VERSION_PATCH 1)
+set(ECO_VERSION_MINOR 5)
+set(ECO_VERSION_PATCH 0)
 
 find_package(Libev REQUIRED)
 
