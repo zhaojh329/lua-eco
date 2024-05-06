@@ -3,6 +3,7 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <sys/time.h>
 #include <stdlib.h>
 #include <lualib.h>
 #include <unistd.h>
@@ -681,6 +682,14 @@ static void show_usage(const char *progname)
         , progname);
 }
 
+static void set_random_seed()
+{
+    struct timeval t;
+
+    gettimeofday(&t, NULL);
+    srandom(t.tv_usec * t.tv_sec);
+}
+
 int main(int argc, char *const argv[])
 {
     struct ev_loop *loop = EV_DEFAULT;
@@ -691,12 +700,11 @@ int main(int argc, char *const argv[])
 
     signal(SIGPIPE, SIG_IGN);
 
+    set_random_seed();
+
     L = luaL_newstate();
 
     luaL_openlibs(L);
-
-    luaL_loadstring(L, "math.randomseed(os.time())");
-    lua_pcall(L, 0, 0, 0);
 
     luaL_loadstring(L,
         "table.keys = function(t)"
