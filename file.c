@@ -51,7 +51,7 @@ static int lua_file_close(lua_State *L)
     return 1;
 }
 
-static int lua_file_read(lua_State *L)
+static int lua_read(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     size_t n = luaL_checkinteger(L, 2);
@@ -85,7 +85,7 @@ again:
     return 1;
 }
 
-static int lua_file_write(lua_State *L)
+static int lua_write(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     size_t len;
@@ -109,7 +109,7 @@ again:
     return 1;
 }
 
-static int lua_file_lseek(lua_State *L)
+static int lua_lseek(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     off_t offset = luaL_checkinteger(L, 2);
@@ -126,7 +126,7 @@ static int lua_file_lseek(lua_State *L)
     return 1;
 }
 
-static int lua_file_access(lua_State *L)
+static int lua_access(lua_State *L)
 {
     const char *file = luaL_checkstring(L, 1);
     const char *mode = lua_tostring(L, 2);
@@ -210,7 +210,7 @@ static int __lua_file_stat(lua_State *L, struct stat *st)
     return 1;
 }
 
-static int lua_file_stat(lua_State *L)
+static int lua_stat(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     struct stat st;
@@ -224,7 +224,7 @@ static int lua_file_stat(lua_State *L)
     return __lua_file_stat(L, &st);
 }
 
-static int lua_file_fstat(lua_State *L)
+static int lua_fstat(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     struct stat st;
@@ -239,7 +239,7 @@ static int lua_file_fstat(lua_State *L)
 }
 
 /* get filesystem statistics in kibibytes */
-static int lua_file_statvfs(lua_State *L)
+static int lua_statvfs(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     struct statvfs s;
@@ -325,7 +325,7 @@ static const struct luaL_Reg dir_methods[] =  {
     {NULL, NULL}
 };
 
-static int lua_file_chown(lua_State *L)
+static int lua_chown(lua_State *L)
 {
     const char *pathname = luaL_checkstring(L, 1);
     uid_t uid = -1;
@@ -348,7 +348,7 @@ static int lua_file_chown(lua_State *L)
     return 1;
 }
 
-static int lua_file_dirname(lua_State *L)
+static int lua_dirname(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     char *buf = strdup(path);
@@ -359,7 +359,7 @@ static int lua_file_dirname(lua_State *L)
     return 1;
 }
 
-static int lua_file_basename(lua_State *L)
+static int lua_basename(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     char *buf = strdup(path);
@@ -370,7 +370,7 @@ static int lua_file_basename(lua_State *L)
     return 1;
 }
 
-static int lua_file_flock(lua_State *L)
+static int lua_flock(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     int operation = luaL_checkinteger(L, 2);
@@ -389,18 +389,18 @@ static int lua_file_flock(lua_State *L)
 static const luaL_Reg funcs[] = {
     {"open", lua_file_open},
     {"close", lua_file_close},
-    {"read", lua_file_read},
-    {"write", lua_file_write},
-    {"lseek", lua_file_lseek},
-    {"access", lua_file_access},
+    {"read", lua_read},
+    {"write", lua_write},
+    {"lseek", lua_lseek},
+    {"access", lua_access},
     {"readlink", lua_readlink},
-    {"stat", lua_file_stat},
-    {"fstat", lua_file_fstat},
-    {"statvfs", lua_file_statvfs},
-    {"chown", lua_file_chown},
-    {"dirname", lua_file_dirname},
-    {"basename", lua_file_basename},
-    {"flock", lua_file_flock},
+    {"stat", lua_stat},
+    {"fstat", lua_fstat},
+    {"statvfs", lua_statvfs},
+    {"chown", lua_chown},
+    {"dirname", lua_dirname},
+    {"basename", lua_basename},
+    {"flock", lua_flock},
     {NULL, NULL}
 };
 
