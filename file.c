@@ -5,6 +5,7 @@
 
 #include <sys/sendfile.h>
 #include <sys/statvfs.h>
+#include <sys/inotify.h>
 #include <sys/file.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -386,6 +387,52 @@ static int lua_flock(lua_State *L)
     return 1;
 }
 
+static int lua_inotify_init(lua_State *L)
+{
+    int fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    if (fd < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, fd);
+    return 1;
+}
+
+static int lua_inotify_add_watch(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    const char *pathname = luaL_checkstring(L, 2);
+    uint32_t mask = luaL_checkinteger(L, 3);
+    int wd;
+
+    wd = inotify_add_watch(fd, pathname, mask);
+    if (wd < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, wd);
+    return 1;
+}
+
+static int lua_inotify_rm_watch(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    int wd = luaL_checkinteger(L, 2);
+
+    if (inotify_rm_watch(fd, wd)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
 static const luaL_Reg funcs[] = {
     {"open", lua_file_open},
     {"close", lua_file_close},
@@ -401,6 +448,9 @@ static const luaL_Reg funcs[] = {
     {"dirname", lua_dirname},
     {"basename", lua_basename},
     {"flock", lua_flock},
+    {"inotify_init", lua_inotify_init},
+    {"inotify_add_watch", lua_inotify_add_watch},
+    {"inotify_rm_watch", lua_inotify_rm_watch},
     {NULL, NULL}
 };
 
@@ -443,6 +493,24 @@ int luaopen_eco_core_file(lua_State *L)
     lua_add_constant(L, "LOCK_SH", LOCK_SH);
     lua_add_constant(L, "LOCK_EX", LOCK_EX);
     lua_add_constant(L, "LOCK_UN", LOCK_UN);
+
+    /* inotify */
+    lua_add_constant(L, "IN_ACCESS", IN_ACCESS);
+    lua_add_constant(L, "IN_MODIFY", IN_MODIFY);
+    lua_add_constant(L, "IN_ATTRIB", IN_ATTRIB);
+    lua_add_constant(L, "IN_CLOSE_WRITE", IN_CLOSE_WRITE);
+    lua_add_constant(L, "IN_CLOSE_NOWRITE", IN_CLOSE_NOWRITE);
+    lua_add_constant(L, "IN_CLOSE", IN_CLOSE);
+    lua_add_constant(L, "IN_OPEN", IN_OPEN);
+    lua_add_constant(L, "IN_MOVED_FROM", IN_MOVED_FROM);
+    lua_add_constant(L, "IN_MOVED_TO", IN_MOVED_TO);
+    lua_add_constant(L, "IN_MOVE", IN_MOVE);
+    lua_add_constant(L, "IN_CREATE", IN_CREATE);
+    lua_add_constant(L, "IN_DELETE", IN_DELETE);
+    lua_add_constant(L, "IN_DELETE_SELF", IN_DELETE_SELF);
+    lua_add_constant(L, "IN_MOVE_SELF", IN_MOVE_SELF);
+    lua_add_constant(L, "IN_ALL_EVENTS", IN_ALL_EVENTS);
+    lua_add_constant(L, "IN_ISDIR", IN_ISDIR);
 
     eco_new_metatable(L, ECO_FILE_DIR_MT, dir_methods);
     lua_pushcclosure(L, lua_file_dir, 1);
