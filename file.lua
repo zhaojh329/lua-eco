@@ -3,7 +3,6 @@
 
 local file = require 'eco.core.file'
 local sys = require 'eco.core.sys'
-local bufio = require 'eco.bufio'
 local time = require 'eco.time'
 
 local M = {}
