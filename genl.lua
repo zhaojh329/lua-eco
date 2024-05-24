@@ -16,12 +16,7 @@ local function parse_grps(nest, groups)
     end
 end
 
-local function get_family_by(params)
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
-    if not sock then
-        return nil, err
-    end
-
+local function __get_family_by(sock, params)
     local msg = nl.nlmsg(genl.GENL_ID_CTRL, nl.NLM_F_REQUEST)
 
     msg:put(genl.genlmsghdr({ cmd = genl.CTRL_CMD_GETFAMILY }))
@@ -69,6 +64,23 @@ local function get_family_by(params)
     cache[info.name] = info
 
     return info
+end
+
+local function get_family_by(params)
+    local sock, err = nl.open(nl.NETLINK_GENERIC)
+    if not sock then
+        return nil, err
+    end
+
+    local res, err = __get_family_by(sock, params)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 function M.get_family_byid(id)

@@ -250,7 +250,15 @@ function M.add_interface(phy, ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    return send_nl80211_msg(sock, msg)
+    local ok, err = send_nl80211_msg(sock, msg)
+
+    sock:close()
+
+    if ok then
+        return true
+    end
+
+    return nil, err
 end
 
 function M.set_interface(ifname, attrs)
@@ -272,7 +280,15 @@ function M.set_interface(ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    return send_nl80211_msg(sock, msg)
+    local ok, err = send_nl80211_msg(sock, msg)
+
+    sock:close()
+
+    if ok then
+        return true
+    end
+
+    return nil, err
 end
 
 function M.del_interface(ifname)
@@ -292,24 +308,18 @@ function M.del_interface(ifname)
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, if_index)
 
-    return send_nl80211_msg(sock, msg)
+    local ok, err = send_nl80211_msg(sock, msg)
+
+    sock:close()
+
+    if ok then
+        return true
+    end
+
+    return nil, err
 end
 
-function M.get_interface(ifname)
-    if type(ifname) ~= 'string' then
-        error('invalid ifname')
-    end
-
-    local ifidx = socket.if_nametoindex(ifname)
-    if not ifidx then
-        return nil, 'no dev'
-    end
-
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE)
-    if not sock then
-        return nil, msg
-    end
-
+local function get_interface(sock, msg, ifidx)
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
     local ok, err = sock:send(msg)
@@ -335,12 +345,33 @@ function M.get_interface(ifname)
     return parse_interface(msg)
 end
 
-function M.get_interfaces(phy)
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE, nl.NLM_F_DUMP)
+function M.get_interface(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local ifidx = socket.if_nametoindex(ifname)
+    if not ifidx then
+        return nil, 'no dev'
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE)
     if not sock then
         return nil, msg
     end
 
+    local res, err = get_interface(sock, msg, ifidx)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+local function get_interfaces(sock, msg, phy)
     if phy and type(phy) ~= 'number' then
         error('invalid phy index')
     end
@@ -380,6 +411,23 @@ function M.get_interfaces(phy)
             interfaces[#interfaces + 1] = parse_interface(msg)
         end
     end
+end
+
+function M.get_interfaces(phy)
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    local res, err = get_interfaces(sock, msg, phy)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 local cipher_names = {
@@ -574,25 +622,7 @@ local function parse_bss(nest)
     return info
 end
 
-function M.scan(action, params)
-    local flags = 0
-    local cmd
-
-    if action == 'trigger' then
-        flags = nl.NLM_F_ACK
-        cmd = nl80211.CMD_TRIGGER_SCAN
-    elseif action == 'dump' then
-        flags = nl.NLM_F_DUMP
-        cmd = nl80211.CMD_GET_SCAN
-    elseif action == 'abort' then
-        flags = nl.NLM_F_ACK
-        cmd = nl80211.CMD_ABORT_SCAN
-    else
-        error('invalid scan action')
-    end
-
-    params = params or {}
-
+local function nl80211_scan(sock, msg, action, cmd, params)
     if type(params.ifname) ~= 'string' then
         error('invalid ifname')
     end
@@ -600,11 +630,6 @@ function M.scan(action, params)
     local ifidx = socket.if_nametoindex(params.ifname)
     if not ifidx then
         return nil, 'no such device'
-    end
-
-    local sock, msg = prepare_send_cmd(cmd, flags)
-    if not sock then
-        return nil, msg
     end
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
@@ -694,20 +719,45 @@ function M.scan(action, params)
     end
 end
 
---[[
-    The callback function "cb" must return a boolean value to stop waiting event.
-    Return true or return false following a error message.
-    The callback will get three params: cmd, attrs, data.
---]]
-function M.wait_event(grp_name, timeout, cb, data)
+function M.scan(action, params)
+    local flags = 0
+    local cmd
+
+    if action == 'trigger' then
+        flags = nl.NLM_F_ACK
+        cmd = nl80211.CMD_TRIGGER_SCAN
+    elseif action == 'dump' then
+        flags = nl.NLM_F_DUMP
+        cmd = nl80211.CMD_GET_SCAN
+    elseif action == 'abort' then
+        flags = nl.NLM_F_ACK
+        cmd = nl80211.CMD_ABORT_SCAN
+    else
+        error('invalid scan action')
+    end
+
+    params = params or {}
+
+    local sock, msg = prepare_send_cmd(cmd, flags)
+    if not sock then
+        return nil, msg
+    end
+
+    local res, err = nl80211_scan(sock, msg, action, cmd, params)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+local function wait_event(sock, grp_name, timeout, cb, data)
     local grp = genl.get_group_id('nl80211', grp_name)
     if not grp then
         return nil, 'not support'
-    end
-
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
-    if not sock then
-        return nil, err
     end
 
     local ok, err = sock:bind(0)
@@ -715,7 +765,7 @@ function M.wait_event(grp_name, timeout, cb, data)
         return nil, err
     end
 
-    local ok, err = sock:add_membership(grp)
+    ok, err = sock:add_membership(grp)
     if not ok then
         return nil, err
     end
@@ -748,21 +798,29 @@ function M.wait_event(grp_name, timeout, cb, data)
     end
 end
 
-function M.get_noise(ifname)
-    if type(ifname) ~= 'string' then
-        error('invalid ifname')
-    end
-
-    local ifidx = socket.if_nametoindex(ifname)
-    if not ifidx then
-        return nil, 'no dev'
-    end
-
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_SURVEY, nl.NLM_F_DUMP)
+--[[
+    The callback function "cb" must return a boolean value to stop waiting event.
+    Return true or return false following a error message.
+    The callback will get three params: cmd, attrs, data.
+--]]
+function M.wait_event(grp_name, timeout, cb, data)
+    local sock, err = nl.open(nl.NETLINK_GENERIC)
     if not sock then
-        return nil, msg
+        return nil, err
     end
 
+    local ok, err = wait_event(sock, grp_name, timeout, cb, data)
+
+    sock:close()
+
+    if ok then
+        return true
+    end
+
+    return nil, err
+end
+
+local function get_noise(sock, msg, ifidx)
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
     local ok, err = sock:send(msg)
@@ -804,6 +862,32 @@ function M.get_noise(ifname)
             end
         end
     end
+end
+
+function M.get_noise(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local ifidx = socket.if_nametoindex(ifname)
+    if not ifidx then
+        return nil, 'no dev'
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_SURVEY, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    local res, err = get_noise(sock, msg, ifidx)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 local function parse_bitrate(attrs)
@@ -974,23 +1058,10 @@ local function parse_station(attrs, sinfo)
     return info
 end
 
-function M.get_station(ifname, mac)
-    if type(ifname) ~= 'string' then
-        error('invalid ifname')
-    end
-
-    if type(mac) ~= 'string' then
-        error('invalid mac')
-    end
-
+local function get_station(sock, msg, ifname, mac)
     local ifidx = socket.if_nametoindex(ifname)
     if not ifidx then
         return nil, 'no dev'
-    end
-
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION)
-    if not sock then
-        return nil, msg
     end
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
@@ -1028,19 +1099,35 @@ function M.get_station(ifname, mac)
     return res
 end
 
-function M.get_stations(ifname)
+function M.get_station(ifname, mac)
     if type(ifname) ~= 'string' then
         error('invalid ifname')
     end
 
+    if type(mac) ~= 'string' then
+        error('invalid mac')
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION)
+    if not sock then
+        return nil, msg
+    end
+
+    local res, err = get_station(sock, msg, ifname, mac)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+local function get_stations(sock, msg, ifname)
     local ifidx = socket.if_nametoindex(ifname)
     if not ifidx then
         return nil, 'no dev'
-    end
-
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION, nl.NLM_F_DUMP)
-    if not sock then
-        return nil, msg
     end
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
@@ -1088,25 +1175,28 @@ function M.get_stations(ifname)
     end
 end
 
-function M.get_protocol_features(phy)
-    local phyid
-
-    if type(phy) == 'string' then
-        phyid = M.phy_lookup(phy)
-        if not phyid then
-            return nil, string.format('"%s" not exists', phy)
-        end
-    elseif type(phy) == 'number' then
-        phyid = phy
-    else
-        error('invalid phy')
+function M.get_stations(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_PROTOCOL_FEATURES)
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION, nl.NLM_F_DUMP)
     if not sock then
         return nil, msg
     end
 
+    local res, err = get_stations(sock, msg, ifname)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+local function get_protocol_features(sock, msg, phyid)
     msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
 
     local ok, err = sock:send(msg)
@@ -1136,9 +1226,37 @@ function M.get_protocol_features(phy)
         features = nl.attr_get_u32(attrs[nl80211.ATTR_PROTOCOL_FEATURES])
     end
 
+    return features
+end
+
+function M.get_protocol_features(phy)
+    local phyid
+
+    if type(phy) == 'string' then
+        phyid = M.phy_lookup(phy)
+        if not phyid then
+            return nil, string.format('"%s" not exists', phy)
+        end
+    elseif type(phy) == 'number' then
+        phyid = phy
+    else
+        error('invalid phy')
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_PROTOCOL_FEATURES)
+    if not sock then
+        return nil, msg
+    end
+
+    local res, err = get_protocol_features(sock, msg, phyid)
+
     sock:close()
 
-    return features
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 local function parse_freqlist(attrs, freqlist)
@@ -1220,25 +1338,7 @@ local function parse_freqlist(attrs, freqlist)
     end
 end
 
-function M.get_freqlist(phy)
-    local phyid
-
-    if type(phy) == 'string' then
-        phyid = M.phy_lookup(phy)
-        if not phyid then
-            return nil, string.format('"%s" not exists', phy)
-        end
-    elseif type(phy) == 'number' then
-        phyid = phy
-    else
-        error('invalid phy')
-    end
-
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_WIPHY, nl.NLM_F_DUMP)
-    if not sock then
-        return nil, msg
-    end
-
+local function get_freqlist(sock, msg, phyid)
     msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
     msg:put_attr_flag(nl80211.ATTR_SPLIT_WIPHY_DUMP)
 
@@ -1277,6 +1377,36 @@ function M.get_freqlist(phy)
             end
         end
     end
+end
+
+function M.get_freqlist(phy)
+    local phyid
+
+    if type(phy) == 'string' then
+        phyid = M.phy_lookup(phy)
+        if not phyid then
+            return nil, string.format('"%s" not exists', phy)
+        end
+    elseif type(phy) == 'number' then
+        phyid = phy
+    else
+        error('invalid phy')
+    end
+
+    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_WIPHY, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    local res, err = get_freqlist(sock, msg, phyid)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 return setmetatable(M, { __index = nl80211 })

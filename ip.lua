@@ -9,12 +9,7 @@ local nl = require 'eco.nl'
 
 local M = {}
 
-local function rtnl_send(msg)
-    local sock, err = nl.open(nl.NETLINK_ROUTE)
-    if not sock then
-        return nil, err
-    end
-
+local function __rtnl_send(sock, msg)
     local ok, err = sock:send(msg)
     if not ok then
         return nil, err
@@ -40,6 +35,23 @@ local function rtnl_send(msg)
     end
 
     return nil, 'no ack'
+end
+
+local function rtnl_send(msg)
+    local sock, err = nl.open(nl.NETLINK_ROUTE)
+    if not sock then
+        return nil, err
+    end
+
+    local ok, err = __rtnl_send(sock, msg)
+
+    sock:close()
+
+    if ok then
+        return true
+    end
+
+    return nil, err
 end
 
 local link = {}
@@ -176,20 +188,10 @@ function link.set(dev, attrs)
     return rtnl_send(msg)
 end
 
-function link.get(dev)
-    local dev_index = socket.if_nametoindex(dev)
-    if not dev_index then
-        return nil, 'no such device'
-    end
-
-    local sock, err = nl.open(nl.NETLINK_ROUTE)
-    if not sock then
-        return nil, err
-    end
-
+local function link_get(sock, ifindex)
     local msg = nl.nlmsg(rtnl.RTM_GETLINK, nl.NLM_F_REQUEST)
 
-    msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, index = dev_index }))
+    msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, index = ifindex }))
 
     local ok, err = sock:send(msg)
     if not ok then
@@ -293,6 +295,28 @@ function link.get(dev)
     end
 
     return res
+end
+
+function link.get(dev)
+    local ifindex = socket.if_nametoindex(dev)
+    if not ifindex then
+        return nil, 'no such device'
+    end
+
+    local sock, err = nl.open(nl.NETLINK_ROUTE)
+    if not sock then
+        return nil, err
+    end
+
+    local res, err = link_get(sock, ifindex)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 M.link = link
@@ -405,21 +429,7 @@ function address.del(dev, addr)
     return do_address('del', dev, addr)
 end
 
-function address.get(dev)
-    local dev_index
-
-    if dev then
-        dev_index = socket.if_nametoindex(dev)
-        if not dev_index then
-            return nil, 'no such device'
-        end
-    end
-
-    local sock, err = nl.open(nl.NETLINK_ROUTE)
-    if not sock then
-        return nil, err
-    end
-
+local function address_get(sock, ifindex)
     local msg = nl.nlmsg(rtnl.RTM_GETADDR, nl.NLM_F_REQUEST | nl.NLM_F_DUMP)
 
     msg:put(rtnl.ifaddrmsg({ family = socket.AF_UNSPEC }))
@@ -449,7 +459,7 @@ function address.get(dev)
                 local info = rtnl.parse_ifaddrmsg(msg)
                 local family = info.family
 
-                if not dev_index or dev_index == info.index then
+                if not ifindex or ifindex == info.index then
                     res.ifname = socket.if_indextoname(info.index)
                     res.scope = rtscope_to_name[info.scope]
                     res.family = family
@@ -483,13 +493,39 @@ function address.get(dev)
                     return nil, 'RTNETLINK answers: ' .. sys.strerror(-err)
                 end
             elseif nlh.type == nl.NLMSG_DONE then
-                if dev_index and #reses < 1 then
+                if ifindex and #reses < 1 then
                     return nil, 'not found'
                 end
                 return reses
             end
         end
     end
+end
+
+function address.get(dev)
+    local ifindex
+
+    if dev then
+        ifindex = socket.if_nametoindex(dev)
+        if not ifindex then
+            return nil, 'no such device'
+        end
+    end
+
+    local sock, err = nl.open(nl.NETLINK_ROUTE)
+    if not sock then
+        return nil, err
+    end
+
+    local res, err = address_get(sock, ifindex)
+
+    sock:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 M.address = address
