@@ -94,7 +94,7 @@ end
   Reads according to the given pattern, which specify what to read.
 
   In case of success, it returns the data received; in case of error, it returns
-  nil with a string describing the error.
+  nil with a string describing the error and the partial data received so far.
 
   The available pattern are:
     'a': reads the whole file or reads from socket until the connection closed.

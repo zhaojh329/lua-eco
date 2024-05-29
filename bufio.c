@@ -17,12 +17,6 @@ static bool eco_bufio_check_overtime(struct eco_bufio *b, lua_State *L)
     if (!b->flags.overtime)
         return false;
 
-    if (b->b) {
-        luaL_pushresult(b->b);
-        lua_pop(L, 1);
-        free(b->b);
-    }
-
     b->flags.overtime = 0;
     lua_pushnil(L);
     lua_pushliteral(L, "timeout");
@@ -208,7 +202,7 @@ static int lua_readk(lua_State *L, int status, lua_KContext ctx)
     b->L = NULL;
 
     if (eco_bufio_check_overtime(b, L))
-        return 2;
+        goto err;
 
     if (b->pattern) {
         char pattern = *b->pattern;
@@ -257,12 +251,11 @@ fill:
     if (b->fill(b, L, ctx, lua_readk) < 0) {
         if (b->pattern && *b->pattern == 'a') {
             if (b->b) {
-                luaL_pushresult(b->b);
-                free(b->b);
-
-                if (b->flags.eof)
+                if (b->flags.eof) {
+                    luaL_pushresult(b->b);
+                    free(b->b);
                     return 1;
-                lua_pop(L, 1);
+                }
             } else if (b->flags.eof) {
                 size_t blen = buffer_length(b);
                 lua_pushlstring(L, buffer_data(b), blen);
@@ -273,17 +266,32 @@ fill:
 
         lua_pushnil(L);
         lua_pushstring(L, b->error);
-        return 2;
+        goto err;
     }
 
     return lua_readk(L, 0, ctx);
+
+err:
+    if (b->pattern && *b->pattern == 'a') {
+        size_t blen = buffer_length(b);
+        if (b->b) {
+            luaL_pushresult(b->b);
+            free(b->b);
+            return 3;
+        } else if (blen) {
+            lua_pushlstring(L, buffer_data(b), blen);
+            buffer_skip(b, blen);
+            return 3;
+        }
+    }
+    return 2;
 }
 
 /*
   Reads according to the given pattern, which specify what to read.
 
   In case of success, it returns the data received; in case of error, it returns
-  nil with a string describing the error.
+  nil with a string describing the error and the partial data received so far.
 
   The available pattern are:
     'a': reads the whole file or reads from socket until the connection closed.
@@ -378,7 +386,7 @@ static int lua_readfullk(lua_State *L, int status, lua_KContext ctx)
     b->L = NULL;
 
     if (eco_bufio_check_overtime(b, L))
-        return 2;
+        goto err;
 
     if (!b->b) {
         if (blen < n)
@@ -404,20 +412,37 @@ static int lua_readfullk(lua_State *L, int status, lua_KContext ctx)
 
 fill:
     if (b->fill(b, L, ctx, lua_readfullk) < 0) {
-        if (b->b) {
-            luaL_pushresult(b->b);
-            lua_pop(L, 1);
-            free(b->b);
-        }
         lua_pushnil(L);
         lua_pushstring(L, b->error);
-        return 2;
+        goto err;
     }
 
     return lua_readfullk(L, 0, ctx);
+
+err:
+    if (blen) {
+        lua_pushlstring(L, buffer_data(b), blen);
+        buffer_skip(b, blen);
+    }
+
+    if (b->b) {
+        luaL_pushresult(b->b);
+        free(b->b);
+        if (blen)
+            lua_pop(L, 1);
+    }
+
+    if (blen || b->b)
+        return 3;
+
+    return 2;
 }
 
-/* Reads until it reads exactly desired size of data or an error occurs. */
+/* Reads until it reads exactly desired size of data or an error occurs
+ *
+ * In case of success, it returns the exactly desired size of data received;
+ * In case of error, it returns nil with a string describing the error and the partial data received so far.
+ */
 static int lua_bufio_readfull(lua_State *L)
 {
     struct eco_bufio *b = read_check(L);
