@@ -17,22 +17,31 @@ function cond_methods:wait(timeout)
 end
 
 -- wakes one coroutine waiting on the cond, if there is any.
+-- returns true if one coroutine was waked
 function cond_methods:signal()
     local watchers = self.watchers
 
     if #watchers > 0 then
         watchers[1]:send()
         table.remove(watchers, 1)
+        return true
     end
+
+    return false
 end
 
 -- wakes all coroutines waiting on the cond
+-- returns the number of awakened coroutines
 function cond_methods:broadcast()
+    local cnt = #self.watchers
+
     for _, w in ipairs(self.watchers) do
         w:send()
     end
 
     self.watchers = {}
+
+    return cnt
 end
 
 local cond_mt = { __index = cond_methods }

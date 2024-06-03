@@ -15,10 +15,13 @@ end
 
 -- wakes one coroutine waiting on the cond
 time.at(1, function()
-    cond:signal()
+    if cond:signal() then
+        print('waked one coroutine')
+    end
 end)
 
 -- wakes all coroutines waiting on the cond
 time.at(3, function()
-    cond:broadcast()
+    local cnt = cond:broadcast()
+    print('waked', cnt, 'coroutines')
 end)
