@@ -44,6 +44,9 @@
             case LUA_TNUMBER:                                   \
                 printf("%g", lua_tonumber(L, i));               \
                 break;                                          \
+            case LUA_TLIGHTUSERDATA:                            \
+                printf("%p", lua_topointer(L, i));              \
+                break;                                          \
             default:                                            \
                 printf("%s", lua_typename(L, t));               \
                 break;                                          \
