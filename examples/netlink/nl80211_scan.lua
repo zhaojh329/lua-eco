@@ -6,6 +6,7 @@ local nl = require 'eco.nl'
 
 local ifname = 'wlan0'
 
+-- If no ssids is passed, a passive scan is performed
 local ok, err = nl80211.scan('trigger', { ifname = ifname, ssids = { '', 'test1', 'test2' }, freqs = { 2412, 2417 } })
 if not ok then
     print(err)

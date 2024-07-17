@@ -636,16 +636,13 @@ local function nl80211_scan(sock, msg, action, cmd, params)
 
     if action == 'trigger' then
         local ssids = params.ssids
-
-        if type(ssids) ~= 'table' or #ssids == 0 then
-            ssids = { '' }
+        if type(ssids) == 'table' and #ssids > 0 then
+            msg:put_attr_nest_start(nl80211.ATTR_SCAN_SSIDS)
+            for i, ssid in ipairs(ssids) do
+                msg:put_attr_str(i, ssid)
+            end
+            msg:put_attr_nest_end()
         end
-
-        msg:put_attr_nest_start(nl80211.ATTR_SCAN_SSIDS)
-        for i, ssid in ipairs(ssids) do
-            msg:put_attr_str(i, ssid)
-        end
-        msg:put_attr_nest_end()
 
         local freqs = params.freqs
         if type(freqs) == 'table' and #freqs > 0 then
