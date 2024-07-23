@@ -976,6 +976,34 @@ static int lua_if_indextoname(lua_State *L)
     return 1;
 }
 
+static int lua_htonl(lua_State *L)
+{
+    uint32_t n = luaL_checkinteger(L, 1);
+    lua_pushinteger(L, htonl(n));
+    return 1;
+}
+
+static int lua_htons(lua_State *L)
+{
+    uint16_t n = luaL_checkinteger(L, 1);
+    lua_pushinteger(L, htons(n));
+    return 1;
+}
+
+static int lua_ntohl(lua_State *L)
+{
+    uint32_t n = luaL_checkinteger(L, 1);
+    lua_pushinteger(L, ntohl(n));
+    return 1;
+}
+
+static int lua_ntohs(lua_State *L)
+{
+    uint16_t n = luaL_checkinteger(L, 1);
+    lua_pushinteger(L, ntohs(n));
+    return 1;
+}
+
 static const luaL_Reg funcs[] = {
     {"socket", lua_socket},
     {"is_ipv4_address", lua_is_ipv4_address},
@@ -986,6 +1014,10 @@ static const luaL_Reg funcs[] = {
     {"inet_pton", lua_inet_pton},
     {"if_nametoindex", lua_if_nametoindex},
     {"if_indextoname", lua_if_indextoname},
+    {"htonl", lua_htonl},
+    {"htons", lua_htons},
+    {"ntohl", lua_ntohl},
+    {"ntohs", lua_ntohs},
     {NULL, NULL}
 };
 
