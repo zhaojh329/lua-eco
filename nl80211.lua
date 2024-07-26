@@ -593,7 +593,7 @@ local function parse_bss(nest)
     end
 
     if caps & 1 << 1 > 0 then
-        info.cap['IBSS'] = true
+        info.caps['IBSS'] = true
     end
 
     if caps & 1 << 4 > 0 then
