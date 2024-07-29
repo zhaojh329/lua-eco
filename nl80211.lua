@@ -11,7 +11,103 @@ local nl = require 'eco.nl'
 
 local str_byte = string.byte
 
-local M = {}
+local M = {
+    FTYPE_MGMT  = 0x00,
+    FTYPE_CTL   = 0x01,
+    FTYPE_DATA  = 0x02,
+    FTYPE_EXT   = 0x11,
+
+    -- management
+    STYPE_ASSOC_REQ     = 0x00,
+    STYPE_ASSOC_RESP    = 0x01,
+    STYPE_REASSOC_REQ   = 0x02,
+    STYPE_REASSOC_RESP  = 0x03,
+    STYPE_PROBE_REQ     = 0x04,
+    STYPE_PROBE_RESP    = 0x05,
+    STYPE_BEACON        = 0x08,
+    STYPE_ATIM          = 0x09,
+    STYPE_DISASSOC      = 0x0a,
+    STYPE_AUTH          = 0x0b,
+    STYPE_DEAUTH        = 0x0c,
+    STYPE_ACTION        = 0x0d,
+
+    -- control
+    STYPE_TRIGGER   = 0x02,
+    STYPE_CTL_EXT   = 0x06,
+    STYPE_BACK_REQ  = 0x08,
+    STYPE_BACK      = 0x09,
+    STYPE_PSPOLL    = 0x0a,
+    STYPE_RTS       = 0x0b,
+    STYPE_CTS       = 0x0c,
+    STYPE_ACK       = 0x0d,
+    STYPE_CFEND     = 0x0e,
+    STYPE_CFENDACK  = 0x0f,
+
+    -- data
+    STYPE_DATA              = 0x00,
+    STYPE_DATA_CFACK        = 0x01,
+    STYPE_DATA_CFPOLL       = 0x02,
+    STYPE_DATA_CFACKPOLL    = 0x03,
+    STYPE_NULLFUNC          = 0x04,
+    STYPE_CFACK             = 0x05,
+    STYPE_CFPOLL            = 0x06,
+    STYPE_CFACKPOLL         = 0x07,
+    STYPE_QOS_DATA          = 0x08,
+    STYPE_QOS_DATA_CFACK    = 0x09,
+    STYPE_QOS_DATA_CFPOLL   = 0x0a,
+    STYPE_QOS_DATA_CFACKPOLL= 0x0b,
+    STYPE_QOS_NULLFUNC      = 0x0c,
+    STYPE_QOS_CFACK         = 0x0d,
+    STYPE_QOS_CFPOLL        = 0x0e,
+    STYPE_QOS_CFACKPOLL     = 0x0f,
+}
+
+local ftypes = {
+    [M.FTYPE_MGMT] = {
+        [M.STYPE_ASSOC_REQ]     = 'ASSOC_REQ',
+        [M.STYPE_ASSOC_RESP]    = 'ASSOC_RESP  ',
+        [M.STYPE_REASSOC_REQ]   = 'REASSOC_REQ ',
+        [M.STYPE_REASSOC_RESP]  = 'REASSOC_RESP',
+        [M.STYPE_PROBE_REQ]     = 'PROBE_REQ',
+        [M.STYPE_PROBE_RESP]    = 'PROBE_RESP',
+        [M.STYPE_BEACON]        = 'BEACON',
+        [M.STYPE_ATIM]          = 'ATIM',
+        [M.STYPE_DISASSOC]      = 'DISASSOC',
+        [M.STYPE_AUTH]          = 'AUTH',
+        [M.STYPE_DEAUTH]        = 'DEAUTH',
+        [M.STYPE_ACTION]        = 'ACTION'
+    },
+    [M.FTYPE_CTL] = {
+        [M.STYPE_TRIGGER]  = 'TRIGGER',
+        [M.STYPE_CTL_EXT]  = 'CTL_EXT',
+        [M.STYPE_BACK_REQ] = 'BACK_REQ',
+        [M.STYPE_BACK]     = 'BACK',
+        [M.STYPE_PSPOLL]   = 'PSPOLL',
+        [M.STYPE_RTS]      = 'RTS',
+        [M.STYPE_CTS]      = 'CTS',
+        [M.STYPE_ACK]      = 'ACK',
+        [M.STYPE_CFEND]    = 'CFEND',
+        [M.STYPE_CFENDACK] = 'CFENDACK'
+    },
+    [M.FTYPE_DATA] = {
+        [M.STYPE_DATA]              = 'DATA',
+        [M.STYPE_DATA_CFACK]        = 'DATA_CFACK',
+        [M.STYPE_DATA_CFPOLL]       = 'DATA_CFPOLL',
+        [M.STYPE_DATA_CFACKPOLL]    = 'DATA_CFACKPOLL',
+        [M.STYPE_NULLFUNC]          = 'NULLFUNC',
+        [M.STYPE_CFACK]             = 'CFACK',
+        [M.STYPE_CFPOLL]            = 'CFPOLL',
+        [M.STYPE_CFACKPOLL]         = 'CFACKPOLL',
+        [M.STYPE_QOS_DATA]          = 'QOS_DATA',
+        [M.STYPE_QOS_DATA_CFACK]    = 'QOS_DATA_CFACK',
+        [M.STYPE_QOS_DATA_CFPOLL]   = 'QOS_DATA_CFPOLL',
+        [M.STYPE_QOS_DATA_CFACKPOLL]= 'QOS_DATA_CFACKPOLL',
+        [M.STYPE_QOS_NULLFUNC]      = 'QOS_NULLFUNC',
+        [M.STYPE_QOS_CFACK]         = 'QOS_CFACK',
+        [M.STYPE_QOS_CFPOLL]        = 'QOS_CFPOLL',
+        [M.STYPE_QOS_CFACKPOLL]     = 'QOS_CFACKPOLL'
+    }
+}
 
 local iftypes = {
     [nl80211.IFTYPE_UNSPECIFIED] = 'unspecified',
@@ -43,6 +139,10 @@ local channel_type_name = {
     [nl80211.CHAN_HT40MINUS] = 'HT40-',
     [nl80211.CHAN_HT40PLUS] = 'HT40+'
 }
+
+function M.ftype_name(typ, subtype)
+    return ftypes[typ] and ftypes[typ][subtype]
+end
 
 function M.escape_ssid(ssid)
     local i = 0

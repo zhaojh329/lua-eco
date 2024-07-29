@@ -6,46 +6,13 @@
 --]]
 
 local socket = require 'eco.socket'
+local packet = require 'eco.packet'
 local time = require 'eco.time'
-
-local ICMP6_HEADER_LEN = 8
 
 local dest_ip = '::1'
 local local_id = math.random(0, 65535)
 local local_seq = 1
 local local_data = 'hello'
-
-local function build_icmp_req()
-    local data = {
-        string.char(socket.ICMPV6_ECHO_REQUEST), -- type
-        '\0',        -- code
-        '\0\0',      -- checksum
-        '\0\0',      -- id: the kernel will assign it with local port
-        string.char(local_seq >> 8, local_seq & 0xff),   -- sequence
-        local_data
-    }
-
-    local_seq = local_seq + 1
-
-    return table.concat(data)
-end
-
-local function parse_icmp_resp(data)
-    if #data < ICMP6_HEADER_LEN then
-        return nil, 'invalid icmp resp'
-    end
-
-    local icmp_type = data:byte(1)
-    local id_hi = data:byte(5)
-    local id_lo = data:byte(6)
-    local id = (id_hi << 8) + id_lo
-
-    local seq_hi = data:byte(7)
-    local seq_lo = data:byte(8)
-    local seq = (seq_hi << 8) + seq_lo
-
-    return icmp_type, id, seq, #data - ICMP6_HEADER_LEN
-end
 
 local s, err = socket.icmp6()
 if not s then
@@ -60,7 +27,10 @@ s:bind(nil, local_id)
 print(string.format('PING %s, %d bytes of data.', dest_ip, #local_data))
 
 while true do
-    _, err = s:sendto(build_icmp_req(), dest_ip, 0)
+    local pkt = packet.icmp6(socket.ICMPV6_ECHO_REQUEST, 0, 0, local_seq, 'hello')
+    local_seq = local_seq + 1
+
+    _, err = s:sendto(pkt, dest_ip, 0)
     if err then
         print('send fail:', err)
         break
@@ -68,26 +38,21 @@ while true do
 
     local start = time.now()
 
-    local resp, peer = s:recvfrom(1024, 5.0)
-    if not resp then
+    local data, peer = s:recvfrom(1024, 5.0)
+    if not data then
         print('recv fail:', peer)
         break
     end
 
-    local elapsed = time.now() - start
+    pkt = packet.from_icmp6(data)
 
-    local icmp_type, id, seq, n = parse_icmp_resp(resp)
-
-    if icmp_type then
-        if icmp_type == socket.ICMPV6_ECHO_REPLY then
-            if id == local_id then
-                print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', n, peer.ipaddr, seq, elapsed * 1000))
-            end
-        else
-            print('Got ICMP packet with type ' .. icmp_type)
+    if pkt.type == socket.ICMPV6_ECHO_REPLY then
+        if pkt.id == local_id then
+            local elapsed = time.now() - start
+            print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', #pkt.data, peer.ipaddr, pkt.sequence, elapsed * 1000))
         end
     else
-        print(id)
+        print('Got ICMP packet with type ' .. pkt.type)
     end
 
     time.sleep(1.0)

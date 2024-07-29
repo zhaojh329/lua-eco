@@ -41,6 +41,7 @@ Lua-eco also provides some modules for you to build applications quickly:
 * `nl80211`: Show/manipulate wireless devices and their configuration.
 * `termios`: Bind unix API for terminal/serial I/O.
 * `ssh`: Bind libssh2.
+* `packet`: For low-level packet construction and parsing.
 
 Would you like to try it? Kinda interesting.
 
@@ -98,3 +99,4 @@ end, 'eco2')
             <*> lua-eco-websocket........................... websocket support for lua-eco
             <*> lua-eco-netlink............................... netlink support for lua-eco
             <*> lua-eco-nl80211............................... nl80211 support for lua-eco
+            <*> lua-eco-packet................................. packet support for lua-eco

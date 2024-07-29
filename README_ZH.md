@@ -44,6 +44,7 @@ Lua-eco 还提供了一些有用的模块，方便您快速构建应用程序:
 * `nl80211`: 显示/操作无线设备及其配置。
 * `termios`: 绑定 unix 接口用于操作终端和串口。
 * `ssh`: 绑定 libssh2.
+* `packet`: 分析和构造任意网络报文.
 
 想试试吗？很有趣的!
 
@@ -99,3 +100,4 @@ end, 'eco2')
             <*> lua-eco-websocket........................... websocket support for lua-eco
             <*> lua-eco-netlink............................... netlink support for lua-eco
             <*> lua-eco-nl80211............................... nl80211 support for lua-eco
+            <*> lua-eco-packet................................. packet support for lua-eco
