@@ -3,6 +3,7 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <linux/version.h>
 #include <linux/rtnetlink.h>
 #include <linux/if.h>
 
@@ -289,7 +290,10 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "IFA_CACHEINFO", IFA_CACHEINFO);
     lua_add_constant(L, "IFA_MULTICAST", IFA_MULTICAST);
     lua_add_constant(L, "IFA_FLAGS", IFA_FLAGS);
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4,17,0)
     lua_add_constant(L, "IFA_RT_PRIORITY", IFA_RT_PRIORITY);
+#endif
 
     lua_add_constant(L, "RTNLGRP_LINK", RTNLGRP_LINK);
     lua_add_constant(L, "RTNLGRP_NOTIFY", RTNLGRP_NOTIFY);

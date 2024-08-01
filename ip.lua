@@ -410,12 +410,14 @@ local function do_address(action, dev, addr)
         msg:put_attr_str(rtnl.IFA_LABEL, addr.label)
     end
 
-    if addr.metric then
-        msg:put_attr_u32(rtnl.IFA_RT_PRIORITY, addr.metric)
-    end
+    if rtnl.IFA_RT_PRIORITY then
+        if addr.metric then
+            msg:put_attr_u32(rtnl.IFA_RT_PRIORITY, addr.metric)
+        end
 
-    if addr.priority then
-        msg:put_attr_u32(rtnl.IFA_RT_PRIORITY, addr.priority)
+        if addr.priority then
+            msg:put_attr_u32(rtnl.IFA_RT_PRIORITY, addr.priority)
+        end
     end
 
     return rtnl_send(msg)
