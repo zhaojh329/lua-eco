@@ -9,8 +9,6 @@ local socket = require 'eco.socket'
 local time = require 'eco.time'
 
 local ICMP6_HEADER_LEN = 8
-local ICMP6_ECHO = 128
-local ICMP6_ECHOREPLY = 129
 
 local dest_ip = '::1'
 local local_id = math.random(0, 65535)
@@ -19,7 +17,7 @@ local local_data = 'hello'
 
 local function build_icmp_req()
     local data = {
-        string.char(ICMP6_ECHO), -- type
+        string.char(socket.ICMPV6_ECHO_REQUEST), -- type
         '\0',        -- code
         '\0\0',      -- checksum
         '\0\0',      -- id: the kernel will assign it with local port
@@ -81,7 +79,7 @@ while true do
     local icmp_type, id, seq, n = parse_icmp_resp(resp)
 
     if icmp_type then
-        if icmp_type == ICMP6_ECHOREPLY then
+        if icmp_type == socket.ICMPV6_ECHO_REPLY then
             if id == local_id then
                 print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', n, dest_ip, seq, elapsed * 1000))
             end

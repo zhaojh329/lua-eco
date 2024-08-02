@@ -19,6 +19,8 @@
 #include <linux/if_ether.h>
 #include <linux/if_arp.h>
 #include <netinet/tcp.h>
+#include <linux/icmpv6.h>
+#include <linux/icmp.h>
 
 #include "eco.h"
 
@@ -1124,6 +1126,12 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_add_constant(L, "ARPOP_REPLY", ARPOP_REPLY);
 
     lua_add_constant(L, "PACKET_MR_PROMISC", PACKET_MR_PROMISC);
+
+    lua_add_constant(L, "ICMP_ECHOREPLY", ICMP_ECHOREPLY);
+    lua_add_constant(L, "ICMP_ECHO", ICMP_ECHO);
+
+    lua_add_constant(L, "ICMPV6_ECHO_REQUEST", ICMPV6_ECHO_REQUEST);
+    lua_add_constant(L, "ICMPV6_ECHO_REPLY", ICMPV6_ECHO_REPLY);
 
     return 1;
 }

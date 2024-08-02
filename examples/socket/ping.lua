@@ -9,8 +9,6 @@ local socket = require 'eco.socket'
 local time = require 'eco.time'
 
 local ICMP_HEADER_LEN = 8
-local ICMP_ECHO = 8
-local ICMP_ECHOREPLY = 0
 
 local dest_ip = '127.0.0.1'
 local local_id = math.random(0, 65535)
@@ -19,7 +17,7 @@ local local_data = 'hello'
 
 local function build_icmp_req()
     local data = {
-        string.char(ICMP_ECHO), -- type
+        string.char(socket.ICMP_ECHO), -- type
         '\0',        -- code
         '\0\0',      -- checksum
         '\0\0',      -- id: the kernel will assign it with local port
@@ -81,7 +79,7 @@ while true do
     local icmp_type, id, seq, n = parse_icmp_resp(resp)
 
     if icmp_type then
-        if icmp_type == ICMP_ECHOREPLY then
+        if icmp_type == socket.ICMP_ECHOREPLY then
             if id == local_id then
                 print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', n, dest_ip, seq, elapsed * 1000))
             end
