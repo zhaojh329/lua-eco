@@ -16,6 +16,8 @@
 #include <sys/un.h>
 
 #include <linux/netlink.h>
+#include <linux/if_ether.h>
+#include <linux/if_arp.h>
 #include <netinet/tcp.h>
 
 #include "eco.h"
@@ -137,6 +139,15 @@ static int lua_push_sockaddr(lua_State *L, struct sockaddr *addr, socklen_t len)
 
         lua_pushstring(L, inet_ntop(AF_INET6, &in6->sin6_addr, ip, sizeof(ip)));
         lua_setfield(L, -2, "ipaddr");
+    } else if (family == AF_PACKET) {
+        struct sockaddr_ll *ll = (struct sockaddr_ll *)addr;
+        char ifname[IF_NAMESIZE];
+
+        lua_pushinteger(L, ll->sll_ifindex);
+        lua_setfield(L, -2, "ifindex");
+
+        lua_pushstring(L, if_indextoname(ll->sll_ifindex, ifname));
+        lua_setfield(L, -2, "ifname");
     }
 
     return 1;
@@ -153,6 +164,7 @@ static int lua_args_to_sockaddr(struct eco_socket *sock, lua_State *L, struct so
         struct sockaddr_un un;
         struct sockaddr_in in;
         struct sockaddr_in6 in6;
+        struct sockaddr_ll ll;
     } addr = {
         .a.sa_family = sock->domain
     };
@@ -192,6 +204,24 @@ static int lua_args_to_sockaddr(struct eco_socket *sock, lua_State *L, struct so
         addrlen = sizeof(struct sockaddr_nl);
         addr.nl.nl_groups = luaL_optinteger(L, 2 + offset, 0);
         addr.nl.nl_pid = luaL_optinteger(L, 3 + offset, 0);
+        break;
+
+    case AF_PACKET:
+        luaL_checktype(L, 2 + offset, LUA_TTABLE);
+
+        addrlen = sizeof(struct sockaddr_ll);
+
+        lua_getfield(L, 2 + offset, "ifindex");
+        if (!lua_isnil(L, -1))
+            addr.ll.sll_ifindex = luaL_checkinteger(L, -1);
+        lua_pop(L, 1);
+
+        lua_getfield(L, 2 + offset, "ifname");
+        if (!lua_isnil(L, -1)) {
+            const char *ifname = luaL_checkstring(L, -1);
+            addr.ll.sll_ifindex = if_nametoindex(ifname);
+        }
+        lua_pop(L, 1);
         break;
 
     default:
@@ -366,6 +396,7 @@ static int lua_recvk(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_socket *sock = (struct eco_socket *)ctx;
     union {
+        struct sockaddr_ll ll;
         struct sockaddr_nl nl;
         struct sockaddr_un un;
         struct sockaddr_in in;
@@ -762,6 +793,39 @@ static int sockopt_set_ipv6_membership(struct eco_socket *sock, lua_State *L, st
     return sockopt_set(sock, L, o, &mreq, sizeof(mreq));
 }
 
+static int sockopt_set_packet_membership(struct eco_socket *sock, lua_State *L, struct sock_opt *o)
+{
+    struct packet_mreq mreq = {};
+
+    luaL_checktype(L, 3, LUA_TTABLE);
+
+    lua_getfield(L, 3, "ifname");
+    if (!lua_isnil(L, -1)) {
+        const char *ifname = luaL_checkstring(L, -1);
+        unsigned int ifindex = if_nametoindex(ifname);
+        if (!ifindex) {
+            lua_pushnil(L);
+            lua_pushfstring(L, "No interface found with given name '%s'", ifname);
+            return 2;
+        }
+        mreq.mr_ifindex = ifindex;
+    }
+    lua_pop(L, 1);
+
+    if (mreq.mr_ifindex == 0) {
+        lua_getfield(L, 3, "ifindex");
+        if (!lua_isnil(L, -1))
+            mreq.mr_ifindex = luaL_checkinteger(L, -1);
+        lua_pop(L, 1);
+    }
+
+    lua_getfield(L, 3, "type");
+    mreq.mr_type = luaL_checkinteger(L, -1);
+    lua_pop(L, 1);
+
+    return sockopt_set(sock, L, o, &mreq, sizeof(mreq));
+}
+
 static struct sock_opt optsets[] = {
     {"reuseaddr", SOL_SOCKET, SO_REUSEADDR, sockopt_set_boolean},
     {"reuseport", SOL_SOCKET, SO_REUSEPORT, sockopt_set_boolean},
@@ -782,6 +846,8 @@ static struct sock_opt optsets[] = {
     {"ipv6_drop_membership", SOL_IPV6, IPV6_DROP_MEMBERSHIP, sockopt_set_ipv6_membership},
     {"netlink_add_membership", SOL_NETLINK, NETLINK_ADD_MEMBERSHIP, sockopt_set_int},
     {"netlink_drop_membership", SOL_NETLINK, NETLINK_DROP_MEMBERSHIP, sockopt_set_int},
+    {"packet_add_membership", SOL_PACKET, PACKET_ADD_MEMBERSHIP, sockopt_set_packet_membership},
+    {"packet_drop_membership", SOL_PACKET, PACKET_DROP_MEMBERSHIP, sockopt_set_packet_membership},
     {}
 };
 
@@ -1040,6 +1106,24 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_add_constant(L, "IPPROTO_ICMP", IPPROTO_ICMP);
     lua_add_constant(L, "IPPROTO_ICMPV6", IPPROTO_ICMPV6);
+
+    lua_add_constant(L, "IPPROTO_TCP", IPPROTO_TCP);
+    lua_add_constant(L, "IPPROTO_UDP", IPPROTO_UDP);
+
+    lua_add_constant(L, "ETH_P_IP", ETH_P_IP);
+    lua_add_constant(L, "ETH_P_ARP", ETH_P_ARP);
+    lua_add_constant(L, "ETH_P_8021Q", ETH_P_8021Q);
+    lua_add_constant(L, "ETH_P_PPP_DISC", ETH_P_PPP_DISC);
+    lua_add_constant(L, "ETH_P_PPP_SES", ETH_P_PPP_SES);
+    lua_add_constant(L, "ETH_P_IPV6", ETH_P_IPV6);
+    lua_add_constant(L, "ETH_P_ALL", ETH_P_ALL);
+
+    lua_add_constant(L, "ARPHRD_ETHER", ARPHRD_ETHER);
+
+    lua_add_constant(L, "ARPOP_REQUEST", ARPOP_REQUEST);
+    lua_add_constant(L, "ARPOP_REPLY", ARPOP_REPLY);
+
+    lua_add_constant(L, "PACKET_MR_PROMISC", PACKET_MR_PROMISC);
 
     return 1;
 }
