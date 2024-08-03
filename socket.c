@@ -214,14 +214,26 @@ static int lua_args_to_sockaddr(struct eco_socket *sock, lua_State *L, struct so
         addrlen = sizeof(struct sockaddr_ll);
 
         lua_getfield(L, 2 + offset, "ifindex");
-        if (!lua_isnil(L, -1))
+        if (!lua_isnil(L, -1)) {
+            char ifname[IF_NAMESIZE] = "";
             addr.ll.sll_ifindex = luaL_checkinteger(L, -1);
+            if (!if_indextoname(addr.ll.sll_ifindex, ifname)) {
+                lua_pushnil(L);
+                lua_pushfstring(L, "no device with ifindex '%d'", addr.ll.sll_ifindex);
+                return -1;
+            }
+        }
         lua_pop(L, 1);
 
         lua_getfield(L, 2 + offset, "ifname");
         if (!lua_isnil(L, -1)) {
             const char *ifname = luaL_checkstring(L, -1);
             addr.ll.sll_ifindex = if_nametoindex(ifname);
+            if (addr.ll.sll_ifindex == 0) {
+                lua_pushnil(L);
+                lua_pushfstring(L, "device '%s' not exists", ifname);
+                return -1;
+            }
         }
         lua_pop(L, 1);
         break;
@@ -261,7 +273,10 @@ static int lua_bind(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
-    socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
+    int addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
+
+    if (addrlen < 0)
+        return 2;
 
     if (bind(sock->fd, (struct sockaddr *)&addr, addrlen)) {
         lua_pushnil(L);
