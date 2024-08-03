@@ -735,8 +735,7 @@ int main(int argc, char *const argv[])
     lua_remove(L, -2);
 
     while ((opt = getopt(argc, argv, "e:v")) != -1) {
-        switch (opt)
-        {
+        switch (opt) {
         case 'v':
             fprintf(stderr, LUA_RELEASE"\n");
             fprintf(stderr, "Lua-eco "ECO_VERSION_STRING"\n");
