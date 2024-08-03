@@ -682,6 +682,32 @@ static void show_usage(const char *progname)
         , progname);
 }
 
+static int parse_args(int argc, char *const argv[], bool *has_v, bool *has_e)
+{
+    *has_v = false;
+    *has_e = false;
+
+    if (argc < 2)
+        return 0;
+
+    if (argv[1][0] != '-')
+        return 1;
+
+    if (!strcmp(argv[1], "-v")) {
+        *has_v = true;
+        return 0;
+    }
+
+    if (!strcmp(argv[1], "-e")) {
+        if (argc < 3)
+            return -1;
+        *has_e = true;
+        return 2;
+    }
+
+    return -1;
+}
+
 static void set_random_seed()
 {
     struct timeval t;
@@ -694,9 +720,25 @@ int main(int argc, char *const argv[])
 {
     struct ev_loop *loop = EV_DEFAULT;
     struct eco_context *ctx;
+    bool has_v, has_e;
     int error = 0;
+    int script;
     lua_State *L;
-    int opt;
+
+    script = parse_args(argc, argv, &has_v, &has_e);
+    if (script < 0) {
+        show_usage(argv[0]);
+        return 1;
+    }
+
+    if (has_v) {
+        fprintf(stderr, LUA_RELEASE"\n");
+        fprintf(stderr, "Lua-eco "ECO_VERSION_STRING"\n");
+        return 0;
+    }
+
+    if (script == 0)
+        return 0;
 
     signal(SIGPIPE, SIG_IGN);
 
@@ -734,33 +776,18 @@ int main(int argc, char *const argv[])
     lua_getfield(L, -1, "run");
     lua_remove(L, -2);
 
-    while ((opt = getopt(argc, argv, "e:v")) != -1) {
-        switch (opt) {
-        case 'v':
-            fprintf(stderr, LUA_RELEASE"\n");
-            fprintf(stderr, "Lua-eco "ECO_VERSION_STRING"\n");
-            goto err;
-
-        case 'e':
-            error = luaL_loadstring(L, optarg) || lua_pcall(L, 1, 0, 0);
-            if (error) {
-                fprintf(stderr, "%s\n", lua_tostring(L, -1));
-                goto err;
-            }
-            goto run;
-
-        default:
-            show_usage(argv[0]);
+    if (has_e) {
+         error = luaL_loadstring(L, argv[script]) || lua_pcall(L, 1, 0, 0);
+        if (error) {
+            fprintf(stderr, "%s\n", lua_tostring(L, -1));
             goto err;
         }
+        goto run;
     }
-
-    if (argc < 2)
-        goto err;
 
     createargtable(L, argc, argv);
 
-    error = luaL_loadfile(L, argv[1]) || lua_pcall(L, 1, 0, 0);
+    error = luaL_loadfile(L, argv[script]) || lua_pcall(L, 1, 0, 0);
     if (error) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         goto err;
