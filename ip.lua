@@ -229,6 +229,8 @@ local function link_get(sock, ifindex)
 
     local info = rtnl.parse_ifinfomsg(msg)
 
+    res.type = info.type
+
     if info.flags & rtnl.IFF_UP > 0 then
         res.up = true
     end
