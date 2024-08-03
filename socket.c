@@ -1129,6 +1129,7 @@ int luaopen_eco_core_socket(lua_State *L)
 
     lua_add_constant(L, "ICMP_ECHOREPLY", ICMP_ECHOREPLY);
     lua_add_constant(L, "ICMP_ECHO", ICMP_ECHO);
+    lua_add_constant(L, "ICMP_REDIRECT", ICMP_REDIRECT);
 
     lua_add_constant(L, "ICMPV6_ECHO_REQUEST", ICMPV6_ECHO_REQUEST);
     lua_add_constant(L, "ICMPV6_ECHO_REPLY", ICMPV6_ECHO_REPLY);
