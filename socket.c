@@ -1136,6 +1136,8 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_add_constant(L, "ETH_P_ALL", ETH_P_ALL);
 
     lua_add_constant(L, "ARPHRD_ETHER", ARPHRD_ETHER);
+    lua_add_constant(L, "ARPHRD_LOOPBACK", ARPHRD_LOOPBACK);
+    lua_add_constant(L, "ARPHRD_IEEE80211_RADIOTAP", ARPHRD_IEEE80211_RADIOTAP);
 
     lua_add_constant(L, "ARPOP_REQUEST", ARPOP_REQUEST);
     lua_add_constant(L, "ARPOP_REPLY", ARPOP_REPLY);

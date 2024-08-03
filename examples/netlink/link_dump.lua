@@ -40,6 +40,16 @@ while true do
             for k, v in pairs(info) do
                 if k == 'flags' or k == 'change' then
                     print(k .. ':', string.format('0x%x', v))
+                elseif k == 'type' then
+                    if v == socket.ARPHRD_ETHER then
+                        print(k .. ':', 'ether')
+                    elseif v == socket.ARPHRD_LOOPBACK then
+                        print(k .. ':', 'loopback')
+                    elseif v == socket.ARPHRD_IEEE80211_RADIOTAP then
+                        print(k .. ':', 'ieee802.11/radiotap')
+                    else
+                        print(k .. ':', v)
+                    end
                 else
                     print(k .. ':', v)
                 end
