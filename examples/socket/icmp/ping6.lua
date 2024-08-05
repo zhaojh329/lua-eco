@@ -81,7 +81,7 @@ while true do
     if icmp_type then
         if icmp_type == socket.ICMPV6_ECHO_REPLY then
             if id == local_id then
-                print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', n, dest_ip, seq, elapsed * 1000))
+                print(string.format('%d bytes from %s: icmp_seq=%d time=%.3f ms', n, peer.ipaddr, seq, elapsed * 1000))
             end
         else
             print('Got ICMP packet with type ' .. icmp_type)
