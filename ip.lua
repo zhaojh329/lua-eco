@@ -54,6 +54,14 @@ local function rtnl_send(msg)
     return nil, err
 end
 
+local function is_valid_mac(mac)
+    if type(mac) ~= 'string' then
+        return false
+    end
+
+    return not not mac:match('^%x%x:%x%x:%x%x:%x%x:%x%x:%x%x$')
+end
+
 local link = {}
 
 --[[
@@ -157,10 +165,12 @@ function link.set(dev, attrs)
     end
 
     if attrs.address then
+        assert(is_valid_mac(attrs.address), 'not a valid address')
         msg:put_attr(rtnl.IFLA_ADDRESS, hex.decode(attrs.address:gsub(':', '')))
     end
 
     if attrs.broadcast then
+        assert(is_valid_mac(attrs.broadcast), 'not a valid broadcast')
         msg:put_attr(rtnl.IFLA_BROADCAST, hex.decode(attrs.broadcast:gsub(':', '')))
     end
 
