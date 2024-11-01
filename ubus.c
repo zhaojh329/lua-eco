@@ -684,10 +684,13 @@ static int lua_ubus_connect(lua_State *L)
     memset(ctx, 0, sizeof(struct eco_ubus_context));
 
     if (ubus_connect_ctx(&ctx->ctx, path)) {
+        uloop_done();
         lua_pushnil(L);
         lua_pushliteral(L, "Failed to connect to ubus");
         return 2;
     }
+
+    uloop_done();
 
     if (path) {
         strcpy(ctx->path_data, path);
