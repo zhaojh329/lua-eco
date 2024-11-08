@@ -37,6 +37,7 @@ Lua-eco also provides some modules for you to build applications quickly:
 * `dns`: Provides a DNS client implementation for Lua-eco applications, allowing you to perform DNS lookups and resolve domain names.
 * `ubus`: Provides a Lua interface to the [ubus] system in OpenWrt, allowing you to interact with system services and daemons.
 * `sync`: Provides operations for synchronization between coroutines.
+* `channel`: Provides a mechanism for communication between coroutines by sending and receiving values.
 * `netlink`: Provides operations for inter-process communication (IPC) between both the kernel and userspace processes.
 * `nl80211`: Show/manipulate wireless devices and their configuration.
 * `termios`: Bind unix API for terminal/serial I/O.
