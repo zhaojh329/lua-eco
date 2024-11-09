@@ -50,11 +50,9 @@ target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
 target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(time MODULE time.c)
-target_link_libraries(time PRIVATE libeco ${LIBEV_LIBRARY})
 set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
 
 add_library(bufio MODULE bufio.c)
-target_link_libraries(bufio PRIVATE ${LIBEV_LIBRARY})
 set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
 
 add_library(sys MODULE sys.c)
@@ -64,7 +62,6 @@ add_library(file MODULE file.c)
 set_target_properties(file PROPERTIES OUTPUT_NAME file PREFIX "")
 
 add_library(socket MODULE socket.c)
-target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY})
 set_target_properties(socket PROPERTIES OUTPUT_NAME socket PREFIX "")
 
 add_library(termios MODULE termios.c)
@@ -98,7 +95,7 @@ if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
     if (SSL_SUPPORT)
         add_library(essl MODULE ssl.c)
-        target_link_libraries(essl PRIVATE libeco ${SSL_TARGET})
+        target_link_libraries(essl PRIVATE ${SSL_TARGET})
         set_target_properties(essl PROPERTIES OUTPUT_NAME ssl PREFIX "")
 
         install(
@@ -119,7 +116,7 @@ if (ECO_UBUS_SUPPORT)
     find_library(UBUS NAMES ubus)
     if (UBUS)
         add_library(lubus MODULE ubus.c)
-        target_link_libraries(lubus PRIVATE libeco ubus)
+        target_link_libraries(lubus PRIVATE ubus)
         set_target_properties(lubus PROPERTIES OUTPUT_NAME ubus PREFIX "")
 
         install(
