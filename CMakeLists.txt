@@ -42,6 +42,8 @@ option(ECO_SSH_SUPPORT "ssh" ON)
 
 add_library(libeco SHARED libeco.c)
 set_target_properties(libeco PROPERTIES OUTPUT_NAME eco)
+set_target_properties(libeco PROPERTIES VERSION
+    ${ECO_VERSION_MAJOR}.${ECO_VERSION_MINOR}.${ECO_VERSION_PATCH} SOVERSION ${ECO_VERSION_MAJOR})
 
 add_executable(eco eco.c)
 target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
