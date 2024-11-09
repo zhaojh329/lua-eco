@@ -6,7 +6,7 @@
 [4]: https://github.com/zhaojh329/lua-eco/pulls
 [5]: https://img.shields.io/badge/提问-欢迎-brightgreen.svg?style=plastic
 [6]: https://github.com/zhaojh329/lua-eco/issues/new
-[7]: https://img.shields.io/badge/发布版本-3.6.0-blue.svg?style=plastic
+[7]: https://img.shields.io/badge/发布版本-3.6.1-blue.svg?style=plastic
 [8]: https://github.com/zhaojh329/lua-eco/releases
 [9]: https://github.com/zhaojh329/lua-eco/workflows/build/badge.svg
 [11]: https://img.shields.io/badge/技术交流群-点击加入：153530783-brightgreen.svg
