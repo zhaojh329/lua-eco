@@ -438,6 +438,40 @@ local function query(s, id, req, nameserver)
     return parse_response(data, id)
 end
 
+local function name_from_hosts(qname, opts)
+    local typ = opts.type or M.TYPE_A
+
+    for line in io.lines('/etc/hosts') do
+        if line:sub(1, 1) ~= '#' and line ~= '' then
+            local fields = {}
+
+            for field in line:gmatch('%S+') do
+                fields[#fields + 1] = field
+            end
+
+            local address = fields[1]
+            local address_type
+
+            if socket.is_ipv4_address(address) then
+                address_type = M.TYPE_A
+            elseif socket.is_ipv6_address(address) then
+                address_type = M.TYPE_AAAA
+            end
+
+            if address_type == typ and #fields > 1 then
+                for i = 2, #fields do
+                    if fields[i] == qname then
+                        return {{
+                            type = typ,
+                            address = address
+                        }}
+                    end
+                end
+            end
+        end
+    end
+end
+
 --[[
     opts is an optional Table that supports the following fields:
     type: The current resource record type, possible values are 1 (TYPE_A), 5 (TYPE_CNAME),
@@ -469,6 +503,11 @@ function M.query(qname, opts)
     end
 
     opts = opts or {}
+
+    local res = name_from_hosts(qname, opts)
+    if res then
+        return res
+    end
 
     local nameservers = {}
 
