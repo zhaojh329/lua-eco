@@ -2,8 +2,8 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local file = require 'eco.core.file'
-local sys = require 'eco.core.sys'
 local time = require 'eco.time'
+local sys = require 'eco.sys'
 
 local M = {}
 
@@ -69,15 +69,13 @@ function M.flock(fd, operation, timeout)
     end
 end
 
-function M.sync()
-    local pid, err = sys.exec('sync')
-    if not pid then
+function M.sync(timeout)
+    local p, err = sys.exec('sync')
+    if not p then
         return nil, err
     end
 
-    eco.watcher(eco.CHILD, pid):wait()
-
-    return true
+    return p:wait(timeout)
 end
 
 local inotify_methods = {}
