@@ -9,7 +9,7 @@ local M = {}
 
 local exec_methods = {}
 
-function exec_methods:release()
+function exec_methods:close()
     if not self.stdout_fd then
         return
     end
@@ -39,7 +39,7 @@ end
 
 local exec_metatable = {
     __index = exec_methods,
-    __gc = exec_methods.release
+    __gc = exec_methods.close
 }
 
 function M.exec(...)
