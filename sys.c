@@ -60,11 +60,16 @@ static int eco_sys_exec(lua_State *L)
     int epipe[2] = {};
     pid_t pid;
 
-    if (pipe(opipe) < 0 || pipe(epipe) < 0)
+    if (pipe(opipe) < 0 || pipe(epipe) < 0) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "pipe: %s", strerror(errno));
         goto err;
+    }
 
     pid = fork();
     if (pid < 0) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "fork: %s", strerror(errno));
         goto err;
     } else if (pid == 0) {
         const char **args;
@@ -116,9 +121,6 @@ static int eco_sys_exec(lua_State *L)
     }
 
 err:
-    lua_pushnil(L);
-    lua_pushstring(L, strerror(errno));
-
     if (opipe[0] > 0) {
         close(opipe[0]);
         close(opipe[1]);
