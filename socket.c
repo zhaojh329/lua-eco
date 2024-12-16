@@ -847,6 +847,7 @@ static struct sock_opt optsets[] = {
     {"reuseaddr", SOL_SOCKET, SO_REUSEADDR, sockopt_set_boolean},
     {"reuseport", SOL_SOCKET, SO_REUSEPORT, sockopt_set_boolean},
     {"keepalive", SOL_SOCKET, SO_KEEPALIVE, sockopt_set_boolean},
+    {"broadcast", SOL_SOCKET, SO_BROADCAST, sockopt_set_boolean},
     {"sndbuf", SOL_SOCKET, SO_SNDBUF, sockopt_set_int},
     {"rcvbuf", SOL_SOCKET, SO_RCVBUF, sockopt_set_int},
     {"mark", SOL_SOCKET, SO_MARK, sockopt_set_int},
