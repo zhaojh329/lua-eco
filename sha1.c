@@ -272,6 +272,9 @@ int luaopen_eco_hash_sha1(lua_State *L)
 {
     lua_newtable(L);
 
+    lua_pushstring(L, ECO_SHA1_MT);
+    lua_setfield(L, -2, "mtname");
+
     lua_pushcfunction(L, lua_sha1_sum);
     lua_setfield(L, -2, "sum");
 

@@ -330,6 +330,9 @@ int luaopen_eco_hash_md5(lua_State *L)
 {
     lua_newtable(L);
 
+    lua_pushstring(L, ECO_MD5_MT);
+    lua_setfield(L, -2, "mtname");
+
     lua_pushcfunction(L, lua_md5_sum);
     lua_setfield(L, -2, "sum");
 
