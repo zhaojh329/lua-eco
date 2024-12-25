@@ -58,6 +58,40 @@ function M.exec(...)
     }, exec_metatable)
 end
 
+-- stdout, stderr, err = sys.sh(cmd, timeout)
+function M.sh(cmd, timeout)
+    assert(type(cmd) == 'string' or type(cmd) == 'table', 'cmd must be a string or table')
+
+    if type(cmd) == 'string' then
+        cmd = { '/bin/sh', '-c', cmd }
+    end
+
+    local p, err = M.exec(table.unpack(cmd))
+    if not p then
+        return nil, nil, err
+    end
+
+    local stdout, stderr
+
+    timeout = timeout or 30
+
+    stdout, err = p:read_stdout('*a', timeout)
+    if not stdout then
+        p:close()
+        return nil, nil, err
+    end
+
+    stderr, err = p:read_stderr('*a', timeout)
+    if not stderr then
+        p:close()
+        return stdout, nil, err
+    end
+
+    p:close()
+
+    return stdout, stderr
+end
+
 function M.signal(sig, cb, ...)
     local w = eco.watcher(eco.SIGNAL, sig)
 
