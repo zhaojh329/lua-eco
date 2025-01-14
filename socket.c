@@ -837,7 +837,20 @@ static int sockopt_set_packet_membership(struct eco_socket *sock, lua_State *L, 
     }
 
     lua_getfield(L, 3, "type");
-    mreq.mr_type = luaL_checkinteger(L, -1);
+    mreq.mr_type = luaL_optinteger(L, -1, 0);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 3, "address");
+    if (!lua_isnil(L, -1)) {
+        size_t alen;
+        const char *address = luaL_checklstring(L, -1, &alen);
+
+        if (alen > sizeof(mreq.mr_address))
+            return luaL_argerror(L, 3, "address too long");
+
+        mreq.mr_alen = alen;
+        memcpy(mreq.mr_address, address, alen);
+    }
     lua_pop(L, 1);
 
     return sockopt_set(sock, L, o, &mreq, sizeof(mreq));
@@ -1143,7 +1156,10 @@ int luaopen_eco_core_socket(lua_State *L)
     lua_add_constant(L, "ARPOP_REQUEST", ARPOP_REQUEST);
     lua_add_constant(L, "ARPOP_REPLY", ARPOP_REPLY);
 
+    lua_add_constant(L, "PACKET_MR_MULTICAST", PACKET_MR_MULTICAST);
     lua_add_constant(L, "PACKET_MR_PROMISC", PACKET_MR_PROMISC);
+    lua_add_constant(L, "PACKET_MR_ALLMULTI", PACKET_MR_ALLMULTI);
+    lua_add_constant(L, "PACKET_MR_UNICAST", PACKET_MR_UNICAST);
 
     lua_add_constant(L, "ICMP_ECHOREPLY", ICMP_ECHOREPLY);
     lua_add_constant(L, "ICMP_ECHO", ICMP_ECHO);
