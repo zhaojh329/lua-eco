@@ -728,7 +728,7 @@ static void lua_ubus_objects_cb(struct ubus_context *c, struct ubus_object_data 
     lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
 }
 
-static int lua_ubus_handle_objects(lua_State *L)
+static int lua_ubus_objects(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     int ret;
@@ -755,7 +755,7 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"add", lua_ubus_add},
     {"reply", lua_ubus_reply},
     {"complete_deferred_request", lua_ubus_complete_deferred_request},
-    {"objects", lua_ubus_handle_objects},
+    {"objects", lua_ubus_objects},
     {"close", lua_ubus_close},
     {"__gc", lua_ubus_close},
     {NULL, NULL}
