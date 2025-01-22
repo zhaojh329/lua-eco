@@ -9,7 +9,7 @@ local global_timeout = 30.0
 
 local methods = {}
 
-for _, method in ipairs({'close', 'call', 'reply', 'send', 'objects', 'settimeout', 'auto_reconnect'}) do
+for _, method in ipairs({'close', 'call', 'reply', 'send', 'objects', 'signatures', 'settimeout', 'auto_reconnect'}) do
     methods[method] = function(self, ...)
         local con = self.con
         return con[method](con, ...)
@@ -70,7 +70,7 @@ function M.connect(path)
     }, metatable)
 end
 
-for _, method in ipairs({'call', 'send', 'objects'}) do
+for _, method in ipairs({'call', 'send', 'objects', 'signatures'}) do
     M[method] = function(...)
         local con, err = M.connect()
         if not con then

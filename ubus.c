@@ -724,8 +724,9 @@ static void lua_ubus_objects_cb(struct ubus_context *c, struct ubus_object_data 
 {
     lua_State *L = (lua_State *)p;
 
+    lua_pushinteger(L, o->id);
     lua_pushstring(L, o->path);
-    lua_rawseti(L, -2, lua_rawlen(L, -2) + 1);
+    lua_settable(L, -3);
 }
 
 static int lua_ubus_objects(lua_State *L)
@@ -746,6 +747,35 @@ static int lua_ubus_objects(lua_State *L)
     return 1;
 }
 
+static void lua_ubus_signatures_cb(struct ubus_context *c, struct ubus_object_data *o, void *p)
+{
+    lua_State *L = (lua_State *)p;
+
+    if (!o->signature)
+        return;
+
+    blob_to_lua_table(L, blob_data(o->signature), blob_len(o->signature), false);
+}
+
+static int lua_ubus_signatures(lua_State *L)
+{
+    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+    const char *path = luaL_checkstring(L, 2);
+    int ret;
+
+    lua_newtable(L);
+
+    ret = ubus_lookup(&ctx->ctx, path, lua_ubus_signatures_cb, L);
+    if (ret != UBUS_STATUS_OK) {
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        lua_pushstring(L, ubus_strerror(ret));
+        return 2;
+    }
+
+    return 1;
+}
+
 static const struct luaL_Reg ubus_methods[] =  {
     {"settimeout", lua_ubus_settimeout},
     {"auto_reconnect", lua_ubus_auto_reconnect},
@@ -756,6 +786,7 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"reply", lua_ubus_reply},
     {"complete_deferred_request", lua_ubus_complete_deferred_request},
     {"objects", lua_ubus_objects},
+    {"signatures", lua_ubus_signatures},
     {"close", lua_ubus_close},
     {"__gc", lua_ubus_close},
     {NULL, NULL}
