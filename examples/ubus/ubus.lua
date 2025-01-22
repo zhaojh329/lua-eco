@@ -54,33 +54,6 @@ time.at(1, function()
     print('call eco.defer:', res.message)
 end)
 
-print('\nubus objects:')
-
-local attr_types = {
-    [ubus.ARRAY] = 'Array',
-    [ubus.TABLE] = 'Table',
-    [ubus.STRING] = 'String',
-    [ubus.INT64] = 'Integer',
-    [ubus.INT32] = 'Integer',
-    [ubus.INT16] = 'Integer',
-    [ubus.INT8] = 'Boolean',
-    [ubus.DOUBLE] = 'Number'
-}
-
-for id, obj in pairs(con:objects()) do
-    print(string.format('"%s" @%08x', obj, id))
-    for method, signature in pairs(con:signatures(obj)) do
-        io.write(string.format('\t"%s":{', method))
-        local comma = ''
-        for k, v in pairs(signature) do
-			io.write(string.format('%s"%s":"%s"', comma, k, attr_types[v] or 'unknown'))
-            comma = ','
-		end
-        print('}')
-    end
-end
-print()
-
 while true do
     time.sleep(1)
 end
