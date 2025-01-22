@@ -11,7 +11,7 @@ end)
 
 local con = ubus.connect()
 
-con:add('eco', {
+local obj = con:add('eco', {
     echo = {
         function(req, msg)
             con:reply(req, msg)
@@ -21,8 +21,9 @@ con:add('eco', {
 
 con:listen('*', function(ev, msg)
     print('got event:', msg.j, ev)
+    con:notify(obj, 'test', msg)
 end)
 
 while true do
-    time.sleep(1)
+    time.sleep(1000)
 end

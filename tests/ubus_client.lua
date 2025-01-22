@@ -32,3 +32,18 @@ eco.run(function()
         time.sleep(0.001)
     end
 end)
+
+eco.run(function()
+    local con, err = ubus.connect()
+    if not con then
+        error(err)
+    end
+
+    con:subscribe('eco', function(method, msg)
+        print('recv:', method, msg.j)
+    end)
+
+    while true do
+        time.sleep(1000)
+    end
+end)
