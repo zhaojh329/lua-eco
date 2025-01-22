@@ -9,7 +9,7 @@ local global_timeout = 30.0
 
 local methods = {}
 
-for _, method in ipairs({'close', 'call', 'reply', 'send', 'objects', 'signatures', 'settimeout', 'auto_reconnect'}) do
+for _, method in ipairs({'close', 'call', 'reply', 'send', 'notify', 'objects', 'signatures', 'settimeout', 'auto_reconnect'}) do
     methods[method] = function(self, ...)
         local con = self.con
         return con[method](con, ...)
@@ -33,8 +33,14 @@ function methods:add(object, ms)
         end
     end
 
-    local o, err = con:add(object, ms)
-    if not o then
+    return con:add(object, ms)
+end
+
+function methods:subscribe(path, cb)
+    local s, err = self.con:subscribe(path, function(...)
+        eco.run(cb, ...)
+    end)
+    if not s then
         return false, err
     end
 
