@@ -62,14 +62,30 @@ static int eco_count(lua_State *L)
     return 1;
 }
 
+static void eco_sleep_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+    lua_State *co = w->data;
+    struct eco_context *ctx = eco_get_context(co);
+
+    eco_resume(ctx->L, co, 0);
+}
+
 static int eco_run(lua_State *L)
 {
     int narg = lua_gettop(L);
+    struct ev_timer *tmr;
     lua_State *co;
 
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
     co = lua_newthread(L); /* 1: func, 2: arg1, 3: arg2,...top: co */
+
+    tmr = calloc(1, sizeof(struct ev_timer));
+    if (!tmr)
+        return luaL_error(L, "no mem");
+
+    ev_init(tmr, eco_sleep_cb);
+    tmr->data = co;
 
     lua_insert(L, 1); /* 1:co, 2: func, 3: arg1, 4: arg2,... */
     lua_xmove(L, co, narg);
@@ -86,8 +102,8 @@ static int eco_run(lua_State *L)
 
     eco_push_context_env(L);
     lua_pushvalue(L, 1);
-    lua_pushboolean(L, true);
-    lua_rawset(L, -3);  /* ctx_env[co] = true */
+    lua_pushlightuserdata(L, tmr);
+    lua_rawset(L, -3);  /* ctx_env[co] = tmr_ptr */
     lua_pop(L, 1);
 
     eco_resume(L, co, narg - 1);

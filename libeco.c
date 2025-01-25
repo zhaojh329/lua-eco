@@ -65,6 +65,11 @@ void eco_resume(lua_State *L, lua_State *co, int narg)
         lua_rawget(L, -2);  /* ..., ctx_env, objs, co */
         lua_remove(L, -2);  /* ..., ctx_env, co */
 
+        lua_pushvalue(L, -1); /* ..., ctx_env, co, co */
+        lua_rawget(L, -3); /* ..., ctx_env, co, tmr_ptr */
+        free((void *)lua_topointer(L, -1));
+        lua_pop(L, 1);
+
         lua_pushnil(L);
         lua_rawset(L, -3);  /* ctx_env[co] = nil */
         lua_pop(L, 1);

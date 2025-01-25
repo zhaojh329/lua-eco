@@ -5,28 +5,6 @@ local time = require 'eco.core.time'
 
 local M = {}
 
-local sleep_timers = {}
-
---[[
-    pauses the current coroutine for at least the delay seconds.
-    A negative or zero delay causes sleep to return immediately.
---]]
-function M.sleep(delay)
-    for _, w in ipairs(sleep_timers) do
-        if not w:active() then
-            return w:wait(delay)
-        end
-    end
-
-    local w = eco.watcher(eco.TIMER)
-
-    if #sleep_timers < 10 then
-        sleep_timers[#sleep_timers + 1] = w
-    end
-
-    return w:wait(delay)
-end
-
 local timer_methods = {}
 
 function timer_methods:cancel()
