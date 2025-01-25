@@ -441,14 +441,13 @@ static int lua_ubus_listen(lua_State *L)
         return 2;
     }
 
-    lua_push_ubus_ctx(L, ctx);
-    lua_getuservalue(L, -1);
+    lua_getuservalue(L, 1);
 
     lua_pushlightuserdata(L, e);
-    lua_pushvalue(L, -4);
+    lua_pushvalue(L, -3);
     lua_rawset(L, -3);
 
-    lua_settop(L, -3);
+    lua_settop(L, -2);
 
     return 1;
 }
@@ -622,14 +621,13 @@ static int lua_ubus_add(lua_State *L)
         return 2;
     }
 
-    lua_push_ubus_ctx(L, ctx);
-    lua_getuservalue(L, -1);
+    lua_getuservalue(L, 1);
 
     lua_pushlightuserdata(L, o);
-    lua_pushvalue(L, -4);
+    lua_pushvalue(L, -3);
     lua_rawset(L, -3);
 
-    lua_settop(L, -3);
+    lua_settop(L, -2);
 
     return 1;
 }
@@ -735,14 +733,13 @@ static int lua_ubus_subscribe(lua_State *L)
         return 2;
     }
 
-    lua_push_ubus_ctx(L, ctx);
-    lua_getuservalue(L, -1);
+    lua_getuservalue(L, 1);
 
     lua_pushlightuserdata(L, sub);
-    lua_pushvalue(L, -4);
+    lua_pushvalue(L, -3);
     lua_rawset(L, -3);
 
-    lua_settop(L, -3);
+    lua_settop(L, -2);
 
     return 0;
 }
