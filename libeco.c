@@ -62,11 +62,11 @@ void eco_resume(lua_State *L, lua_State *co, int narg)
         eco_push_context_env(L);
         lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
         lua_pushlightuserdata(L, co);
-        lua_rawget(L, -2);
-        lua_remove(L, -2);
+        lua_rawget(L, -2);  /* ..., ctx_env, objs, co */
+        lua_remove(L, -2);  /* ..., ctx_env, co */
 
         lua_pushnil(L);
-        lua_rawset(L, -3);
+        lua_rawset(L, -3);  /* ctx_env[co] = nil */
         lua_pop(L, 1);
         break;
 

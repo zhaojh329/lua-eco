@@ -69,22 +69,25 @@ static int eco_run(lua_State *L)
 
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
-    co = lua_newthread(L);
+    co = lua_newthread(L); /* 1: func, 2: arg1, 3: arg2,...top: co */
 
-    lua_insert(L, 1);
+    lua_insert(L, 1); /* 1:co, 2: func, 3: arg1, 4: arg2,... */
     lua_xmove(L, co, narg);
+
+    /* L   1: co */
+    /* co  1: func, 2: arg1, 3: arg2,... */
 
     lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
 
     lua_pushlightuserdata(L, co);
     lua_pushvalue(L, 1);
-    lua_rawset(L, -3);
+    lua_rawset(L, -3); /* objs[co_ptr] = co */
     lua_pop(L, 1);
 
     eco_push_context_env(L);
     lua_pushvalue(L, 1);
     lua_pushboolean(L, true);
-    lua_rawset(L, -3);
+    lua_rawset(L, -3);  /* ctx_env[co] = true */
     lua_pop(L, 1);
 
     eco_resume(L, co, narg - 1);

@@ -395,18 +395,18 @@ static void lua_ubus_event_handler(struct ubus_context *ctx, struct ubus_event_h
     lua_pushnil(L);
 
     lua_push_ubus_ctx(L, c);
-    lua_getuservalue(L, -1);
+    lua_getuservalue(L, -1); /* ..., nil, ctx, ctx env */
 
-    lua_pushlightuserdata(L, ev);
-    lua_rawget(L, -2);
+    lua_pushlightuserdata(L, ev); /* ..., nil, ctx, ctx env, ptr */
+    lua_rawget(L, -2); /* ..., nil, ctx, ctx env, handler */
 
-    lua_getuservalue(L, -1);
+    lua_getuservalue(L, -1); /* ..., nil, ctx, ctx env, handler, handler env */
 
-    lua_rawgeti(L, -1, 1);
+    lua_rawgeti(L, -1, 1); /* ..., nil, ctx, ctx env, handler, handler env, func */
 
-    lua_replace(L, -6);
+    lua_replace(L, -6); /* ..., func, ctx, ctx env, handler, handler env */
 
-    lua_settop(L, -5);
+    lua_settop(L, -5); /* ..., func */
 
     lua_pushstring(L, type);
 
@@ -427,7 +427,7 @@ static int lua_ubus_listen(lua_State *L)
     e = lua_newuserdata(L, sizeof(struct ubus_event_handler));
     lua_newtable(L);
     lua_pushvalue(L, 3);
-    lua_rawseti(L, -2, 1);
+    lua_rawseti(L, -2, 1);  /* env[1] = func */
     lua_setuservalue(L, -2);
 
     memset(e, 0, sizeof(struct ubus_event_handler));
@@ -441,13 +441,13 @@ static int lua_ubus_listen(lua_State *L)
         return 2;
     }
 
-    lua_getuservalue(L, 1);
+    lua_getuservalue(L, 1); /*  1: ctx  2: event name  3: func  4: ev handler 5: ctx env */
 
-    lua_pushlightuserdata(L, e);
-    lua_pushvalue(L, -3);
-    lua_rawset(L, -3);
+    lua_pushlightuserdata(L, e); /* 1: ctx  2: event name  3: func  4: handler 5: ctx env, 6: handler ptr */
+    lua_pushvalue(L, -3); /* 1: ctx  2: event name  3: func  4: handler 5: ctx env, 6: handler ptr, 7: handler */
+    lua_rawset(L, -3); /* ctx_env[ptr] = handler */
 
-    lua_settop(L, -2);
+    lua_settop(L, -2); /* 1: ctx  2: event name  3: func  4: handler */
 
     return 1;
 }
