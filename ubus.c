@@ -35,11 +35,54 @@ struct eco_ubus_object {
 
 static const char *obj_registry = "eco.ubus{obj}";
 
-static void lua_push_ubus_ctx(lua_State *L, struct eco_ubus_context *ctx)
+/* ctx_env[ptr] = userdata */
+static int lua_save_obj_to_ubus_ctx(lua_State *L, void *obj)
+{
+    lua_getuservalue(L, 1);
+
+    lua_pushlightuserdata(L, obj);
+    lua_pushvalue(L, -3);
+    lua_rawset(L, -3);
+
+    lua_settop(L, -2);
+
+    return 1;
+}
+
+static void lua_get_obj_env_from_ubus_ctx(lua_State *L, struct eco_ubus_context *ctx, void *obj)
 {
     lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
     lua_rawgetp(L, -1, ctx);
-    lua_remove(L, -2);
+    lua_getuservalue(L, -1); /* ..., reg, ctx, ctx env */
+
+    lua_pushlightuserdata(L, obj); /* ..., reg, ctx, ctx env, ptr */
+    lua_rawget(L, -2); /* ..., reg, ctx, ctx env, handler */
+    lua_getuservalue(L, -1); /* ..., reg, ctx, ctx env, handler, handler env */
+
+    lua_replace(L, -5); /* ..., handler env, ctx, ctx env, handler */
+    lua_pop(L, 3);
+}
+
+static void lua_get_obj_cb_from_ubus_ctx_by_idx(lua_State *L, struct eco_ubus_context *ctx,
+        void *obj, int idx)
+{
+    lua_pushnil(L);
+    lua_get_obj_env_from_ubus_ctx(L, ctx, obj); /* ..., nil, handler env */
+    lua_rawgeti(L, -1, idx); /* ..., nil, handler env, func */
+
+    lua_replace(L, -3); /* ..., func, handler env */
+    lua_pop(L, 1); /* ..., func */
+}
+
+static void lua_get_obj_cb_from_ubus_ctx_by_str(lua_State *L, struct eco_ubus_context *ctx,
+        void *obj, const char *name)
+{
+    lua_pushnil(L);
+    lua_get_obj_env_from_ubus_ctx(L, ctx, obj); /* ..., nil, handler env */
+    lua_getfield(L, -1, name); /* ..., nil, handler env, func */
+
+    lua_replace(L, -3); /* ..., func, handler env */
+    lua_pop(L, 1); /* ..., func */
 }
 
 static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool is_array)
@@ -392,21 +435,7 @@ static void lua_ubus_event_handler(struct ubus_context *ctx, struct ubus_event_h
     struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
     lua_State *L = c->eco->L;
 
-    lua_pushnil(L);
-
-    lua_push_ubus_ctx(L, c);
-    lua_getuservalue(L, -1); /* ..., nil, ctx, ctx env */
-
-    lua_pushlightuserdata(L, ev); /* ..., nil, ctx, ctx env, ptr */
-    lua_rawget(L, -2); /* ..., nil, ctx, ctx env, handler */
-
-    lua_getuservalue(L, -1); /* ..., nil, ctx, ctx env, handler, handler env */
-
-    lua_rawgeti(L, -1, 1); /* ..., nil, ctx, ctx env, handler, handler env, func */
-
-    lua_replace(L, -6); /* ..., func, ctx, ctx env, handler, handler env */
-
-    lua_settop(L, -5); /* ..., func */
+    lua_get_obj_cb_from_ubus_ctx_by_idx(L, c, ev, 1);
 
     lua_pushstring(L, type);
 
@@ -441,13 +470,7 @@ static int lua_ubus_listen(lua_State *L)
         return 2;
     }
 
-    lua_getuservalue(L, 1); /*  1: ctx  2: event name  3: func  4: ev handler 5: ctx env */
-
-    lua_pushlightuserdata(L, e); /* 1: ctx  2: event name  3: func  4: handler 5: ctx env, 6: handler ptr */
-    lua_pushvalue(L, -3); /* 1: ctx  2: event name  3: func  4: handler 5: ctx env, 6: handler ptr, 7: handler */
-    lua_rawset(L, -3); /* ctx_env[ptr] = handler */
-
-    lua_settop(L, -2); /* 1: ctx  2: event name  3: func  4: handler */
+    lua_save_obj_to_ubus_ctx(L, e);
 
     return 1;
 }
@@ -468,19 +491,7 @@ static int ubus_method_handler(struct ubus_context *ctx, struct ubus_object *obj
 
     lua_settop(L, 0);
 
-    lua_pushnil(L);
-
-    lua_push_ubus_ctx(L, c);
-    lua_getuservalue(L, -1);
-
-    lua_pushlightuserdata(L, o);
-    lua_rawget(L, -2);
-
-    lua_getuservalue(L, -1);
-    lua_getfield(L, -1, method);
-
-    lua_replace(L, -6);
-    lua_settop(L, -5);
+    lua_get_obj_cb_from_ubus_ctx_by_str(L, c, o, method);
 
     ubus_defer_request(ctx, req, dreq);
 
@@ -621,15 +632,7 @@ static int lua_ubus_add(lua_State *L)
         return 2;
     }
 
-    lua_getuservalue(L, 1);
-
-    lua_pushlightuserdata(L, o);
-    lua_pushvalue(L, -3);
-    lua_rawset(L, -3);
-
-    lua_settop(L, -2);
-
-    return 1;
+    return lua_save_obj_to_ubus_ctx(L, o);
 }
 
 static int lua_ubus_reply(lua_State *L)
@@ -670,21 +673,7 @@ static int ubus_subscriber_cb(struct ubus_context *ctx, struct ubus_object *obj,
     struct ubus_subscriber *s = container_of(obj, struct ubus_subscriber, obj);
     lua_State *L = c->eco->L;
 
-    lua_pushnil(L);
-
-    lua_push_ubus_ctx(L, c);
-    lua_getuservalue(L, -1);
-
-    lua_pushlightuserdata(L, s);
-    lua_rawget(L, -2);
-
-    lua_getuservalue(L, -1);
-
-    lua_rawgeti(L, -1, 1);
-
-    lua_replace(L, -6);
-
-    lua_settop(L, -5);
+    lua_get_obj_cb_from_ubus_ctx_by_idx(L, c, s, 1);
 
     lua_pushstring(L, method);
 
@@ -733,15 +722,7 @@ static int lua_ubus_subscribe(lua_State *L)
         return 2;
     }
 
-    lua_getuservalue(L, 1);
-
-    lua_pushlightuserdata(L, sub);
-    lua_pushvalue(L, -3);
-    lua_rawset(L, -3);
-
-    lua_settop(L, -2);
-
-    return 0;
+    return lua_save_obj_to_ubus_ctx(L, sub);
 }
 
 static int lua_ubus_notify(lua_State *L)
