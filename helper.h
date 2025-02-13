@@ -79,8 +79,6 @@
 
 static inline void eco_new_metatable(lua_State *L, const char *name, const struct luaL_Reg regs[])
 {
-    const struct luaL_Reg *reg;
-
     if (!luaL_newmetatable(L, name))
         return;
 
@@ -90,13 +88,7 @@ static inline void eco_new_metatable(lua_State *L, const char *name, const struc
     if (!regs)
         return;
 
-    reg = regs;
-
-    while (reg->name) {
-        lua_pushcfunction(L, reg->func);
-        lua_setfield(L, -2, reg->name);
-        reg++;
-    }
+    luaL_setfuncs(L, regs, 0);
 }
 
 #endif
