@@ -704,7 +704,7 @@ static int lua_ubus_subscribe(lua_State *L)
     lua_rawseti(L, -2, 1);
     lua_setuservalue(L, -2);
 
-    memset(sub, 0, sizeof(struct ubus_event_handler));
+    memset(sub, 0, sizeof(struct ubus_subscriber));
 
     sub->cb = ubus_subscriber_cb;
 
