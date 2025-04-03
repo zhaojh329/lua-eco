@@ -3,6 +3,7 @@
 
 local socket = require 'eco.core.socket'
 local bufio = require 'eco.bufio'
+local sync = require 'eco.sync'
 
 local M = {}
 
@@ -71,11 +72,21 @@ function methods:accept()
 
     local b = bufio.new(sock:getfd(), { eof_error = 'closed' })
 
-    return setmetatable({ sock = sock, domain = self.domain, b = b }, metatable), perr
+    return setmetatable({ sock = sock, domain = self.domain, b = b, mutex = sync.mutex() }, metatable), perr
 end
 
 function methods:send(data)
-    return self.sock:send(data)
+    local mutex = self.mutex
+
+    mutex:lock()
+    local sent, err = self.sock:send(data)
+    mutex:unlock()
+
+    if sent then
+        return sent
+    else
+        return nil, err
+    end
 end
 
 function methods:write(data)
@@ -87,7 +98,17 @@ function methods:sendto(data, ...)
 end
 
 function methods:sendfile(path, len, offset)
-    return self.sock:sendfile(path, len, offset)
+    local mutex = self.mutex
+
+    mutex:lock()
+    local sent, err = self.sock:sendfile(path, len, offset)
+    mutex:unlock()
+
+    if sent then
+        return sent
+    else
+        return nil, err
+    end
 end
 
 --[[
@@ -154,7 +175,7 @@ function M.socket(family, domain, protocol, options)
         return nil, err
     end
 
-    local o = { sock = sock, domain = domain }
+    local o = { sock = sock, domain = domain, mutex = sync.mutex() }
 
     if domain == socket.SOCK_STREAM then
         o.b = bufio.new(sock:getfd(), { eof_error = 'closed' })

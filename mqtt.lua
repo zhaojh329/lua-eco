@@ -168,10 +168,6 @@ end
 local function send_pkt(self, data)
     local ok, err = self.sock:send(data)
     if not ok then
-        if err == 'busy' then
-            time.sleep(0.001)
-            return send_pkt(self, data)
-        end
         return nil, 'network: ' .. err
     end
 
