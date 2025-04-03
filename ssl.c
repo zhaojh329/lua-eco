@@ -80,9 +80,15 @@ static void ev_io_cb(struct ev_loop *loop, ev_io *w, int revents)
 static int lua_ssl_free(lua_State *L)
 {
     struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
+    struct ev_loop *loop;
 
     if (!s->ssl)
         return 0;
+
+    loop = s->ctx->eco->loop;
+
+    ev_timer_stop(loop, &s->tmr);
+    ev_io_stop(loop, &s->io);
 
     ssl_session_free(s->ssl);
     s->ssl = NULL;
