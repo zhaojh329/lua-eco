@@ -8,8 +8,8 @@ local client = mqtt.new({ ipaddr = '127.0.0.1' })
 local function publish_loop()
     local data = {}
 
-    -- build 1MB data
-    for _ = 1, 1024 * 1024 do
+    -- build 500KB data
+    for _ = 1, 1024 * 500 do
         data[#data + 1] = 'x'
     end
 
