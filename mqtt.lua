@@ -240,7 +240,7 @@ local function read_packet(sock)
     return typ, flags, data
 end
 
-local function handler_packet(self)
+local function handle_packet(self)
     local pt, flags, data = read_packet(self.sock)
     if not pt then
         local err = flags
@@ -660,7 +660,7 @@ function methods:run()
     end
 
     repeat
-        ok, err = handler_packet(self)
+        ok, err = handle_packet(self)
     until not ok
 
     on_event(self, 'error', err)
