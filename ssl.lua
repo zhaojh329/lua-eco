@@ -5,6 +5,7 @@ local socket = require 'eco.socket'
 local ssl = require 'eco.core.ssl'
 local bufio = require 'eco.bufio'
 local file = require 'eco.file'
+local sync = require 'eco.sync'
 
 local M = {}
 
@@ -35,7 +36,17 @@ function cli_methods:set_server_name(name)
 end
 
 function cli_methods:send(data)
-    return self.ssock:send(data)
+    local mutex = self.mutex
+
+    mutex:lock()
+    local sent, err = self.ssock:send(data)
+    mutex:unlock()
+
+    if sent then
+        return sent
+    else
+        return nil, err
+    end
 end
 
 function cli_methods:write(data)
@@ -155,7 +166,14 @@ local function create_ssl_client(sock, ssock, ctx, keep_ctx)
         fill = ssl.bufio_fill,
         ctx = ssock:pointer()
     })
-    return setmetatable({ ctx = ctx, sock = sock, ssock = ssock, b = b, keep_ctx = keep_ctx }, cli_metatable)
+    return setmetatable({
+        ctx = ctx,
+        sock = sock,
+        ssock = ssock,
+        b = b,
+        keep_ctx = keep_ctx,
+        mutex = sync.mutex()
+    }, cli_metatable)
 end
 
 function srv_methods:accept()
