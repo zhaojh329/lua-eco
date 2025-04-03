@@ -96,4 +96,35 @@ function M.waitgroup()
     }, waitgroup_mt)
 end
 
+local mutex_methods = {}
+
+function mutex_methods:lock()
+    self.counter = self.counter + 1
+
+    if self.counter == 1 then
+        return
+    end
+
+    self.cond:wait()
+end
+
+function mutex_methods:unlock()
+    self.counter = self.counter - 1
+
+    if self.counter == 0 then
+        return
+    end
+
+    self.cond:signal()
+end
+
+local mutex_mt = { __index = mutex_methods }
+
+function M.mutex()
+    return setmetatable({
+        counter = 0,
+        cond = M.cond()
+    }, mutex_mt)
+end
+
 return M
