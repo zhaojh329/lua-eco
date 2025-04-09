@@ -6,9 +6,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - lua: lua5.3
-            name: lua5.3
-            pkg: liblua5.3-dev
+          - lua: lua5.4
+            name: lua5.4
+            pkg: liblua5.4-dev
     steps:
       - uses: actions/checkout@v3
         with:
