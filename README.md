@@ -6,7 +6,7 @@
 [4]: https://github.com/zhaojh329/lua-eco/pulls
 [5]: https://img.shields.io/badge/Issues-welcome-brightgreen.svg?style=plastic
 [6]: https://github.com/zhaojh329/lua-eco/issues/new
-[7]: https://img.shields.io/badge/release-3.8.0-blue.svg?style=plastic
+[7]: https://img.shields.io/badge/release-3.9.0-blue.svg?style=plastic
 [8]: https://github.com/zhaojh329/lua-eco/releases
 [9]: https://github.com/zhaojh329/lua-eco/workflows/build/badge.svg
 
