@@ -73,7 +73,7 @@ end, 'eco2')
 
 ### Ubuntu
 
-    sudo apt install -y liblua5.3-dev libev-dev libssl-dev libmosquitto-dev
+    sudo apt install -y liblua5.3-dev libev-dev libssl-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
