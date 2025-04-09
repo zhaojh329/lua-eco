@@ -15,15 +15,15 @@ set(ECO_VERSION_PATCH 0)
 
 find_package(Libev REQUIRED)
 
-pkg_search_module(LUA53 lua-5.3)
+pkg_search_module(LUA54 lua-5.4)
 
-if (NOT LUA53)
-    find_path(LUA53_INCLUDE_DIRS lua.h PATH_SUFFIXES lua5.3)
-    find_library(LUA53_LIBRARIES lua5.3)
+if (NOT LUA54)
+    find_path(LUA54_INCLUDE_DIRS lua.h PATH_SUFFIXES lua5.4)
+    find_library(LUA54_LIBRARIES lua5.4)
 endif()
 
-if (NOT LUA53_INCLUDE_DIRS OR NOT LUA53_LIBRARIES)
-    message(FATAL_ERROR "Liblua 5.3 is required.")
+if (NOT LUA54_INCLUDE_DIRS OR NOT LUA54_LIBRARIES)
+    message(FATAL_ERROR "Liblua 5.4 is required.")
 endif()
 
 add_compile_options(-D_GNU_SOURCE -DLUA_USE_LINUX -Os -Wall -Werror --std=gnu99 -fno-strict-aliasing)
@@ -31,9 +31,9 @@ add_compile_options(-D_GNU_SOURCE -DLUA_USE_LINUX -Os -Wall -Werror --std=gnu99 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-include_directories(${LUA53_INCLUDE_DIRS} ${LIBEV_INCLUDE_DIR})
+include_directories(${LUA54_INCLUDE_DIRS} ${LIBEV_INCLUDE_DIR})
 
-set(LUA_INSTALL_PREFIX lib/lua/5.3)
+set(LUA_INSTALL_PREFIX lib/lua/5.4)
 
 option(ECO_SSL_SUPPORT "ssl" ON)
 option(ECO_UBUS_SUPPORT "ubus" ON)
@@ -46,7 +46,7 @@ set_target_properties(libeco PROPERTIES VERSION
     ${ECO_VERSION_MAJOR}.${ECO_VERSION_MINOR}.${ECO_VERSION_PATCH} SOVERSION ${ECO_VERSION_MAJOR})
 
 add_executable(eco eco.c)
-target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA53_LIBRARIES})
+target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA54_LIBRARIES})
 target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(time MODULE time.c)

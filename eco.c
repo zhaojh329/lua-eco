@@ -767,6 +767,9 @@ int main(int argc, char *const argv[])
 
     luaL_openlibs(L);
 
+    lua_gc(L, LUA_GCRESTART);   /* start GC... */
+    lua_gc(L, LUA_GCGEN, 0, 0); /* in generational mode */
+
     luaL_loadstring(L,
         "table.keys = function(t)"
         "local keys = {}"
