@@ -619,6 +619,15 @@ function methods:disconnect()
     return send_pkt(self, pkt:data())
 end
 
+
+function methods:close()
+    if not self.connected then
+        return
+    end
+
+    self.sock:close()
+end
+
 -- Add functions as handlers of given events
 -- client:on(event, function)
 -- client:on({ event1 = func1, event2 = func2 })
