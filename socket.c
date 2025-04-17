@@ -428,12 +428,17 @@ static int lua_recvk(lua_State *L, int status, lua_KContext ctx)
 
     sock->rcv.co = NULL;
 
+    if (sock->fd < 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        goto err;
+    }
+
     if (sock->flag.overtime) {
         sock->flag.overtime = 0;
-        free(buf);
         lua_pushnil(L);
         lua_pushliteral(L, "timeout");
-        return 2;
+        goto err;
     }
 
 again:
@@ -472,6 +477,9 @@ again:
     }
 
     return 1;
+err:
+    free(buf);
+    return 2;
 }
 
 static int __lua_recv(lua_State *L, bool from)
@@ -941,6 +949,9 @@ static int lua_sock_close(lua_State *L)
     close(sock->fd);
 
     sock->fd = -1;
+
+    if (sock->rcv.co)
+        eco_resume(sock->eco->L, sock->rcv.co, 0);
 
     return 0;
 }

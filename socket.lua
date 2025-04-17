@@ -18,6 +18,10 @@ function methods:getfd()
 end
 
 function methods:close()
+    if self.b then
+        self.b:close()
+    end
+
     self.sock:close()
 end
 

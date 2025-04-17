@@ -138,6 +138,7 @@ function cli_methods:discard(n, timeout)
 end
 
 function cli_methods:close()
+    self.b:close()
     self.ssock:free()
 
     if not self.keep_ctx and self.ctx then

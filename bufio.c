@@ -12,16 +12,30 @@
 
 #define ECO_BUFIO_MT "eco{bufio}"
 
-static bool eco_bufio_check_overtime(struct eco_bufio *b, lua_State *L)
+static bool eco_bufio_check_eof(struct eco_bufio *b, lua_State *L)
 {
-    if (!b->flags.overtime)
+    if (!b->flags.eof)
         return false;
+
+    lua_pushnil(L);
+    lua_pushstring(L, b->eof_error);
+
+    return true;
+}
+
+static bool eco_bufio_readk_check(struct eco_bufio *b, lua_State *L)
+{
+    if (eco_bufio_check_eof(b, L))
+        return false;
+
+    if (!b->flags.overtime)
+        return true;
 
     b->flags.overtime = 0;
     lua_pushnil(L);
     lua_pushliteral(L, "timeout");
 
-    return true;
+    return false;
 }
 
 static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
@@ -174,6 +188,9 @@ static struct eco_bufio *read_check(lua_State *L)
 {
     struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
 
+    if (eco_bufio_check_eof(b, L))
+        return NULL;
+
     if (b->flags.eof) {
         lua_pushnil(L);
         lua_pushstring(L, b->eof_error);
@@ -201,7 +218,7 @@ static int lua_readk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (eco_bufio_check_overtime(b, L))
+    if (!eco_bufio_readk_check(b, L))
         goto err;
 
     if (b->pattern) {
@@ -338,7 +355,7 @@ static int eco_bufio_peekk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (eco_bufio_check_overtime(b, L))
+    if (!eco_bufio_readk_check(b, L))
         return 2;
 
     if (blen < n)
@@ -385,7 +402,7 @@ static int lua_readfullk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (eco_bufio_check_overtime(b, L))
+    if (!eco_bufio_readk_check(b, L))
         goto err;
 
     if (!b->b) {
@@ -476,7 +493,7 @@ static int lua_readuntilk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (eco_bufio_check_overtime(b, L))
+    if (!eco_bufio_readk_check(b, L))
         return 2;
 
     pos = memmem(data, blen, b->pattern, pattern_len);
@@ -531,7 +548,7 @@ static int lua_discardk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (eco_bufio_check_overtime(b, L))
+    if (!eco_bufio_readk_check(b, L))
         return 2;
 
     if (n > blen)
@@ -567,6 +584,26 @@ static int lua_bufio_discard(lua_State *L)
     return lua_discardk(L, 0, (lua_KContext)b);
 }
 
+static int lua_bufio_close(lua_State *L)
+{
+    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
+    struct ev_loop *loop = b->eco->loop;
+
+    if (b->flags.eof)
+        return 0;
+
+    b->flags.eof = true;
+
+    if (!b->L)
+        return 0;
+
+    ev_io_stop(loop, &b->io);
+    ev_timer_stop(loop, &b->tmr);
+    eco_resume(b->eco->L, b->L, 0);
+
+    return 0;
+}
+
 static const struct luaL_Reg methods[] =  {
     {"size", lua_bufio_size},
     {"length", lua_bufio_length},
@@ -575,6 +612,7 @@ static const struct luaL_Reg methods[] =  {
     {"readfull", lua_bufio_readfull},
     {"readuntil", lua_bufio_readuntil},
     {"discard", lua_bufio_discard},
+    {"close", lua_bufio_close},
     {NULL, NULL}
 };
 
