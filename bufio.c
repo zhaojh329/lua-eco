@@ -10,9 +10,9 @@
 
 #include "bufio.h"
 
-#define ECO_BUFIO_MT "eco{bufio}"
+#define BUFIO_MT "eco{bufio}"
 
-static bool eco_bufio_check_eof(struct eco_bufio *b, lua_State *L)
+static bool bufio_check_eof(struct eco_bufio *b, lua_State *L)
 {
     if (!b->flags.eof)
         return false;
@@ -23,9 +23,9 @@ static bool eco_bufio_check_eof(struct eco_bufio *b, lua_State *L)
     return true;
 }
 
-static bool eco_bufio_readk_check(struct eco_bufio *b, lua_State *L)
+static bool bufio_readk_check(struct eco_bufio *b, lua_State *L)
 {
-    if (eco_bufio_check_eof(b, L))
+    if (bufio_check_eof(b, L))
         return false;
 
     if (!b->flags.overtime)
@@ -58,7 +58,7 @@ static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
     eco_resume(b->eco->L, b->L, 0);
 }
 
-static int eco_bufio_fill(struct eco_bufio *b, lua_State *L, lua_KContext ctx, lua_KFunction k)
+static int bufio_fill(struct eco_bufio *b, lua_State *L, lua_KContext ctx, lua_KFunction k)
 {
     ssize_t ret;
 
@@ -158,7 +158,7 @@ static int lua_bufio_new(lua_State *L)
         b->eof_error = "eof";
 
     if (!b->fill)
-        b->fill = eco_bufio_fill;
+        b->fill = bufio_fill;
 
     ev_timer_init(&b->tmr, ev_timer_cb, 0.0, 0);
     ev_io_init(&b->io, ev_io_read_cb, fd, EV_READ);
@@ -168,7 +168,7 @@ static int lua_bufio_new(lua_State *L)
 
 static int lua_bufio_size(lua_State *L)
 {
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
+    struct eco_bufio *b = luaL_checkudata(L, 1, BUFIO_MT);
 
     lua_pushinteger(L, b->size);
 
@@ -177,7 +177,7 @@ static int lua_bufio_size(lua_State *L)
 
 static int lua_bufio_length(lua_State *L)
 {
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
+    struct eco_bufio *b = luaL_checkudata(L, 1, BUFIO_MT);
 
     lua_pushinteger(L, buffer_length(b));
 
@@ -186,9 +186,9 @@ static int lua_bufio_length(lua_State *L)
 
 static struct eco_bufio *read_check(lua_State *L)
 {
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
+    struct eco_bufio *b = luaL_checkudata(L, 1, BUFIO_MT);
 
-    if (eco_bufio_check_eof(b, L))
+    if (bufio_check_eof(b, L))
         return NULL;
 
     if (b->flags.eof) {
@@ -218,7 +218,7 @@ static int lua_readk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (!eco_bufio_readk_check(b, L))
+    if (!bufio_readk_check(b, L))
         goto err;
 
     if (b->pattern) {
@@ -355,7 +355,7 @@ static int eco_bufio_peekk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (!eco_bufio_readk_check(b, L))
+    if (!bufio_readk_check(b, L))
         return 2;
 
     if (blen < n)
@@ -402,7 +402,7 @@ static int lua_readfullk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (!eco_bufio_readk_check(b, L))
+    if (!bufio_readk_check(b, L))
         goto err;
 
     if (!b->b) {
@@ -493,7 +493,7 @@ static int lua_readuntilk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (!eco_bufio_readk_check(b, L))
+    if (!bufio_readk_check(b, L))
         return 2;
 
     pos = memmem(data, blen, b->pattern, pattern_len);
@@ -548,7 +548,7 @@ static int lua_discardk(lua_State *L, int status, lua_KContext ctx)
 
     b->L = NULL;
 
-    if (!eco_bufio_readk_check(b, L))
+    if (!bufio_readk_check(b, L))
         return 2;
 
     if (n > blen)
@@ -586,7 +586,7 @@ static int lua_bufio_discard(lua_State *L)
 
 static int lua_bufio_close(lua_State *L)
 {
-    struct eco_bufio *b = luaL_checkudata(L, 1, ECO_BUFIO_MT);
+    struct eco_bufio *b = luaL_checkudata(L, 1, BUFIO_MT);
     struct ev_loop *loop = b->eco->loop;
 
     if (b->flags.eof)
@@ -620,7 +620,7 @@ int luaopen_eco_bufio(lua_State *L)
 {
     lua_newtable(L);
 
-    eco_new_metatable(L, ECO_BUFIO_MT, methods);
+    eco_new_metatable(L, BUFIO_MT, methods);
     lua_pushcclosure(L, lua_bufio_new, 1);
     lua_setfield(L, -2, "new");
 

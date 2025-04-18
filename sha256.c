@@ -10,7 +10,7 @@
 
 #include "eco.h"
 
-#define ECO_SHA256_MT "eco{sha256}"
+#define SHA256_MT "eco{sha256}"
 
 #define SHA256_DIGEST_LEN 32
 
@@ -178,7 +178,7 @@ static int lua_sha256_sum(lua_State *L)
 
 static int lua_sha256_update(lua_State *L)
 {
-    struct sha256_ctx *ctx = luaL_checkudata(L, 1, ECO_SHA256_MT);
+    struct sha256_ctx *ctx = luaL_checkudata(L, 1, SHA256_MT);
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
 
@@ -189,7 +189,7 @@ static int lua_sha256_update(lua_State *L)
 
 static int lua_sha256_final(lua_State *L)
 {
-    struct sha256_ctx *ctx = luaL_checkudata(L, 1, ECO_SHA256_MT);
+    struct sha256_ctx *ctx = luaL_checkudata(L, 1, SHA256_MT);
     uint8_t hash[SHA256_DIGEST_LEN];
 
     sha256_final(ctx, hash);
@@ -220,13 +220,13 @@ int luaopen_eco_hash_sha256(lua_State *L)
 {
     lua_newtable(L);
 
-    lua_pushstring(L, ECO_SHA256_MT);
+    lua_pushstring(L, SHA256_MT);
     lua_setfield(L, -2, "mtname");
 
     lua_pushcfunction(L, lua_sha256_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, ECO_SHA256_MT, sha256_methods);
+    eco_new_metatable(L, SHA256_MT, sha256_methods);
     lua_pushcclosure(L, lua_sha256_new, 1);
     lua_setfield(L, -2, "new");
 
