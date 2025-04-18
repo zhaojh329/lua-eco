@@ -73,6 +73,7 @@ local function check_option(name, value)
         assert(value == nil or type(value) == 'string', 'expecting id to be a string')
     elseif name == 'keepalive' then
         assert(value == nil or type(value) == 'number', 'expecting keepalive to be a number')
+        assert(value == nil or value >= 5, 'keepalive cannot be less than 5')
     elseif name == 'clean_session' then
         assert(value == nil or type(value) == 'boolean', 'expecting clean_session to be a boolean')
     elseif name == 'username' then
@@ -197,11 +198,8 @@ end
 local max_mult = 128 * 128 * 128
 
 local function read_packet(sock)
-    local byte, err = sock:read(1, read_timeout)
+    local byte, err = sock:read(1)
     if not byte then
-        if err ~= 'timeout' then
-            err = 'network: ' .. err
-        end
         return nil, err
     end
 
@@ -239,31 +237,22 @@ end
 local function handle_packet(self)
     local pt, flags, data = read_packet(self.sock)
     if not pt then
-        local err = flags
-        if err ~= 'timeout' then
-            return false, err
-        end
-
-        if not self.connected then
-            return false, 'wait CONACK timeout'
-        elseif self.wait_pingresp and time.now() -  self.wait_pingresp >= read_timeout then
-            return false, 'wait PINGRESP timeout'
-        end
-
-        return true
+        return false, flags
     end
-
-    self.wait_pingresp = nil
 
     if not self.connected and pt ~= PKT_CONNACK then
         return false, 'expecting CONNACK but received ' .. pt
     end
+
+    self.wait_pingresp:cancel()
 
     if pt == PKT_CONNACK then
         if self.connected then
             on_event(self, 'error', 'unexpecting CONNACK received')
             return true
         end
+
+        self.wait_conack:cancel()
 
         local reasons = {
             'connection accepted',
@@ -474,6 +463,8 @@ local function mqtt_connect(self)
 
     self.sock = sock
 
+    self.wait_conack:set(3)
+
     return send_pkt(self, pkt:data())
 end
 
@@ -621,10 +612,6 @@ end
 
 
 function methods:close()
-    if not self.connected then
-        return
-    end
-
     self.sock:close()
 end
 
@@ -672,8 +659,8 @@ function methods:run()
 
     self.retransmit_timer:cancel()
     self.ping_tmr:cancel()
+    self.wait_pingresp:cancel()
     self.sock:close()
-    self.wait_pingresp = nil
     self.connected = false
 end
 
@@ -728,13 +715,22 @@ function M.new(opts)
 
     o.retransmit_timer = time.timer(handle_retransmit, o)
 
-    o.ping_tmr = time.timer(function(tmr)
-        o.wait_pingresp = time.now()
+    o.wait_conack = time.timer(function()
+        on_event(o, 'error', 'wait CONACK timeout')
+        o:close()
+    end)
 
+    o.wait_pingresp = time.timer(function()
+        on_event(o, 'error', 'wait PINGRESP timeout')
+        o:close()
+    end)
+
+    o.ping_tmr = time.timer(function(tmr)
         local ok, err = send_pkt(o, mqtt_packet(PKT_PINGREQ):data())
         if not ok then
             on_event(o, 'error', err)
         else
+            o.wait_pingresp:set(3)
             tmr:set(o.opts.keepalive)
         end
     end)
