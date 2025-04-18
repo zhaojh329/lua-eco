@@ -24,7 +24,7 @@
 
 #include "eco.h"
 
-#define ECO_SOCKET_MT "eco{socket}"
+#define SOCKET_MT "eco{socket}"
 
 struct eco_socket {
     struct eco_context *eco;
@@ -253,7 +253,7 @@ static int eco_socket_init(lua_State *L, int fd, int domain, bool established)
 
     memset(sock, 0, sizeof(struct eco_socket));
 
-    luaL_getmetatable(L, ECO_SOCKET_MT);
+    luaL_getmetatable(L, SOCKET_MT);
     lua_setmetatable(L, -2);
 
     sock->eco = eco_get_context(L);
@@ -271,7 +271,7 @@ static int eco_socket_init(lua_State *L, int fd, int domain, bool established)
 
 static int lua_bind(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
     int addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
 
@@ -290,7 +290,7 @@ static int lua_bind(lua_State *L)
 
 static int lua_listen(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     int backlog = luaL_optinteger(L, 2, SOMAXCONN);
 
     if (listen(sock->fd, backlog)) {
@@ -341,7 +341,7 @@ again:
 
 static int lua_accept(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
 
     return lua_acceptk(L, 0, (lua_KContext)sock);
 }
@@ -379,7 +379,7 @@ static int lua_connectk(lua_State *L, int status, lua_KContext ctx)
 
 static int lua_connect(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
     socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
 
@@ -484,7 +484,7 @@ err:
 
 static int __lua_recv(lua_State *L, bool from)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
 
     if (sock->rcv.co) {
         lua_pushnil(L);
@@ -586,7 +586,7 @@ again:
 
 static int lua_send(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
 
     if (lua_init_snd(sock, L))
         return 2;
@@ -596,7 +596,7 @@ static int lua_send(lua_State *L)
 
 static int lua_sendto(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
 
     if (lua_init_snd(sock, L))
         return 2;
@@ -660,7 +660,7 @@ again:
 
 static int lua_sendfile(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     const char *path;
     int fd;
 
@@ -695,7 +695,7 @@ static int lua_sendfile(lua_State *L)
 
 static int lua_getsockname(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     union {
         struct sockaddr_un un;
         struct sockaddr_in in;
@@ -714,7 +714,7 @@ static int lua_getsockname(lua_State *L)
 
 static int lua_getpeername(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
     socklen_t addrlen = sizeof(addr);
 
@@ -892,7 +892,7 @@ static struct sock_opt optsets[] = {
 
 static int lua_setoption(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     const char *name = luaL_checkstring(L, 2);
     struct sock_opt *o = optsets;
 
@@ -910,7 +910,7 @@ static int lua_setoption(lua_State *L)
 
 static int lua_getfd(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
 
     lua_pushinteger(L, sock->fd);
 
@@ -919,7 +919,7 @@ static int lua_getfd(lua_State *L)
 
 static int lua_closed(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
 
     lua_pushboolean(L, sock->fd < 0);
 
@@ -928,7 +928,7 @@ static int lua_closed(lua_State *L)
 
 static int lua_sock_close(lua_State *L)
 {
-    struct eco_socket *sock = luaL_checkudata(L, 1, ECO_SOCKET_MT);
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     struct ev_loop *loop = sock->eco->loop;
 
     if (sock->fd < 0)
@@ -1131,7 +1131,7 @@ static const luaL_Reg funcs[] = {
 
 int luaopen_eco_core_socket(lua_State *L)
 {
-    eco_new_metatable(L, ECO_SOCKET_MT, methods);
+    eco_new_metatable(L, SOCKET_MT, methods);
 
     luaL_newlib(L, funcs);
 

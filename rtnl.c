@@ -9,7 +9,7 @@
 
 #include "nl.h"
 
-static int eco_rtnl_new_rtgenmsg(lua_State *L)
+static int lua_rtnl_new_rtgenmsg(lua_State *L)
 {
     struct rtgenmsg m = {};
 
@@ -22,7 +22,7 @@ static int eco_rtnl_new_rtgenmsg(lua_State *L)
     return 1;
 }
 
-static int eco_rtnl_new_ifinfomsg(lua_State *L)
+static int lua_rtnl_new_ifinfomsg(lua_State *L)
 {
     struct ifinfomsg ifm = {};
 
@@ -47,7 +47,7 @@ static int eco_rtnl_new_ifinfomsg(lua_State *L)
     return 1;
 }
 
-static int eco_rtnl_new_ifaddrmsg(lua_State *L)
+static int lua_rtnl_new_ifaddrmsg(lua_State *L)
 {
     struct ifaddrmsg ifm = {};
 
@@ -72,9 +72,9 @@ static int eco_rtnl_new_ifaddrmsg(lua_State *L)
     return 1;
 }
 
-static int eco_rtnl_parse_ifinfomsg(lua_State *L)
+static int lua_rtnl_parse_ifinfomsg(lua_State *L)
 {
-    struct eco_nlmsg *msg = luaL_checkudata(L, 1, ECO_NLMSG_KER_MT);
+    struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
     struct nlmsghdr *nlh = msg->nlh;
     struct ifinfomsg *ifm;
 
@@ -112,9 +112,9 @@ static int eco_rtnl_parse_ifinfomsg(lua_State *L)
     return 1;
 }
 
-static int eco_rtnl_parse_ifaddrmsg(lua_State *L)
+static int lua_rtnl_parse_ifaddrmsg(lua_State *L)
 {
-    struct eco_nlmsg *msg = luaL_checkudata(L, 1, ECO_NLMSG_KER_MT);
+    struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
     struct nlmsghdr *nlh = msg->nlh;
     struct ifaddrmsg *ifm;
 
@@ -153,11 +153,11 @@ static int eco_rtnl_parse_ifaddrmsg(lua_State *L)
 }
 
 static const luaL_Reg funcs[] = {
-    {"rtgenmsg", eco_rtnl_new_rtgenmsg},
-    {"ifinfomsg", eco_rtnl_new_ifinfomsg},
-    {"ifaddrmsg", eco_rtnl_new_ifaddrmsg},
-    {"parse_ifinfomsg", eco_rtnl_parse_ifinfomsg},
-    {"parse_ifaddrmsg", eco_rtnl_parse_ifaddrmsg},
+    {"rtgenmsg", lua_rtnl_new_rtgenmsg},
+    {"ifinfomsg", lua_rtnl_new_ifinfomsg},
+    {"ifaddrmsg", lua_rtnl_new_ifaddrmsg},
+    {"parse_ifinfomsg", lua_rtnl_parse_ifinfomsg},
+    {"parse_ifaddrmsg", lua_rtnl_parse_ifaddrmsg},
     {NULL, NULL}
 };
 

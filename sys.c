@@ -13,7 +13,7 @@
 
 #include "eco.h"
 
-static int eco_sys_uptime(lua_State *L)
+static int lua_uptime(lua_State *L)
 {
     struct sysinfo info = {};
 
@@ -23,19 +23,19 @@ static int eco_sys_uptime(lua_State *L)
     return 1;
 }
 
-static int eco_sys_getpid(lua_State *L)
+static int lua_getpid(lua_State *L)
 {
     lua_pushinteger(L, getpid());
     return 1;
 }
 
-static int eco_sys_getppid(lua_State *L)
+static int lua_getppid(lua_State *L)
 {
     lua_pushinteger(L, getppid());
     return 1;
 }
 
-static int eco_sys_kill(lua_State *L)
+static int lua_kill(lua_State *L)
 {
     int pid = luaL_checkinteger(L, 1);
     int sig = luaL_checkinteger(L, 2);
@@ -52,7 +52,7 @@ static int eco_sys_kill(lua_State *L)
     return 1;
 }
 
-static int eco_sys_exec(lua_State *L)
+static int lua_exec(lua_State *L)
 {
     const char *cmd = luaL_checkstring(L, 1);
     int n = lua_gettop(L);
@@ -134,7 +134,7 @@ err:
     return 2;
 }
 
-static int eco_sys_spawn(lua_State *L)
+static int lua_spawn(lua_State *L)
 {
     pid_t pid;
 
@@ -176,7 +176,7 @@ err:
     return 1;
 }
 
-static int eco_sys_get_nprocs(lua_State *L)
+static int lua_get_nprocs(lua_State *L)
 {
     int nprocs = get_nprocs();
 
@@ -185,7 +185,7 @@ static int eco_sys_get_nprocs(lua_State *L)
     return 1;
 }
 
-static int eco_sys_strerror(lua_State *L)
+static int lua_strerror(lua_State *L)
 {
     int no = luaL_checkinteger(L, 1);
 
@@ -194,14 +194,14 @@ static int eco_sys_strerror(lua_State *L)
 }
 
 static const luaL_Reg funcs[] = {
-    {"uptime", eco_sys_uptime},
-    {"getpid", eco_sys_getpid},
-    {"getppid", eco_sys_getppid},
-    {"kill", eco_sys_kill},
-    {"exec", eco_sys_exec},
-    {"spawn", eco_sys_spawn},
-    {"get_nprocs", eco_sys_get_nprocs},
-    {"strerror", eco_sys_strerror},
+    {"uptime", lua_uptime},
+    {"getpid", lua_getpid},
+    {"getppid", lua_getppid},
+    {"kill", lua_kill},
+    {"exec", lua_exec},
+    {"spawn", lua_spawn},
+    {"get_nprocs", lua_get_nprocs},
+    {"strerror", lua_strerror},
     {NULL, NULL}
 };
 

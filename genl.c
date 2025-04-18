@@ -7,7 +7,7 @@
 
 #include "nl.h"
 
-static int eco_genl_new_genlmsghdr(lua_State *L)
+static int lua_genl_new_genlmsghdr(lua_State *L)
 {
     struct genlmsghdr genl = {};
 
@@ -23,9 +23,9 @@ static int eco_genl_new_genlmsghdr(lua_State *L)
     return 1;
 }
 
-static int eco_genl_parse_genlmsghdr(lua_State *L)
+static int lua_genl_parse_genlmsghdr(lua_State *L)
 {
-    struct eco_nlmsg *msg = luaL_checkudata(L, 1, ECO_NLMSG_KER_MT);
+    struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
     struct nlmsghdr *nlh = msg->nlh;
     struct genlmsghdr *genl;
 
@@ -55,8 +55,8 @@ static int eco_genl_parse_genlmsghdr(lua_State *L)
 }
 
 static const luaL_Reg funcs[] = {
-    {"genlmsghdr", eco_genl_new_genlmsghdr},
-    {"parse_genlmsghdr", eco_genl_parse_genlmsghdr},
+    {"genlmsghdr", lua_genl_new_genlmsghdr},
+    {"parse_genlmsghdr", lua_genl_parse_genlmsghdr},
     {NULL, NULL}
 };
 

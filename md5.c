@@ -11,7 +11,7 @@
 
 #include "eco.h"
 
-#define ECO_MD5_MT "eco{md5}"
+#define MD5_MT "eco{md5}"
 
 struct md5_ctx {
     uint32_t lo, hi;
@@ -288,7 +288,7 @@ static int lua_md5_sum(lua_State *L)
 
 static int lua_md5_update(lua_State *L)
 {
-    struct md5_ctx *ctx = luaL_checkudata(L, 1, ECO_MD5_MT);
+    struct md5_ctx *ctx = luaL_checkudata(L, 1, MD5_MT);
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
 
@@ -299,7 +299,7 @@ static int lua_md5_update(lua_State *L)
 
 static int lua_md5_final(lua_State *L)
 {
-    struct md5_ctx *ctx = luaL_checkudata(L, 1, ECO_MD5_MT);
+    struct md5_ctx *ctx = luaL_checkudata(L, 1, MD5_MT);
     uint8_t hash[16];
 
     md5_final(ctx, hash);
@@ -330,13 +330,13 @@ int luaopen_eco_hash_md5(lua_State *L)
 {
     lua_newtable(L);
 
-    lua_pushstring(L, ECO_MD5_MT);
+    lua_pushstring(L, MD5_MT);
     lua_setfield(L, -2, "mtname");
 
     lua_pushcfunction(L, lua_md5_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, ECO_MD5_MT, md5_methods);
+    eco_new_metatable(L, MD5_MT, md5_methods);
     lua_pushcclosure(L, lua_md5_new, 1);
     lua_setfield(L, -2, "new");
 

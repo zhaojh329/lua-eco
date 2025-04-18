@@ -9,7 +9,7 @@
 
 #include "eco.h"
 
-#define ECO_SHA1_MT "eco{sha1}"
+#define SHA1_MT "eco{sha1}"
 
 struct sha1_ctx {
     uint32_t state[5];
@@ -230,7 +230,7 @@ static int lua_sha1_sum(lua_State *L)
 
 static int lua_sha1_update(lua_State *L)
 {
-    struct sha1_ctx *ctx = luaL_checkudata(L, 1, ECO_SHA1_MT);
+    struct sha1_ctx *ctx = luaL_checkudata(L, 1, SHA1_MT);
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
 
@@ -241,7 +241,7 @@ static int lua_sha1_update(lua_State *L)
 
 static int lua_sha1_final(lua_State *L)
 {
-    struct sha1_ctx *ctx = luaL_checkudata(L, 1, ECO_SHA1_MT);
+    struct sha1_ctx *ctx = luaL_checkudata(L, 1, SHA1_MT);
     uint8_t hash[20];
 
     sha1_final(ctx, hash);
@@ -272,13 +272,13 @@ int luaopen_eco_hash_sha1(lua_State *L)
 {
     lua_newtable(L);
 
-    lua_pushstring(L, ECO_SHA1_MT);
+    lua_pushstring(L, SHA1_MT);
     lua_setfield(L, -2, "mtname");
 
     lua_pushcfunction(L, lua_sha1_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, ECO_SHA1_MT, sha1_methods);
+    eco_new_metatable(L, SHA1_MT, sha1_methods);
     lua_pushcclosure(L, lua_sha1_new, 1);
     lua_setfield(L, -2, "new");
 
