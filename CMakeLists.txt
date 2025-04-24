@@ -37,6 +37,7 @@ set(LUA_INSTALL_PREFIX lib/lua/5.4)
 
 option(ECO_SSL_SUPPORT "ssl" ON)
 option(ECO_UBUS_SUPPORT "ubus" ON)
+option(ECO_UCI_SUPPORT "uci" ON)
 option(ECO_MQTT_SUPPORT "mqtt" ON)
 option(ECO_SSH_SUPPORT "ssh" ON)
 
@@ -133,6 +134,22 @@ if (ECO_UBUS_SUPPORT)
         )
     else()
         message(WARNING "Not found libubus. Skip build eco.ubus")
+    endif()
+endif()
+
+if (ECO_UCI_SUPPORT)
+    find_library(UCI NAMES uci)
+    if (UCI)
+        add_library(luci MODULE uci.c)
+        target_link_libraries(luci PRIVATE uci)
+        set_target_properties(luci PROPERTIES OUTPUT_NAME uci PREFIX "")
+
+        install(
+            TARGETS luci
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco
+        )
+    else()
+        message(WARNING "Not found libuci. Skip build eco.uci")
     endif()
 endif()
 
