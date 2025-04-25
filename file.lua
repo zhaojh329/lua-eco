@@ -35,13 +35,14 @@ function M.writefile(path, data, append)
         return nil, err
     end
 
-    local n, err = f:write(data)
+    _, err = f:write(data)
     f:close()
 
-    if not n then
+    if err then
         return nil, err
     end
-    return n
+
+    return true
 end
 
 function M.flock(fd, operation, timeout)
