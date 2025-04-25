@@ -18,6 +18,23 @@
 
 #define ECO_FILE_DIR_MT "eco{file-dir}"
 
+static int lua_file_mkdir(lua_State *L)
+{
+    const char *pathname = luaL_checkstring(L, 1);
+    int mode = luaL_optinteger(L, 2, 0777);
+
+    luaL_argcheck(L, mode >= 0, 2, "invalid mode");
+
+    if (mkdir(pathname, mode)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
 static int lua_file_open(lua_State *L)
 {
     const char *pathname = luaL_checkstring(L, 1);
@@ -434,6 +451,7 @@ static int lua_inotify_rm_watch(lua_State *L)
 }
 
 static const luaL_Reg funcs[] = {
+    {"mkdir", lua_file_mkdir},
     {"open", lua_file_open},
     {"close", lua_file_close},
     {"read", lua_read},
