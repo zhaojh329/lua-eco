@@ -62,6 +62,24 @@ static int eco_count(lua_State *L)
     return 1;
 }
 
+static int eco_all(lua_State *L)
+{
+    int i = 1;
+
+    lua_newtable(L);
+
+    lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
+
+    lua_pushnil(L);
+
+    while (lua_next(L, -2) != 0)
+        lua_rawseti(L, -4, i++);
+
+    lua_pop(L, 1);
+
+    return 1;
+}
+
 static void eco_sleep_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
 {
     lua_State *co = w->data;
@@ -105,6 +123,23 @@ static int eco_run(lua_State *L)
     lua_pushlightuserdata(L, tmr);
     lua_rawset(L, -3);  /* ctx_env[co] = tmr_ptr */
     lua_pop(L, 1);
+
+    lua_getglobal(L, "debug");
+    lua_getfield(L, -1, "gethook");
+    lua_remove(L, -2);
+
+    lua_call(L, 0, 3);
+
+    lua_getglobal(L, "debug");
+    lua_getfield(L, -1, "sethook");
+    lua_remove(L, -2);
+
+    lua_pushthread(co);
+    lua_xmove(co, L, 1);
+
+    lua_rotate(L, -5, 2);
+
+    lua_call(L, 4, 0);
 
     eco_resume(L, co, narg - 1);
 
@@ -632,6 +667,7 @@ static const luaL_Reg funcs[] = {
     {"context", eco_push_context},
     {"watcher", eco_watcher},
     {"count", eco_count},
+    {"all", eco_all},
     {"unloop", eco_unloop},
     {"run", eco_run},
     {"id", eco_id},
