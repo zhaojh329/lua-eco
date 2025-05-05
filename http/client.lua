@@ -7,7 +7,6 @@ local file = require 'eco.file'
 
 local concat = table.concat
 local tonumber = tonumber
-local rand = math.random
 
 local M = {}
 
@@ -308,6 +307,18 @@ local schemes = {
     }
 }
 
+local function generate_websocket_key()
+    local base64 = require 'eco.encoding.base64'
+    local random = math.random
+    local bytes = {}
+
+    for i = 1, 16 do
+        bytes[i] = string.char(random(0, 255))
+    end
+
+    return base64.encode(table.concat(bytes))
+end
+
 function methods:request(method, url, body, opts)
     opts = opts or {}
 
@@ -343,16 +354,7 @@ function methods:request(method, url, body, opts)
         headers['connection'] = 'upgrade'
         headers['upgrade'] = 'websocket'
         headers['sec-websocket-version'] = '13'
-
-        local bytes = string.char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                                rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                                rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                                rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                                rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                                rand(256) - 1)
-
-        local base64 = require 'eco.encoding.base64'
-        headers['sec-websocket-key'] = base64.encode(bytes)
+        headers['sec-websocket-key'] = generate_websocket_key()
     end
 
     if body then
