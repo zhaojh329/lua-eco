@@ -35,7 +35,7 @@ local PKT_UNSUBACK    = 11
 local PKT_PINGREQ     = 12
 local PKT_DISCONNECT  = 14
 
-local retransmit_interval = 3.0
+local retransmit_interval = 5.0
 local read_timeout = 5.0
 
 local function check_will_option(will)
