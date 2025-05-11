@@ -316,6 +316,12 @@ static int lua_acceptk(lua_State *L, int status, lua_KContext ctx)
 
     sock->rcv.co = NULL;
 
+    if (sock->fd < 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
+    }
+
 again:
     fd = accept4(sock->fd, (struct sockaddr *)&addr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (fd < 0) {
