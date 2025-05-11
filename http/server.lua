@@ -820,7 +820,7 @@ function M.listen(ipaddr, port, options, handler)
                 end
             end)
         else
-            log.err('accept fail: ' .. peer)
+            return nil, peer
         end
     end
 end
