@@ -17,7 +17,6 @@ enum {
 
 struct eco_ssl_context {
     struct ssl_context *ctx;
-    struct eco_context *eco;
     bool is_server;
 };
 
@@ -25,7 +24,7 @@ struct eco_ssl_session {
     struct eco_ssl_context *ctx;
     struct ssl *ssl;
     bool insecure;
-    lua_State *L;
+    lua_State *co;
     struct ev_timer tmr;
     struct ev_io io;
     uint8_t flags;
@@ -65,7 +64,7 @@ static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
 
     s->flags |= ECO_SSL_OVERTIME;
 
-    eco_resume(s->ctx->eco->L, s->L, 0);
+    eco_resume(s->co, 0);
 }
 
 static void ev_io_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -74,18 +73,16 @@ static void ev_io_cb(struct ev_loop *loop, ev_io *w, int revents)
 
     ev_io_stop(loop, w);
     ev_timer_stop(loop, &s->tmr);
-    eco_resume(s->ctx->eco->L, s->L, 0);
+    eco_resume(s->co, 0);
 }
 
 static int lua_ssl_free(lua_State *L)
 {
     struct eco_ssl_session *s = luaL_checkudata(L, 1, ECO_SSL_MT);
-    struct ev_loop *loop;
+    struct ev_loop *loop = EV_DEFAULT;
 
     if (!s->ssl)
         return 0;
-
-    loop = s->ctx->eco->loop;
 
     ev_timer_stop(loop, &s->tmr);
     ev_io_stop(loop, &s->io);
@@ -122,11 +119,12 @@ static void on_ssl_verify_error(int error, const char *str, void *arg)
 static int lua_ssl_handshakek(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_ssl_session *s = (struct eco_ssl_session *)ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     const char *verify_error = NULL;
     char err_buf[128];
     int ret;
 
-    s->L = NULL;
+    s->co = NULL;
 
     if (s->flags & ECO_SSL_OVERTIME) {
         lua_pushnil(L);
@@ -146,13 +144,13 @@ static int lua_ssl_handshakek(lua_State *L, int status, lua_KContext ctx)
             return 2;
         }
 
-        s->L = L;
+        s->co = L;
 
         ev_timer_set(&s->tmr, 5.0, 0);
-        ev_timer_start(s->ctx->eco->loop, &s->tmr);
+        ev_timer_start(loop, &s->tmr);
 
         ev_io_modify(&s->io, ret == SSL_WANT_READ ? EV_READ : EV_WRITE);
-        ev_io_start(s->ctx->eco->loop, &s->io);
+        ev_io_start(loop, &s->io);
 
         return lua_yieldk(L, 0, ctx, lua_ssl_handshakek);
     }
@@ -177,13 +175,14 @@ static int lua_ssl_handshake(lua_State *L)
 static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_ssl_session *s = (struct eco_ssl_session *)ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     const void *data = s->snd.data;
     size_t sent = s->snd.sent;
     size_t len = s->snd.len;
     char err_buf[128];
     int ret = 0;
 
-    s->L = NULL;
+    s->co = NULL;
 
     if (sent == len) {
         lua_pushinteger(L, sent);
@@ -204,9 +203,9 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
     s->snd.data += ret;
 
 again:
-    s->L = L;
+    s->co = L;
     ev_io_modify(&s->io, ret == SSL_WANT_READ ? EV_READ : EV_WRITE);
-    ev_io_start(s->ctx->eco->loop, &s->io);
+    ev_io_start(loop, &s->io);
     return lua_yieldk(L, 0, ctx, lua_sendk);
 }
 
@@ -220,7 +219,7 @@ static int lua_send(lua_State *L)
         return 2;
     }
 
-    if (s->L) {
+    if (s->co) {
         lua_pushnil(L);
         lua_pushliteral(L, "busy");
         return 2;
@@ -235,6 +234,7 @@ static int lua_send(lua_State *L)
 static int bufio_fill_ssl(struct eco_bufio *b, lua_State *L, lua_KContext ctx, lua_KFunction k)
 {
     struct eco_ssl_session *s = (struct eco_ssl_session *)b->ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     static char err_buf[128];
     ssize_t ret;
 
@@ -252,15 +252,15 @@ static int bufio_fill_ssl(struct eco_bufio *b, lua_State *L, lua_KContext ctx, l
             return -1;
         }
 
-        b->L = L;
+        b->co = L;
 
         if (b->timeout > 0) {
             ev_timer_set(&b->tmr, b->timeout, 0);
-            ev_timer_start(b->eco->loop, &b->tmr);
+            ev_timer_start(loop, &b->tmr);
         }
 
         ev_io_modify(&b->io, ret == SSL_WANT_READ ? EV_READ : EV_WRITE);
-        ev_io_start(b->eco->loop, &b->io);
+        ev_io_start(loop, &b->io);
         return lua_yieldk(L, 0, ctx, k);
     }
 
@@ -367,7 +367,6 @@ static int lua_ssl_context_new(lua_State *L)
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_setmetatable(L, -2);
 
-    ctx->eco = eco_get_context(L);
     ctx->ctx = ssl_context_new(is_server);
     ctx->is_server = is_server;
 

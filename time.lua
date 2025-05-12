@@ -71,4 +71,8 @@ function M.on(ts, cb, ...)
     return tmr
 end
 
+function M.sleep(delay)
+    eco.sleep(delay)
+end
+
 return setmetatable(M, { __index = time })
