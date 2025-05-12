@@ -9,11 +9,40 @@ local global_timeout = 30.0
 
 local methods = {}
 
-for _, method in ipairs({'close', 'call', 'reply', 'send', 'notify', 'objects', 'signatures', 'settimeout', 'auto_reconnect'}) do
-    methods[method] = function(self, ...)
-        local con = self.con
-        return con[method](con, ...)
-    end
+function methods:close()
+    return self.con:close()
+end
+
+function methods:call(object, method, params)
+    return self.con:call(object, method, params)
+end
+
+function methods:reply(req, params)
+    return self.con:reply(req, params)
+end
+
+function methods:send(event, params)
+    return self.con:send(event, params)
+end
+
+function methods:notify(object, params)
+    return self.con:notify(object, params)
+end
+
+function methods:objects()
+    return self.con:objects()
+end
+
+function methods:signatures(object)
+    return self.con:signatures(object)
+end
+
+function methods:settimeout(timeout)
+    return self.con:settimeout(timeout)
+end
+
+function methods:auto_reconnect()
+    return self.con:auto_reconnect()
 end
 
 function methods:add(object, ms)
@@ -76,23 +105,72 @@ function M.connect(path)
     }, metatable)
 end
 
-for _, method in ipairs({'call', 'send', 'objects', 'signatures'}) do
-    M[method] = function(...)
-        local con, err = M.connect()
-        if not con then
-            return nil, err
-        end
-
-        local res, err = con[method](con, ...)
-
-        con:close()
-
-        if res then
-            return res
-        end
-
+function M.call(object, method, params)
+    local con, err = M.connect()
+    if not con then
         return nil, err
     end
+
+    local res, err = con:call(object, method, params)
+
+    con:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+function M.send(event, params)
+    local con, err = M.connect()
+    if not con then
+        return nil, err
+    end
+
+    local res, err = con:send(event, params)
+
+    con:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+function M.objects()
+    local con, err = M.connect()
+    if not con then
+        return nil, err
+    end
+
+    local res, err = con:objects()
+
+    con:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
+end
+
+function M.signatures(object)
+    local con, err = M.connect()
+    if not con then
+        return nil, err
+    end
+
+    local res, err = con:signatures(object)
+
+    con:close()
+
+    if res then
+        return res
+    end
+
+    return nil, err
 end
 
 function M.settimeout(timeout)
