@@ -27,7 +27,6 @@
 #define SOCKET_MT "eco{socket}"
 
 struct eco_socket {
-    struct eco_context *eco;
     struct ev_timer tmr;
     struct {
         uint8_t overtime:1;
@@ -79,10 +78,10 @@ static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
 
     if (sock->flag.connecting) {
         ev_io_stop(loop, &sock->snd.io);
-        eco_resume(sock->eco->L, sock->snd.co, 0);
+        eco_resume(sock->snd.co, 0);
     } else {
         ev_io_stop(loop, &sock->rcv.io);
-        eco_resume(sock->eco->L, sock->rcv.co, 0);
+        eco_resume(sock->rcv.co, 0);
     }
 }
 
@@ -92,7 +91,7 @@ static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 
     ev_io_stop(loop, w);
     ev_timer_stop(loop, &sock->tmr);
-    eco_resume(sock->eco->L, sock->rcv.co, 0);
+    eco_resume(sock->rcv.co, 0);
 }
 
 static void ev_io_write_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -104,7 +103,7 @@ static void ev_io_write_cb(struct ev_loop *loop, ev_io *w, int revents)
     if (sock->flag.connecting)
         ev_timer_stop(loop, &sock->tmr);
 
-    eco_resume(sock->eco->L, sock->snd.co, 0);
+    eco_resume(sock->snd.co, 0);
 }
 
 static int lua_push_sockaddr(lua_State *L, struct sockaddr *addr, socklen_t len)
@@ -256,7 +255,6 @@ static int eco_socket_init(lua_State *L, int fd, int domain, bool established)
     luaL_getmetatable(L, SOCKET_MT);
     lua_setmetatable(L, -2);
 
-    sock->eco = eco_get_context(L);
     sock->domain = domain;
     sock->flag.established = established;
     sock->fd = fd;
@@ -306,6 +304,7 @@ static int lua_listen(lua_State *L)
 static int lua_acceptk(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_socket *sock = (struct eco_socket *)ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     union {
         struct sockaddr_un un;
         struct sockaddr_in in;
@@ -330,7 +329,7 @@ again:
 
         if (errno == EAGAIN) {
             sock->rcv.co = L;
-            ev_io_start(sock->eco->loop, &sock->rcv.io);
+            ev_io_start(loop, &sock->rcv.io);
             return lua_yieldk(L, 0, ctx, lua_acceptk);
         }
 
@@ -388,14 +387,15 @@ static int lua_connect(lua_State *L)
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
     socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
+    struct ev_loop *loop = EV_DEFAULT;
 
 again:
     if (connect(sock->fd, (struct sockaddr *)&addr, addrlen)) {
         if (errno == EINPROGRESS) {
             ev_timer_set(&sock->tmr, 5.0, 0);
-            ev_timer_start(sock->eco->loop, &sock->tmr);
+            ev_timer_start(loop, &sock->tmr);
 
-            ev_io_start(sock->eco->loop, &sock->snd.io);
+            ev_io_start(loop, &sock->snd.io);
 
             sock->flag.connecting = true;
             sock->snd.co = L;
@@ -418,6 +418,7 @@ again:
 static int lua_recvk(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_socket *sock = (struct eco_socket *)ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     union {
         struct sockaddr_ll ll;
         struct sockaddr_nl nl;
@@ -461,10 +462,10 @@ again:
 
             if (sock->rcv.timeout > 0) {
                 ev_timer_set(&sock->tmr, sock->rcv.timeout, 0);
-                ev_timer_start(sock->eco->loop, &sock->tmr);
+                ev_timer_start(loop, &sock->tmr);
             }
 
-            ev_io_start(sock->eco->loop, &sock->rcv.io);
+            ev_io_start(loop, &sock->rcv.io);
             return lua_yieldk(L, 0, ctx, lua_recvk);
         }
 
@@ -546,6 +547,7 @@ static inline int lua_init_snd(struct eco_socket *sock, lua_State *L)
 static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_socket *sock = (struct eco_socket *)ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     socklen_t addrlen = sock->snd.addrlen;
     const void *data = sock->snd.data;
     size_t sent = sock->snd.sent;
@@ -586,7 +588,7 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
 
 again:
     sock->snd.co = L;
-    ev_io_start(sock->eco->loop, &sock->snd.io);
+    ev_io_start(loop, &sock->snd.io);
     return lua_yieldk(L, 0, ctx, lua_sendk);
 }
 
@@ -615,6 +617,7 @@ static int lua_sendto(lua_State *L)
 static int lua_sendfilek(lua_State *L, int status, lua_KContext ctx)
 {
     struct eco_socket *sock = (struct eco_socket *)ctx;
+    struct ev_loop *loop = EV_DEFAULT;
     int fd = sock->snd.fd;
     int len = sock->snd.len;
     size_t sent = sock->snd.sent;
@@ -660,7 +663,7 @@ static int lua_sendfilek(lua_State *L, int status, lua_KContext ctx)
 
 again:
     sock->snd.co = L;
-    ev_io_start(sock->eco->loop, &sock->snd.io);
+    ev_io_start(loop, &sock->snd.io);
     return lua_yieldk(L, 0, ctx, lua_sendfilek);
 }
 
@@ -935,7 +938,7 @@ static int lua_closed(lua_State *L)
 static int lua_sock_close(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-    struct ev_loop *loop = sock->eco->loop;
+    struct ev_loop *loop = EV_DEFAULT;
 
     if (sock->fd < 0)
         return 0;
@@ -957,7 +960,7 @@ static int lua_sock_close(lua_State *L)
     sock->fd = -1;
 
     if (sock->rcv.co)
-        eco_resume(sock->eco->L, sock->rcv.co, 0);
+        eco_resume(sock->rcv.co, 0);
 
     return 0;
 }

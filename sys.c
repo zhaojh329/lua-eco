@@ -148,12 +148,12 @@ static int lua_spawn(lua_State *L)
     }
 
     if (pid == 0) {
-        struct eco_context *ctx = eco_get_context(L);
+        struct ev_loop *loop = EV_DEFAULT;
         int error;
 
         prctl(PR_SET_PDEATHSIG, SIGKILL);
 
-        ev_break(ctx->loop, 0);
+        ev_break(loop, 0);
 
         lua_getglobal(L, "eco");
         lua_getfield(L, -1, "run");
@@ -166,7 +166,7 @@ static int lua_spawn(lua_State *L)
             goto err;
         }
 
-        ev_run(ctx->loop, 0);
+        ev_run(loop, 0);
 err:
         ev_default_destroy();
         exit(0);

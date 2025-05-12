@@ -46,7 +46,7 @@ static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
 
     b->flags.overtime = 1;
 
-    eco_resume(b->eco->L, b->L, 0);
+    eco_resume(b->co, 0);
 }
 
 static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -55,11 +55,12 @@ static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 
     ev_io_stop(loop, w);
     ev_timer_stop(loop, &b->tmr);
-    eco_resume(b->eco->L, b->L, 0);
+    eco_resume(b->co, 0);
 }
 
 static int bufio_fill(struct eco_bufio *b, lua_State *L, lua_KContext ctx, lua_KFunction k)
 {
+    struct ev_loop *loop = EV_DEFAULT;
     ssize_t ret;
 
     buffer_slide(b);
@@ -76,14 +77,14 @@ again:
             goto again;
 
         if (errno == EAGAIN) {
-            b->L = L;
+            b->co = L;
 
             if (b->timeout > 0) {
                 ev_timer_set(&b->tmr, b->timeout, 0);
-                ev_timer_start(b->eco->loop, &b->tmr);
+                ev_timer_start(loop, &b->tmr);
             }
 
-            ev_io_start(b->eco->loop, &b->io);
+            ev_io_start(loop, &b->io);
             return lua_yieldk(L, 0, ctx, k);
         }
 
@@ -147,7 +148,6 @@ static int lua_bufio_new(lua_State *L)
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_setmetatable(L, -2);
 
-    b->eco = eco_get_context(L);
     b->size = size;
     b->fd = fd;
     b->fill = fill;
@@ -197,7 +197,7 @@ static struct eco_bufio *read_check(lua_State *L)
         return NULL;
     }
 
-    if (b->L) {
+    if (b->co) {
         lua_pushnil(L);
         lua_pushliteral(L, "busy reading");
         return NULL;
@@ -216,7 +216,7 @@ static int lua_readk(lua_State *L, int status, lua_KContext ctx)
     const char *data = buffer_data(b);
     size_t blen = buffer_length(b);
 
-    b->L = NULL;
+    b->co = NULL;
 
     if (!bufio_readk_check(b, L))
         goto err;
@@ -353,7 +353,7 @@ static int eco_bufio_peekk(lua_State *L, int status, lua_KContext ctx)
     size_t blen = buffer_length(b);
     size_t n = b->n;
 
-    b->L = NULL;
+    b->co = NULL;
 
     if (!bufio_readk_check(b, L))
         return 2;
@@ -400,7 +400,7 @@ static int lua_readfullk(lua_State *L, int status, lua_KContext ctx)
     size_t blen = buffer_length(b);
     size_t n = b->n;
 
-    b->L = NULL;
+    b->co = NULL;
 
     if (!bufio_readk_check(b, L))
         goto err;
@@ -491,7 +491,7 @@ static int lua_readuntilk(lua_State *L, int status, lua_KContext ctx)
     void *data = buffer_data(b);
     void *pos;
 
-    b->L = NULL;
+    b->co = NULL;
 
     if (!bufio_readk_check(b, L))
         return 2;
@@ -546,7 +546,7 @@ static int lua_discardk(lua_State *L, int status, lua_KContext ctx)
     lua_Integer blen = buffer_length(b);
     size_t n = b->n;
 
-    b->L = NULL;
+    b->co = NULL;
 
     if (!bufio_readk_check(b, L))
         return 2;
@@ -587,19 +587,19 @@ static int lua_bufio_discard(lua_State *L)
 static int lua_bufio_close(lua_State *L)
 {
     struct eco_bufio *b = luaL_checkudata(L, 1, BUFIO_MT);
-    struct ev_loop *loop = b->eco->loop;
+    struct ev_loop *loop = EV_DEFAULT;
 
     if (b->flags.eof)
         return 0;
 
     b->flags.eof = true;
 
-    if (!b->L)
+    if (!b->co)
         return 0;
 
     ev_io_stop(loop, &b->io);
     ev_timer_stop(loop, &b->tmr);
-    eco_resume(b->eco->L, b->L, 0);
+    eco_resume(b->co, 0);
 
     return 0;
 }

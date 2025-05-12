@@ -35,7 +35,6 @@ struct eco_watcher {
         struct ev_signal signal;
         struct ev_periodic periodic;
     } w;
-    struct eco_context *ctx;
     lua_State *co;
     uint8_t flags;
     int type;
@@ -72,8 +71,13 @@ static int eco_all(lua_State *L)
 
     lua_pushnil(L);
 
-    while (lua_next(L, -2) != 0)
-        lua_rawseti(L, -4, i++);
+    while (lua_next(L, -2) != 0) {
+        lua_State *co = (lua_State *)lua_topointer(L, -2);
+        lua_pushthread(co);
+        lua_xmove(co, L, 1);
+        lua_rawseti(L, -5, i++);
+        lua_pop(L, 1);
+    }
 
     lua_pop(L, 1);
 
@@ -96,16 +100,10 @@ static int eco_run(lua_State *L)
     /* co  1: func, 2: arg1, 3: arg2,... */
 
     lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
-
-    lua_pushlightuserdata(L, co);
-    lua_pushvalue(L, 1);
-    lua_rawset(L, -3); /* objs[co_ptr] = co */
-    lua_pop(L, 1);
-
-    eco_push_context_env(L);
-    lua_pushvalue(L, 1);
+    lua_pushthread(co);
+    lua_xmove(co, L, 1);
     lua_pushlightuserdata(L, NULL);
-    lua_rawset(L, -3);  /* ctx_env[co] = tmr_ptr(NULL) */
+    lua_rawset(L, -3); /* objs[co] = tmr_ptr(NULL) */
     lua_pop(L, 1);
 
     lua_getglobal(L, "debug");
@@ -125,28 +123,15 @@ static int eco_run(lua_State *L)
 
     lua_call(L, 4, 0);
 
-    eco_resume(L, co, narg - 1);
+    eco_resume(co, narg - 1);
 
     return 0;
 }
 
 static int eco_unloop(lua_State *L)
 {
-    struct eco_context *ctx = eco_get_context(L);
-
-    ev_break(ctx->loop, EVBREAK_ALL);
-
+    ev_break(EV_DEFAULT, EVBREAK_ALL);
     return 0;
-}
-
-static int eco_id(lua_State *L)
-{
-    char buf[17];
-
-    sprintf(buf, "%zx", (uintptr_t)L);
-    lua_pushstring(L, buf);
-
-    return 1;
 }
 
 static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
@@ -159,7 +144,7 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
     switch (watcher->type) {
     case ECO_WATCHER_TIMER:
         lua_pushboolean(co, true);
-        eco_resume(watcher->ctx->L, co, 1);
+        eco_resume(co, 1);
         return;
 
     case ECO_WATCHER_IO:
@@ -184,7 +169,7 @@ static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revent
 
     lua_pushnil(co);
     lua_pushliteral(co, "timeout");
-    eco_resume(watcher->ctx->L, co, 2);
+    eco_resume(co, 2);
 }
 
 static void eco_watcher_periodic_cb(struct ev_loop *loop, ev_periodic *w, int revents)
@@ -195,7 +180,7 @@ static void eco_watcher_periodic_cb(struct ev_loop *loop, ev_periodic *w, int re
     watcher->co = NULL;
 
     lua_pushboolean(co, true);
-    eco_resume(watcher->ctx->L, co, 1);
+    eco_resume(co, 1);
 }
 
 static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -209,7 +194,7 @@ static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
     ev_timer_stop(loop, &watcher->tmr);
 
     lua_pushinteger(co, revents);
-    eco_resume(watcher->ctx->L, co, 1);
+    eco_resume(co, 1);
 }
 
 static void eco_watcher_async_cb(struct ev_loop *loop, struct ev_async *w, int revents)
@@ -223,7 +208,7 @@ static void eco_watcher_async_cb(struct ev_loop *loop, struct ev_async *w, int r
     ev_timer_stop(loop, &watcher->tmr);
 
     lua_pushboolean(co, true);
-    eco_resume(watcher->ctx->L, co, 1);
+    eco_resume(co, 1);
 }
 
 static void eco_watcher_child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
@@ -256,7 +241,7 @@ static void eco_watcher_child_cb(struct ev_loop *loop, struct ev_child *w, int r
     lua_pushinteger(co, status);
     lua_setfield(co, -2, "status");
 
-    eco_resume(watcher->ctx->L, co, 2);
+    eco_resume(co, 2);
 }
 
 static void eco_watcher_signal_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
@@ -270,7 +255,7 @@ static void eco_watcher_signal_cb(struct ev_loop *loop, struct ev_signal *w, int
     ev_timer_stop(loop, &watcher->tmr);
 
     lua_pushboolean(co, true);
-    eco_resume(watcher->ctx->L, co, 1);
+    eco_resume(co, 1);
 }
 
 static int eco_watcher_active(lua_State *L, const char *tname)
@@ -316,7 +301,7 @@ static lua_CFunction eco_watcher_active_methods[] =  {
 static int eco_watcher_wait(lua_State *L, const char *tname)
 {
     struct eco_watcher *w = luaL_checkudata(L, 1, tname);
-    struct ev_loop *loop = w->ctx->loop;
+    struct ev_loop *loop = EV_DEFAULT;
     double timeout = lua_tonumber(L, 2);
 
     if (w->co) {
@@ -407,7 +392,7 @@ static lua_CFunction eco_watcher_wait_methods[] =  {
 static int eco_watcher_cancel(lua_State *L, const char *tname)
 {
     struct eco_watcher *w = luaL_checkudata(L, 1, tname);
-    struct ev_loop *loop = w->ctx->loop;
+    struct ev_loop *loop = EV_DEFAULT;
     lua_State *co = w->co;
 
     if (!co)
@@ -440,7 +425,7 @@ static int eco_watcher_cancel(lua_State *L, const char *tname)
 
     lua_pushboolean(co, false);
     lua_pushliteral(co, "canceled");
-    eco_resume(w->ctx->L, co, 2);
+    eco_resume(co, 2);
 
     return 0;
 }
@@ -481,7 +466,7 @@ static lua_CFunction eco_watcher_cancel_methods[] =  {
 static int eco_watcher_async_send(lua_State *L)
 {
     struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_ASYNC_MT);
-    struct ev_loop *loop = w->ctx->loop;
+    struct ev_loop *loop = EV_DEFAULT;
 
     ev_async_send(loop, &w->w.async);
 
@@ -630,7 +615,6 @@ static int eco_watcher(lua_State *L)
 
     ev_init(&w->tmr, eco_watcher_timeout_cb);
 
-    w->ctx = eco_get_context(L);
     w->co = NULL;
 
     lua_pushcfunction(L, eco_watcher_active_methods[type]);
@@ -647,24 +631,63 @@ static int eco_watcher(lua_State *L)
     return 1;
 }
 
+static void eco_sleep_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+    lua_State *co = w->data;
+    eco_resume(co, 0);
+}
+
+/*
+ * pauses the current coroutine for at least the delay seconds.
+ * A negative or zero delay causes sleep to return immediately.
+ */
+static int eco_sleep(lua_State *L)
+{
+    double delay = luaL_checknumber(L, 1);
+    struct ev_loop *loop = EV_DEFAULT;
+    struct ev_timer *tmr;
+
+    lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
+    lua_pushlightuserdata(L, L);
+    lua_rawget(L, -2); /* objs, tmr_ptr */
+
+    tmr = (struct ev_timer *)lua_topointer(L, -1);
+    if (!tmr) {
+        tmr = calloc(1, sizeof(struct ev_timer));
+        if (!tmr)
+            return luaL_error(L, "no mem");
+
+        ev_init(tmr, eco_sleep_cb);
+        tmr->data = L;
+
+        lua_pop(L, 1);
+        lua_pushlightuserdata(L, L);
+        lua_pushlightuserdata(L, tmr);
+        lua_rawset(L, -3);  /* objs[co] = tmr_ptr */
+        lua_pop(L, 1);
+    } else {
+        lua_pop(L, 2);
+    }
+
+    ev_timer_set(tmr, delay, 0.0);
+    ev_timer_start(loop, tmr);
+
+    return lua_yield(L, 0);
+}
+
 static const luaL_Reg funcs[] = {
-    {"context", eco_push_context},
     {"watcher", eco_watcher},
     {"count", eco_count},
     {"all", eco_all},
     {"unloop", eco_unloop},
     {"run", eco_run},
-    {"id", eco_id},
+    {"sleep", eco_sleep},
     {NULL, NULL}
 };
 
 static int luaopen_eco(lua_State *L)
 {
     lua_newtable(L);
-    lua_createtable(L, 0, 1);
-    lua_pushliteral(L, "v");
-    lua_setfield(L, -2, "__mode");
-    lua_setmetatable(L, -2);
     lua_rawsetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
 
     luaL_newlib(L, funcs);
@@ -758,7 +781,6 @@ static void set_random_seed()
 int main(int argc, char *const argv[])
 {
     struct ev_loop *loop = EV_DEFAULT;
-    struct eco_context *ctx;
     bool has_v, has_e;
     int error = 0;
     int script;
@@ -801,18 +823,10 @@ int main(int argc, char *const argv[])
     );
     lua_pcall(L, 0, 0, 0);
 
+    ev_set_userdata(loop, L);
+
     luaopen_eco(L);
     lua_setglobal(L, "eco");
-
-    ctx = lua_newuserdata(L, sizeof(struct eco_context));
-    lua_newtable(L);
-    lua_setuservalue(L, -2);
-    luaL_newmetatable(L, "eco{ctx}");
-    lua_setmetatable(L, -2);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, eco_get_context_registry());
-
-    ctx->loop = loop;
-    ctx->L = L;
 
     lua_getglobal(L, "eco");
     lua_getfield(L, -1, "run");

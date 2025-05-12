@@ -10,10 +10,9 @@
 #include "eco.h"
 
 struct eco_bufio {
-    struct eco_context *eco;
     struct ev_timer tmr;
     struct ev_io io;
-    lua_State *L;
+    lua_State *co;
     int fd;
     size_t n;   /* how many bytes to read currently */
     size_t pattern_len;
