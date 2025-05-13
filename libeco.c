@@ -61,3 +61,19 @@ void eco_resume(lua_State *co, int narg)
         break;
     }
 }
+
+void eco_new_metatable(lua_State *L, const char *name,
+    const struct luaL_Reg *metatable, const struct luaL_Reg *methods)
+{
+    if (!luaL_newmetatable(L, name))
+        return;
+
+    if (metatable)
+        luaL_setfuncs(L, metatable, 0);
+
+    if (methods) {
+        lua_newtable(L);
+        luaL_setfuncs(L, methods, 0);
+        lua_setfield(L, -2, "__index");
+    }
+}

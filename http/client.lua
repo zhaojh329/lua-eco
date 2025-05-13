@@ -432,7 +432,8 @@ end
 
 local metatable = {
     __index = methods,
-    __gc = methods.close
+    __gc = methods.close,
+    __close = methods.close
 }
 
 function M.new()
@@ -472,15 +473,9 @@ function M.request(method, url, body, opts)
         body = nil
     end
 
-    local c = M.new()
-    local resp, err = c:request(method, url, body, opts)
-    c:close()
+    local c<close> = M.new()
 
-    if resp then
-        return resp
-    end
-
-    return nil, err
+    return c:request(method, url, body, opts)
 end
 
 function M.get(url, opts)

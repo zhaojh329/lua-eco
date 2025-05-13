@@ -152,7 +152,7 @@ static int lua_tcgetattr(lua_State *L)
         return 2;
     }
 
-    eco_new_metatable(L, ECO_TERMIOS_ATTR_MT, termios_methods);
+    eco_new_metatable(L, ECO_TERMIOS_ATTR_MT, NULL, termios_methods);
     lua_setmetatable(L, -2);
 
     return 1;

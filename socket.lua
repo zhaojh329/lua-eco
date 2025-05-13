@@ -9,10 +9,6 @@ local M = {}
 
 local methods = {}
 
-local metatable = {
-    __index = methods
-}
-
 function methods:getfd()
     return self.sock:getfd()
 end
@@ -67,6 +63,11 @@ function methods:connect(...)
 
     return self
 end
+
+local metatable = {
+    __index = methods,
+    __close = methods.close
+}
 
 function methods:accept()
     local sock, perr = self.sock:accept()

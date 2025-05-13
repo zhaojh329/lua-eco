@@ -7,7 +7,7 @@ local port = 22
 local username = 'root'
 local password = '1'
 
-local session, err = ssh.new(ipaddr, port, username, password)
+local session<close>, err = ssh.new(ipaddr, port, username, password)
 if not session then
     print('new session fail:', err)
     return
@@ -26,5 +26,3 @@ if not ok then
     print('send fail:', err)
     return
 end
-
-session:free()

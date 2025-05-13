@@ -547,24 +547,14 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local s, answers, req, err
+    local answers, err
 
     for _, nameserver in ipairs(nameservers) do
         local id = get_next_transaction_id()
 
-        req, err = build_request(qname, id, opts)
-        if not req then
-            return nil, err
-        end
+        local req = build_request(qname, id, opts)
 
-        if nameserver[3] then
-            s, err = socket.udp6()
-        else
-            s, err = socket.udp()
-        end
-        if not s then
-            return nil, err
-        end
+        local s<close> = nameserver[3] and socket.udp6() or socket.udp()
 
         if opts.mark then
             s:setoption('mark', opts.mark)
@@ -575,8 +565,6 @@ function M.query(qname, opts)
         end
 
         answers, err = query(s, id, req, nameserver)
-        s:close()
-
         if answers then
             return answers
         end

@@ -282,15 +282,13 @@ static int lua_statvfs(lua_State *L)
 
 static int eco_file_dir_iter(lua_State *L)
 {
-    DIR **d = (DIR **)lua_touserdata(L, lua_upvalueindex(1));
+    const char *path = lua_tostring(L, lua_upvalueindex(1));
+    DIR **d = (DIR **)lua_touserdata(L, 1);
     char fullpath[PATH_MAX];
-    const char *path;
     struct dirent *e;
 
     if (!*d)
         return 0;
-
-    path = lua_tostring(L, lua_upvalueindex(2));
 
     if ((e = readdir(*d))) {
         struct stat st;
@@ -329,17 +327,24 @@ static int lua_file_dir(lua_State *L)
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_setmetatable(L, -2);
 
-    lua_pushstring(L, path);
-
     *d = opendir(path);
 
-    lua_pushcclosure(L, eco_file_dir_iter, 2);
+    lua_rotate(L, 1, 1);
 
-    return 1;
+    lua_pushcclosure(L, eco_file_dir_iter, 1);
+
+    lua_rotate(L, 1, 1);
+
+    lua_pushnil(L);
+
+    lua_pushvalue(L, -2);
+
+    return 4;
 }
 
-static const struct luaL_Reg dir_methods[] =  {
+static const struct luaL_Reg dir_mt[] =  {
     {"__gc", eco_file_dir_gc},
+    {"__close", eco_file_dir_gc},
     {NULL, NULL}
 };
 
@@ -530,7 +535,7 @@ int luaopen_eco_core_file(lua_State *L)
     lua_add_constant(L, "IN_ALL_EVENTS", IN_ALL_EVENTS);
     lua_add_constant(L, "IN_ISDIR", IN_ISDIR);
 
-    eco_new_metatable(L, ECO_FILE_DIR_MT, dir_methods);
+    eco_new_metatable(L, ECO_FILE_DIR_MT, dir_mt, NULL);
     lua_pushcclosure(L, lua_file_dir, 1);
     lua_setfield(L, -2, "dir");
 

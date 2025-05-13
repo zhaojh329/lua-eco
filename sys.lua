@@ -39,7 +39,8 @@ end
 
 local exec_metatable = {
     __index = exec_methods,
-    __gc = exec_methods.close
+    __gc = exec_methods.close,
+    __close = exec_methods.close
 }
 
 function M.exec(...)
@@ -66,7 +67,7 @@ function M.sh(cmd, timeout)
         cmd = { '/bin/sh', '-c', cmd }
     end
 
-    local p, err = M.exec(table.unpack(cmd))
+    local p<close>, err = M.exec(table.unpack(cmd))
     if not p then
         return nil, nil, err
     end
@@ -77,17 +78,13 @@ function M.sh(cmd, timeout)
 
     stdout, err = p:read_stdout('*a', timeout)
     if not stdout then
-        p:close()
         return nil, nil, err
     end
 
     stderr, err = p:read_stderr('*a', timeout)
     if not stderr then
-        p:close()
         return stdout, nil, err
     end
-
-    p:close()
 
     return stdout, stderr
 end

@@ -779,7 +779,6 @@ static int lua_uci_list_configs(lua_State *L)
 }
 
 static const luaL_Reg uci_methods[] = {
-    {"__gc", lua_uci_close},
     {"close", lua_uci_close},
     {"load", lua_uci_load},
     {"unload", lua_uci_unload},
@@ -800,6 +799,12 @@ static const luaL_Reg uci_methods[] = {
     {"get_savedir", lua_uci_get_savedir},
     {"set_savedir", lua_uci_set_savedir},
     {"list_configs", lua_uci_list_configs},
+    {NULL, NULL}
+};
+
+static const luaL_Reg uci_mt[] = {
+    {"__gc", lua_uci_close},
+    {"__close", lua_uci_close},
     {NULL, NULL}
 };
 
@@ -840,7 +845,7 @@ int luaopen_eco_uci(lua_State *L)
 {
     lua_newtable(L);
 
-    eco_new_metatable(L, UCI_MT, uci_methods);
+    eco_new_metatable(L, UCI_MT, uci_mt, uci_methods);
     lua_pushcclosure(L, lua_uci_cursor, 1);
     lua_setfield(L, -2, "cursor");
 

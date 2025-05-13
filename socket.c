@@ -981,7 +981,12 @@ static const luaL_Reg methods[] = {
     {"getfd", lua_getfd},
     {"closed", lua_closed},
     {"close", lua_sock_close},
+    {NULL, NULL}
+};
+
+static const luaL_Reg metatable[] = {
     {"__gc", lua_sock_close},
+    {"__close", lua_sock_close},
     {NULL, NULL}
 };
 
@@ -1140,7 +1145,7 @@ static const luaL_Reg funcs[] = {
 
 int luaopen_eco_core_socket(lua_State *L)
 {
-    eco_new_metatable(L, SOCKET_MT, methods);
+    eco_new_metatable(L, SOCKET_MT, metatable, methods);
 
     luaL_newlib(L, funcs);
 

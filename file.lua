@@ -8,19 +8,12 @@ local sys = require 'eco.sys'
 local M = {}
 
 function M.readfile(path, m)
-    local f, err = io.open(path, 'r')
+    local f<close>, err = io.open(path, 'r')
     if not f then
         return nil, err
     end
 
-    local data, err = f:read(m or '*a')
-    f:close()
-
-    if not data then
-        return nil, err
-    end
-
-    return data
+    return f:read(m or '*a')
 end
 
 function M.writefile(path, data, append)
@@ -30,14 +23,12 @@ function M.writefile(path, data, append)
         m = 'a'
     end
 
-    local f, err = io.open(path, m)
+    local f<close>, err = io.open(path, m)
     if not f then
         return nil, err
     end
 
     _, err = f:write(data)
-    f:close()
-
     if err then
         return nil, err
     end
@@ -71,7 +62,7 @@ function M.flock(fd, operation, timeout)
 end
 
 function M.sync(timeout)
-    local p, err = sys.exec('sync')
+    local p<close>, err = sys.exec('sync')
     if not p then
         return nil, err
     end
@@ -213,7 +204,8 @@ end
 
 local inotify_mt = {
     __index = inotify_methods,
-    __gc = inotify_methods.close
+    __gc = inotify_methods.close,
+    __close = inotify_methods.close
 }
 
 -- create an inotify instance

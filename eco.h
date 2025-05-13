@@ -44,4 +44,7 @@ const char **eco_get_obj_registry();
 
 void eco_resume(lua_State *co, int narg);
 
+void eco_new_metatable(lua_State *L, const char *name,
+    const struct luaL_Reg *metatable, const struct luaL_Reg *methods);
+
 #endif

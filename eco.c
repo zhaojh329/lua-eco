@@ -478,7 +478,9 @@ static struct eco_watcher *eco_watcher_new(lua_State *L, const char *mt)
     struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
 
     memset(w, 0, sizeof(struct eco_watcher));
-    eco_new_metatable(L, mt, NULL);
+    eco_new_metatable(L, mt, NULL, NULL);
+
+    luaL_getsubtable(L, -1, "__index");
 
     return w;
 }
@@ -626,6 +628,7 @@ static int eco_watcher(lua_State *L)
     lua_pushcfunction(L, eco_watcher_cancel_methods[type]);
     lua_setfield(L, -2, "cancel");
 
+    lua_pop(L, 1);
     lua_setmetatable(L, -2);
 
     return 1;

@@ -416,7 +416,8 @@ end
 
 local session_metatable = {
     __index = session_methods,
-    __gc = session_methods.free
+    __gc = session_methods.free,
+    __close = session_methods.free
 }
 
 function M.new(ipaddr, port, username, password)

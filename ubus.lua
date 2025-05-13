@@ -25,8 +25,8 @@ function methods:send(event, params)
     return self.con:send(event, params)
 end
 
-function methods:notify(object, params)
-    return self.con:notify(object, params)
+function methods:notify(object, method, params)
+    return self.con:notify(object, method, params)
 end
 
 function methods:objects()
@@ -88,7 +88,8 @@ function methods:listen(event, cb)
 end
 
 local metatable = {
-    __index = methods
+    __index = methods,
+    __close = methods.close
 }
 
 function M.connect(path)
@@ -106,71 +107,39 @@ function M.connect(path)
 end
 
 function M.call(object, method, params)
-    local con, err = M.connect()
+    local con<close>, err = M.connect()
     if not con then
         return nil, err
     end
 
-    local res, err = con:call(object, method, params)
-
-    con:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return con:call(object, method, params)
 end
 
 function M.send(event, params)
-    local con, err = M.connect()
+    local con<close>, err = M.connect()
     if not con then
         return nil, err
     end
 
-    local res, err = con:send(event, params)
-
-    con:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return con:send(event, params)
 end
 
 function M.objects()
-    local con, err = M.connect()
+    local con<close>, err = M.connect()
     if not con then
         return nil, err
     end
 
-    local res, err = con:objects()
-
-    con:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return con:objects()
 end
 
 function M.signatures(object)
-    local con, err = M.connect()
+    local con<close>, err = M.connect()
     if not con then
         return nil, err
     end
 
-    local res, err = con:signatures(object)
-
-    con:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return con:signatures(object)
 end
 
 function M.settimeout(timeout)

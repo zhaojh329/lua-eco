@@ -42,7 +42,10 @@ function nl_methods:close()
     self.sock:close()
 end
 
-local metatable = { __index = nl_methods }
+local metatable = {
+    __index = nl_methods,
+    __close = nl_methods.close
+}
 
 function M.open(protocol)
     local sock, err = socket.netlink(protocol)

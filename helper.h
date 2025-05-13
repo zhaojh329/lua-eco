@@ -77,18 +77,4 @@
 
 #define lua_table_is_array(L, idx) lua_gettablelen(L, (idx)) == lua_rawlen(L, (idx))
 
-static inline void eco_new_metatable(lua_State *L, const char *name, const struct luaL_Reg regs[])
-{
-    if (!luaL_newmetatable(L, name))
-        return;
-
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-
-    if (!regs)
-        return;
-
-    luaL_setfuncs(L, regs, 0);
-}
-
 #endif

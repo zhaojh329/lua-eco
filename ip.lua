@@ -38,20 +38,12 @@ local function __rtnl_send(sock, msg)
 end
 
 local function rtnl_send(msg)
-    local sock, err = nl.open(nl.NETLINK_ROUTE)
+    local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
     if not sock then
         return nil, err
     end
 
-    local ok, err = __rtnl_send(sock, msg)
-
-    sock:close()
-
-    if ok then
-        return true
-    end
-
-    return nil, err
+    return __rtnl_send(sock, msg)
 end
 
 local function is_valid_mac(mac)
@@ -315,20 +307,12 @@ function link.get(dev)
         return nil, 'no such device'
     end
 
-    local sock, err = nl.open(nl.NETLINK_ROUTE)
+    local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
     if not sock then
         return nil, err
     end
 
-    local res, err = link_get(sock, ifindex)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return link_get(sock, ifindex)
 end
 
 M.link = link
@@ -526,20 +510,12 @@ function address.get(dev)
         end
     end
 
-    local sock, err = nl.open(nl.NETLINK_ROUTE)
+    local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
     if not sock then
         return nil, err
     end
 
-    local res, err = address_get(sock, ifindex)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return address_get(sock, ifindex)
 end
 
 M.address = address
