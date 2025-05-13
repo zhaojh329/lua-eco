@@ -338,7 +338,7 @@ function M.add_interface(phy, ifname, attrs)
         return nil, string.format('"%s" already exists', ifname)
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_NEW_INTERFACE, nl.NLM_F_ACK)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_NEW_INTERFACE, nl.NLM_F_ACK)
     if not sock then
         return nil, msg
     end
@@ -350,15 +350,7 @@ function M.add_interface(phy, ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    local ok, err = send_nl80211_msg(sock, msg)
-
-    sock:close()
-
-    if ok then
-        return true
-    end
-
-    return nil, err
+    return send_nl80211_msg(sock, msg)
 end
 
 function M.set_interface(ifname, attrs)
@@ -371,7 +363,7 @@ function M.set_interface(ifname, attrs)
         return nil, string.format('"%s" not exists', ifname)
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_SET_INTERFACE, nl.NLM_F_ACK)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_SET_INTERFACE, nl.NLM_F_ACK)
     if not sock then
         return nil, msg
     end
@@ -380,15 +372,7 @@ function M.set_interface(ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    local ok, err = send_nl80211_msg(sock, msg)
-
-    sock:close()
-
-    if ok then
-        return true
-    end
-
-    return nil, err
+    return send_nl80211_msg(sock, msg)
 end
 
 function M.del_interface(ifname)
@@ -401,22 +385,14 @@ function M.del_interface(ifname)
         return nil, string.format('"%s" not exists', ifname)
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_DEL_INTERFACE, nl.NLM_F_ACK)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_DEL_INTERFACE, nl.NLM_F_ACK)
     if not sock then
         return nil, msg
     end
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, if_index)
 
-    local ok, err = send_nl80211_msg(sock, msg)
-
-    sock:close()
-
-    if ok then
-        return true
-    end
-
-    return nil, err
+    return send_nl80211_msg(sock, msg)
 end
 
 local function get_interface(sock, msg, ifidx)
@@ -455,20 +431,12 @@ function M.get_interface(ifname)
         return nil, 'no dev'
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_interface(sock, msg, ifidx)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_interface(sock, msg, ifidx)
 end
 
 local function get_interfaces(sock, msg, phy)
@@ -514,20 +482,12 @@ local function get_interfaces(sock, msg, phy)
 end
 
 function M.get_interfaces(phy)
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE, nl.NLM_F_DUMP)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_INTERFACE, nl.NLM_F_DUMP)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_interfaces(sock, msg, phy)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_interfaces(sock, msg, phy)
 end
 
 local cipher_names = {
@@ -835,20 +795,12 @@ function M.scan(action, params)
 
     params = params or {}
 
-    local sock, msg = prepare_send_cmd(cmd, flags)
+    local sock<close>, msg = prepare_send_cmd(cmd, flags)
     if not sock then
         return nil, msg
     end
 
-    local res, err = nl80211_scan(sock, msg, action, cmd, params)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return nl80211_scan(sock, msg, action, cmd, params)
 end
 
 local function wait_event(sock, grp_name, timeout, cb, data)
@@ -901,20 +853,12 @@ end
     The callback will get three params: cmd, attrs, data.
 --]]
 function M.wait_event(grp_name, timeout, cb, data)
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
+    local sock<close>, err = nl.open(nl.NETLINK_GENERIC)
     if not sock then
         return nil, err
     end
 
-    local ok, err = wait_event(sock, grp_name, timeout, cb, data)
-
-    sock:close()
-
-    if ok then
-        return true
-    end
-
-    return nil, err
+    return wait_event(sock, grp_name, timeout, cb, data)
 end
 
 local function get_noise(sock, msg, ifidx)
@@ -971,20 +915,12 @@ function M.get_noise(ifname)
         return nil, 'no dev'
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_SURVEY, nl.NLM_F_DUMP)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_SURVEY, nl.NLM_F_DUMP)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_noise(sock, msg, ifidx)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_noise(sock, msg, ifidx)
 end
 
 local function parse_bitrate(attrs)
@@ -1205,20 +1141,12 @@ function M.get_station(ifname, mac)
         error('invalid mac')
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_STATION)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_station(sock, msg, ifname, mac)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_station(sock, msg, ifname, mac)
 end
 
 local function get_stations(sock, msg, ifname)
@@ -1277,20 +1205,12 @@ function M.get_stations(ifname)
         error('invalid ifname')
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_STATION, nl.NLM_F_DUMP)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_STATION, nl.NLM_F_DUMP)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_stations(sock, msg, ifname)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_stations(sock, msg, ifname)
 end
 
 local function get_protocol_features(sock, msg, phyid)
@@ -1340,20 +1260,12 @@ function M.get_protocol_features(phy)
         error('invalid phy')
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_PROTOCOL_FEATURES)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_PROTOCOL_FEATURES)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_protocol_features(sock, msg, phyid)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_protocol_features(sock, msg, phyid)
 end
 
 local function parse_freqlist(attrs, freqlist)
@@ -1490,20 +1402,12 @@ function M.get_freqlist(phy)
         error('invalid phy')
     end
 
-    local sock, msg = prepare_send_cmd(nl80211.CMD_GET_WIPHY, nl.NLM_F_DUMP)
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_WIPHY, nl.NLM_F_DUMP)
     if not sock then
         return nil, msg
     end
 
-    local res, err = get_freqlist(sock, msg, phyid)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return get_freqlist(sock, msg, phyid)
 end
 
 return setmetatable(M, { __index = nl80211 })

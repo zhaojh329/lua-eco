@@ -150,7 +150,8 @@ end
 
 local cli_metatable = {
     __index = cli_methods,
-    __gc = cli_methods.close
+    __gc = cli_methods.close,
+    __close = cli_methods.close
 }
 
 local srv_methods = {}
@@ -197,7 +198,8 @@ end
 
 local srv_metatable = {
     __index = srv_methods,
-    __gc = srv_methods.close
+    __gc = srv_methods.close,
+    __close = srv_methods.close
 }
 
 function M.listen(ipaddr, port, options)

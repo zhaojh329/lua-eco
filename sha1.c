@@ -278,7 +278,7 @@ int luaopen_eco_hash_sha1(lua_State *L)
     lua_pushcfunction(L, lua_sha1_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, SHA1_MT, sha1_methods);
+    eco_new_metatable(L, SHA1_MT, NULL, sha1_methods);
     lua_pushcclosure(L, lua_sha1_new, 1);
     lua_setfield(L, -2, "new");
 

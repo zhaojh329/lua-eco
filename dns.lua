@@ -547,21 +547,15 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local s, answers, req, err
-
     for _, nameserver in ipairs(nameservers) do
         local id = get_next_transaction_id()
 
-        req, err = build_request(qname, id, opts)
+        local req, err = build_request(qname, id, opts)
         if not req then
             return nil, err
         end
 
-        if nameserver[3] then
-            s, err = socket.udp6()
-        else
-            s, err = socket.udp()
-        end
+        local s<close>, err = nameserver[3] and socket.udp6() or socket.udp()
         if not s then
             return nil, err
         end
@@ -574,9 +568,7 @@ function M.query(qname, opts)
             s:setoption('bindtodevice', opts.device)
         end
 
-        answers, err = query(s, id, req, nameserver)
-        s:close()
-
+        local answers, err = query(s, id, req, nameserver)
         if answers then
             return answers
         end

@@ -620,7 +620,7 @@ int luaopen_eco_bufio(lua_State *L)
 {
     lua_newtable(L);
 
-    eco_new_metatable(L, BUFIO_MT, methods);
+    eco_new_metatable(L, BUFIO_MT, NULL, methods);
     lua_pushcclosure(L, lua_bufio_new, 1);
     lua_setfield(L, -2, "new");
 

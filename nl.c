@@ -522,11 +522,11 @@ int luaopen_eco_core_nl(lua_State *L)
     lua_add_constant(L, "NETLINK_KOBJECT_UEVENT", NETLINK_KOBJECT_UEVENT);
     lua_add_constant(L, "NETLINK_GENERIC", NETLINK_GENERIC);
 
-    eco_new_metatable(L, NLMSG_USER_MT, nlmsg_user_methods);
+    eco_new_metatable(L, NLMSG_USER_MT, NULL, nlmsg_user_methods);
     lua_pushcclosure(L, lua_new_nlmsg_user, 1);
     lua_setfield(L, -2, "nlmsg");
 
-    eco_new_metatable(L, NLMSG_KER_MT, nlmsg_ker_methods);
+    eco_new_metatable(L, NLMSG_KER_MT, NULL, nlmsg_ker_methods);
     lua_pushcclosure(L, lua_new_nlmsg_ker, 1);
     lua_setfield(L, -2, "nlmsg_ker");
 

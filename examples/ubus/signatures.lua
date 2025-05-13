@@ -13,7 +13,7 @@ local attr_types = {
     [ubus.DOUBLE] = 'Number'
 }
 
-local con, err = ubus.connect()
+local con<close>, err = ubus.connect()
 if not con then
     error(err)
 end
@@ -30,5 +30,3 @@ for id, o in pairs(con:objects()) do
         print('}')
     end
 end
-
-con:close()

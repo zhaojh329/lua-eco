@@ -67,20 +67,12 @@ local function __get_family_by(sock, params)
 end
 
 local function get_family_by(params)
-    local sock, err = nl.open(nl.NETLINK_GENERIC)
+    local sock<close>, err = nl.open(nl.NETLINK_GENERIC)
     if not sock then
         return nil, err
     end
 
-    local res, err = __get_family_by(sock, params)
-
-    sock:close()
-
-    if res then
-        return res
-    end
-
-    return nil, err
+    return __get_family_by(sock, params)
 end
 
 function M.get_family_byid(id)

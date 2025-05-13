@@ -376,7 +376,6 @@ static int lua_ssl_context_new(lua_State *L)
 }
 
 static const struct luaL_Reg ssl_ctx_methods[] =  {
-    {"__gc", eco_ssl_context_gc},
     {"free", eco_ssl_context_free},
     {"load_ca_cert_file", eco_ssl_load_ca_cert_file},
     {"load_cert_file", eco_ssl_load_cert_file},
@@ -386,14 +385,25 @@ static const struct luaL_Reg ssl_ctx_methods[] =  {
     {NULL, NULL}
 };
 
+static const struct luaL_Reg ssl_ctx_mt[] =  {
+    {"__gc", eco_ssl_context_gc},
+    {"__close", eco_ssl_context_gc},
+    {NULL, NULL}
+};
+
 static const struct luaL_Reg ssl_methods[] =  {
-    {"__gc", lua_ssl_free},
     {"free", lua_ssl_free},
     {"pointer", lua_ssl_pointer},
     {"set_server_name", lua_ssl_set_server_name},
     {"handshake", lua_ssl_handshake},
     {"send", lua_send},
     {"write", lua_send},
+    {NULL, NULL}
+};
+
+static const struct luaL_Reg ssl_mt[] =  {
+    {"__gc", lua_ssl_free},
+    {"__close", lua_ssl_free},
     {NULL, NULL}
 };
 
@@ -410,11 +420,13 @@ int luaopen_eco_core_ssl(lua_State *L)
     lua_pushlightuserdata(L, bufio_fill_ssl);
     lua_setfield(L, -2, "bufio_fill");
 
-    eco_new_metatable(L, ECO_SSL_CTX_MT, ssl_ctx_methods);
+    eco_new_metatable(L, ECO_SSL_CTX_MT, ssl_ctx_mt, ssl_ctx_methods);
+    luaL_getsubtable(L, -1, "__index");
 
-    eco_new_metatable(L, ECO_SSL_MT, ssl_methods);
+    eco_new_metatable(L, ECO_SSL_MT, ssl_mt, ssl_methods);
     lua_pushcclosure(L, lua_ssl_session_new, 1);
     lua_setfield(L, -2, "new");
+    lua_pop(L, 1);
 
     lua_pushcclosure(L, lua_ssl_context_new, 1);
     lua_setfield(L, -2, "context");

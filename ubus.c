@@ -881,6 +881,11 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"objects", lua_ubus_objects},
     {"signatures", lua_ubus_signatures},
     {"close", lua_ubus_close},
+    {NULL, NULL}
+};
+
+static const struct luaL_Reg ubus_mt[] =  {
+    {"__close", lua_ubus_close},
     {"__gc", lua_ubus_close},
     {NULL, NULL}
 };
@@ -927,7 +932,7 @@ int luaopen_eco_core_ubus(lua_State *L)
     lua_add_constant(L, "DOUBLE", BLOBMSG_TYPE_DOUBLE);
     lua_add_constant(L, "BOOLEAN", BLOBMSG_TYPE_BOOL);
 
-    eco_new_metatable(L, ECO_UBUS_CTX_MT, ubus_methods);
+    eco_new_metatable(L, ECO_UBUS_CTX_MT, ubus_mt, ubus_methods);
     lua_pushcclosure(L, lua_ubus_connect, 1);
     lua_setfield(L, -2, "connect");
 

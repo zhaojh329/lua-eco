@@ -336,7 +336,7 @@ int luaopen_eco_hash_md5(lua_State *L)
     lua_pushcfunction(L, lua_md5_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, MD5_MT, md5_methods);
+    eco_new_metatable(L, MD5_MT, NULL, md5_methods);
     lua_pushcclosure(L, lua_md5_new, 1);
     lua_setfield(L, -2, "new");
 
