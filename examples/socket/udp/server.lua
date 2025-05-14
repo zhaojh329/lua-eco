@@ -15,6 +15,10 @@ end
 
 while true do
     local data, peer = sock:recvfrom(1024)
+    if not data then
+        print(peer)
+        break
+    end
     print('recvfrom:', peer.ipaddr, peer.port, data)
     sock:sendto('I am eco', peer.ipaddr, peer.port)
 end
