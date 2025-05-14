@@ -20,6 +20,11 @@ end
 
 while true do
     local data, peer = s:recvfrom(1024)
+    if not data then
+        print(peer)
+        break
+    end
+
     print('recv:', data)
 
     if peer then
