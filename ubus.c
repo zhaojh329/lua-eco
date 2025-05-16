@@ -35,6 +35,8 @@ struct eco_ubus_object {
 
 static const char *obj_registry = "eco.ubus{obj}";
 
+static double global_timeout = 30.0;
+
 /* ctx_env[ptr] = userdata */
 static int lua_save_obj_to_ubus_ctx(lua_State *L, void *obj)
 {
@@ -284,10 +286,13 @@ static void req_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
 
 static int lua_ubus_settimeout(lua_State *L)
 {
-    struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
-    double timeout = luaL_checknumber(L, 2);
+    if (lua_isnumber(L, 1)) {
+        global_timeout = lua_tonumber(L, 1);
+    } else {
+        struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
+        ctx->req.timeout = luaL_checknumber(L, 2);
+    }
 
-    ctx->req.timeout = timeout;
     return 0;
 }
 
@@ -800,6 +805,7 @@ static int lua_ubus_connect(lua_State *L)
     lua_rawset(L, -3);
     lua_pop(L, 1);
 
+    ctx->req.timeout = global_timeout;
     ctx->L = ev_userdata(loop);
 
     ev_io_init(&ctx->io, ev_io_cb, ctx->ctx.sock.fd, EV_READ);
@@ -935,6 +941,9 @@ int luaopen_eco_core_ubus(lua_State *L)
     eco_new_metatable(L, ECO_UBUS_CTX_MT, ubus_mt, ubus_methods);
     lua_pushcclosure(L, lua_ubus_connect, 1);
     lua_setfield(L, -2, "connect");
+
+    lua_pushcfunction(L, lua_ubus_settimeout);
+    lua_setfield(L, -2, "settimeout");
 
     lua_pushcfunction(L, lua_ubus_strerror);
     lua_setfield(L, -2, "strerror");

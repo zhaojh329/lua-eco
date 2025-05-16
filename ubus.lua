@@ -5,8 +5,6 @@ local ubus = require 'eco.core.ubus'
 
 local M = {}
 
-local global_timeout = 30.0
-
 local methods = {}
 
 function methods:close()
@@ -99,8 +97,6 @@ function M.connect(path)
         return nil, err
     end
 
-    con:settimeout(global_timeout)
-
     return setmetatable({
         con = con,
     }, metatable)
@@ -140,10 +136,6 @@ function M.signatures(object)
     end
 
     return con:signatures(object)
-end
-
-function M.settimeout(timeout)
-    global_timeout = timeout
 end
 
 return setmetatable(M, { __index = ubus })
