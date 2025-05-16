@@ -9,6 +9,9 @@ sys.signal(sys.SIGINT, function()
     eco.unloop()
 end)
 
+-- Set the global timeout time, defaults to 30.0
+ubus.settimeout(30.0)
+
 local res, err = ubus.call('system', 'board')
 if not res then
     print('call system.board fail:', err)
@@ -20,6 +23,9 @@ local con, err = ubus.connect()
 if not con then
     error(err)
 end
+
+-- Set the timeout time for this connection, defaults to 30.0
+con:settimeout(30.0)
 
 con:listen('*', function(ev, msg)
     print('got event:', ev)
