@@ -57,7 +57,7 @@ function M.flock(fd, operation, timeout)
             return false, 'timeout'
         end
 
-        time.sleep(0.001)
+        time.sleep(0.1)
     end
 end
 
