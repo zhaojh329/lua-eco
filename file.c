@@ -311,10 +311,12 @@ static int eco_file_dir_iter(lua_State *L)
 
 static int eco_file_dir_gc(lua_State *L)
 {
-    DIR *d = *(DIR **)luaL_checkudata(L, 1, ECO_FILE_DIR_MT);
+    DIR **d = (DIR **)luaL_checkudata(L, 1, ECO_FILE_DIR_MT);
 
-    if (d)
-        closedir(d);
+    if (*d) {
+        closedir(*d);
+        *d = NULL;
+    }
 
     return 0;
 }
