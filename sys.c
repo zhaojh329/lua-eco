@@ -54,8 +54,6 @@ static int lua_kill(lua_State *L)
 
 static int lua_exec(lua_State *L)
 {
-    const char *cmd = luaL_checkstring(L, 1);
-    int n = lua_gettop(L);
     int opipe[2] = {};
     int epipe[2] = {};
     pid_t pid;
@@ -72,8 +70,10 @@ static int lua_exec(lua_State *L)
         lua_pushfstring(L, "fork: %s", strerror(errno));
         goto err;
     } else if (pid == 0) {
+        const char **envp = NULL;
         const char **args;
-        int i;
+        const char *cmd;
+        int i, narg;
 
         /* close unused read end */
         close(opipe[0]);
@@ -85,16 +85,49 @@ static int lua_exec(lua_State *L)
         close(opipe[1]);
         close(epipe[1]);
 
-        args = malloc(sizeof(char *) * (n + 1));
+        if (lua_istable(L, 1)) {
+            narg = lua_rawlen(L, 1);
+            lua_geti(L, 1, 1);
+            cmd = luaL_checkstring(L, -1);
+        } else {
+            cmd = luaL_checkstring(L, 1);
+            narg = lua_gettop(L);
+        }
+
+        args = malloc(sizeof(char *) * (narg + 1));
         if (!args)
             exit(1);
 
-        for (i = 0; i < n; i++)
-            args[i] = lua_tostring(L, i + 1);
+        if (lua_istable(L, 1)) {
+            for (i = 0; i < narg; i++) {
+                lua_geti(L, 1, i + 1);
+                args[i] = lua_tostring(L, -1);
+            }
 
-        args[n] = NULL;
+            if (lua_istable(L, 2)) {
+                int n = lua_rawlen(L, 2);
 
-        execvp(cmd, (char *const *)args);
+                envp = malloc(sizeof(char *) * (n + 1));
+                if (!envp)
+                    exit(1);
+
+                for (i = 0; i < n; i++) {
+                    lua_geti(L, 2, i + 1);
+                    envp[i] = lua_tostring(L, -1);
+                }
+                envp[n] = NULL;
+            }
+        } else {
+            for (i = 0; i < narg; i++)
+                args[i] = lua_tostring(L, i + 1);
+        }
+
+        args[narg] = NULL;
+
+        if (envp)
+            execvpe(cmd, (char *const *)args, (char *const *)envp);
+        else
+            execvp(cmd, (char *const *)args);
 
         fprintf(stderr, "%s: %s", cmd, strerror(errno));
         free(args);
