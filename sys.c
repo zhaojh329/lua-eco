@@ -73,7 +73,7 @@ static int lua_exec(lua_State *L)
         goto err;
     } else if (pid == 0) {
         const char **args;
-        int i, j;
+        int i;
 
         /* close unused read end */
         close(opipe[0]);
@@ -85,23 +85,14 @@ static int lua_exec(lua_State *L)
         close(opipe[1]);
         close(epipe[1]);
 
-        args = malloc(sizeof(char *) * 2);
+        args = malloc(sizeof(char *) * (n + 1));
         if (!args)
             exit(1);
 
-        args[0] = cmd;
-        args[1] = NULL;
+        for (i = 0; i < n; i++)
+            args[i] = lua_tostring(L, i + 1);
 
-        j = 1;
-
-        for (i = 2; i <= n; i++) {
-            const char **tmp = realloc(args, sizeof(char *) * (2 + j));
-            if (!tmp)
-                exit(1);
-            args = tmp;
-            args[j++] = lua_tostring(L, i);
-            args[j] = NULL;
-        }
+        args[n] = NULL;
 
         execvp(cmd, (char *const *)args);
 
