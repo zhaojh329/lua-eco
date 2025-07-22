@@ -38,7 +38,6 @@ set(LUA_INSTALL_PREFIX lib/lua/5.4)
 option(ECO_SSL_SUPPORT "ssl" ON)
 option(ECO_UBUS_SUPPORT "ubus" ON)
 option(ECO_UCI_SUPPORT "uci" ON)
-option(ECO_MQTT_SUPPORT "mqtt" ON)
 option(ECO_SSH_SUPPORT "ssh" ON)
 
 add_library(libeco SHARED libeco.c)
