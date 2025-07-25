@@ -174,12 +174,7 @@ function methods:recvfrom(n, timeout)
     return self.sock:recvfrom(n, timeout)
 end
 
-function M.socket(family, domain, protocol, options)
-    local sock, err = socket.socket(family, domain, protocol)
-    if not sock then
-        return nil, err
-    end
-
+local function socket_init(sock, domain, options)
     local o = { sock = sock, domain = domain, mutex = sync.mutex() }
 
     if domain == socket.SOCK_STREAM then
@@ -209,6 +204,24 @@ function M.socket(family, domain, protocol, options)
     end
 
     return setmetatable(o, metatable)
+end
+
+function M.socket(family, domain, protocol, options)
+    local sock, err = socket.socket(family, domain, protocol)
+    if not sock then
+        return nil, err
+    end
+
+    return socket_init(sock, domain, options)
+end
+
+function M.socketpair(family, domain, protocol, options)
+    local sock1, sock2 = socket.socketpair(family, domain, protocol)
+    if not sock1 then
+        return nil, sock2
+    end
+
+    return socket_init(sock1, domain, options), socket_init(sock2, domain, options)
 end
 
 function M.tcp()

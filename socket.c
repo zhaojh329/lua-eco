@@ -1007,6 +1007,24 @@ static int lua_socket(lua_State *L)
     return eco_socket_init(L, fd, domain, 0);
 }
 
+static int lua_socketpair(lua_State *L)
+{
+    int domain = luaL_checkinteger(L, 1);
+    int type = luaL_checkinteger(L, 2);
+    int protocol = lua_tointeger(L, 3);
+    int sv[2];
+
+    if (socketpair(domain, type | SOCK_NONBLOCK | SOCK_CLOEXEC, protocol, sv)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+    }
+
+    eco_socket_init(L, sv[0], domain, 0);
+    eco_socket_init(L, sv[1], domain, 0);
+
+    return 2;
+}
+
 static int lua_is_ipv4_address(lua_State *L)
 {
     const char *ip = luaL_checkstring(L, 1);
@@ -1128,6 +1146,7 @@ static int lua_ntohs(lua_State *L)
 
 static const luaL_Reg funcs[] = {
     {"socket", lua_socket},
+    {"socketpair", lua_socketpair},
     {"is_ipv4_address", lua_is_ipv4_address},
     {"is_ipv6_address", lua_is_ipv6_address},
     {"inet_aton", lua_inet_aton},
