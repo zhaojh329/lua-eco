@@ -7,6 +7,8 @@ local M = {}
 
 local methods = {}
 
+local global_conn
+
 function methods:close()
     return self.con:close()
 end
@@ -103,39 +105,21 @@ function M.connect(path)
 end
 
 function M.call(object, method, params)
-    local con<close>, err = M.connect()
-    if not con then
-        return nil, err
-    end
-
-    return con:call(object, method, params)
+    return global_conn:call(object, method, params)
 end
 
 function M.send(event, params)
-    local con<close>, err = M.connect()
-    if not con then
-        return nil, err
-    end
-
-    return con:send(event, params)
+    return global_conn:send(event, params)
 end
 
 function M.objects()
-    local con<close>, err = M.connect()
-    if not con then
-        return nil, err
-    end
-
-    return con:objects()
+    return global_conn:objects()
 end
 
 function M.signatures(object)
-    local con<close>, err = M.connect()
-    if not con then
-        return nil, err
-    end
-
-    return con:signatures(object)
+    return global_conn:signatures(object)
 end
+
+global_conn = ubus.connect()
 
 return setmetatable(M, { __index = ubus })
