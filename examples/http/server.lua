@@ -64,6 +64,7 @@ local function handler(con, req)
         con:send('<h2>remote addr: ', remote_addr.ipaddr, '</h2>\n')
         con:send('<h2>remote port: ', remote_addr.port, '</h2>\n')
         con:send('<h2>method: ', req.method, '</h2>\n')
+        con:send('<h2>raw_path: ', req.raw_path, '</h2>\n')
         con:send('<h2>path: ', req.path, '</h2>\n')
         con:send('<h2>http version: ', req.major_version .. '.' .. req.minor_version, '</h2>\n')
 

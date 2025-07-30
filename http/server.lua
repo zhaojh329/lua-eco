@@ -612,7 +612,7 @@ local function handle_connection(con, handler)
     local http_keepalive = con.options.http_keepalive
     local read_timeout = 3.0
 
-    local method, path, major_version, minor_version
+    local method, raw_path, major_version, minor_version
 
     while true do
         local data, err = sock:recv('l', http_keepalive > 0 and http_keepalive or read_timeout)
@@ -624,8 +624,8 @@ local function handle_connection(con, handler)
         end
 
         if #data > 0 then
-            method, path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)\r?$')
-            if not method or not path or not major_version or not minor_version then
+            method, raw_path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)\r?$')
+            if not method or not raw_path or not major_version or not minor_version then
                 log.err(log_prefix .. 'not a vaild http request start line')
                 return false
             end
@@ -673,7 +673,7 @@ local function handle_connection(con, handler)
 
     local query_string = ''
 
-    path = path:gsub('%?(.*)', function(s)
+    local path = raw_path:gsub('%?(.*)', function(s)
         query_string = s
         return ''
     end)
@@ -709,6 +709,7 @@ local function handle_connection(con, handler)
 
     local req = {
         method = method,
+        raw_path = raw_path,
         path = url.unescape(path),
         major_version = major_version,
         minor_version = minor_version,
