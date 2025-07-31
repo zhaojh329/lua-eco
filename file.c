@@ -290,8 +290,12 @@ static int eco_file_dir_iter(lua_State *L)
     if (!*d)
         return 0;
 
+again:
     if ((e = readdir(*d))) {
         struct stat st;
+
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
+            goto again;
 
         lua_pushstring(L, e->d_name);
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, e->d_name);
