@@ -5,7 +5,9 @@ local file = require 'eco.core.file'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
 
-local M = {}
+local M = {
+    SKIP = 1
+}
 
 function M.readfile(path, m)
     local f<close>, err = io.open(path, 'r')
@@ -220,6 +222,36 @@ function M.inotify()
         watchs = {},
         iow = eco.watcher(eco.IO, fd),
     }, inotify_mt)
+end
+
+local function walk(path, cb)
+    for name, info in file.dir(path) do
+        local sub = path .. name
+
+        local ret = cb(sub, name, info)
+
+        if ret == false then
+            return false
+        end
+
+        if info.type == 'DIR' and ret ~= M.SKIP then
+            if walk(sub .. '/', cb) == false then
+                return false
+            end
+        end
+    end
+end
+
+-- return false to terminate traversal
+-- return file.SKIP to skip traversal of the current directory
+function M.walk(root, cb)
+    assert(type(root) == 'string', 'root path must be a string')
+
+    if root:sub(#root) ~= '/' then
+        root = root .. '/'
+    end
+
+    walk(root, cb)
 end
 
 return setmetatable(M, { __index = file })
