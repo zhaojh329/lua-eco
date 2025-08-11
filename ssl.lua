@@ -31,10 +31,6 @@ end
 
 local cli_methods = {}
 
-function cli_methods:set_server_name(name)
-    return self.ssock:set_server_name(name)
-end
-
 function cli_methods:send(data)
     local mutex = self.mutex
 
@@ -250,6 +246,10 @@ function M.connect(ipaddr, port, options)
     end
 
     local ssock = ctx:new(sock:getfd(), options.insecure)
+
+    if options.server_name then
+        ssock:set_server_name(options.server_name)
+    end
 
     local ok, err = ssock:handshake()
     if not ok then

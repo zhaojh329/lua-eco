@@ -407,6 +407,7 @@ function methods:request(method, url, body, opts)
     for _, address in ipairs(addresses) do
         if scheme_info.use_ssl then
             local ssl = require 'eco.ssl'
+            opts.server_name = host
             sock, err = ssl.connect(address, port, opts)
         else
             sock, err = socket.connect_tcp(address, port, opts)
