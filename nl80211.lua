@@ -679,6 +679,18 @@ local function parse_bss(nest)
         parse_bss_ie(info, nl.attr_get_payload(attrs[nl80211.BSS_INFORMATION_ELEMENTS]))
     end
 
+    if attrs[nl80211.BSS_STATUS] then
+        local status = nl.attr_get_u32(attrs[nl80211.BSS_STATUS])
+
+        if status == nl80211.BSS_STATUS_AUTHENTICATED then
+            info.status = 'authenticated'
+        elseif status == nl80211.BSS_STATUS_ASSOCIATED then
+            info.status = 'associated'
+        elseif status == nl80211.BSS_STATUS_IBSS_JOINED then
+            info.status = 'ibss_joined'
+        end
+    end
+
     return info
 end
 
@@ -1408,6 +1420,85 @@ function M.get_freqlist(phy)
     end
 
     return get_freqlist(sock, msg, phyid)
+end
+
+local function get_link_bss(sock, msg, ifname)
+    local ifidx = socket.if_nametoindex(ifname)
+    if not ifidx then
+        return nil, 'no dev'
+    end
+
+    msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
+
+    local ok, err = sock:send(msg)
+    if not ok then
+        return nil, err
+    end
+
+    while true do
+        msg, err = sock:recv()
+        if not msg then
+            return nil, err
+        end
+
+        while true do
+            local nlh = msg:next()
+            if not nlh then
+                break
+            end
+
+            if nlh.type == nl.NLMSG_ERROR then
+                err = msg:parse_error()
+                return nil, sys.strerror(-err)
+            end
+
+            if nlh.type == nl.NLMSG_DONE then
+                return nil
+            end
+
+            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
+            if attrs[nl80211.ATTR_BSS] then
+                local bss = parse_bss(attrs[nl80211.ATTR_BSS])
+                if bss then
+                    if bss.status == 'associated' or bss.status == 'ibss_joined' then
+                        return bss
+                    end
+                end
+            end
+        end
+    end
+end
+
+function M.get_link(ifname)
+    if type(ifname) ~= 'string' then
+        error('invalid ifname')
+    end
+
+    local sock<close>, msg = prepare_send_cmd(nl80211.CMD_GET_SCAN, nl.NLM_F_DUMP)
+    if not sock then
+        return nil, msg
+    end
+
+    local bss = get_link_bss(sock, msg, ifname)
+    if not bss then
+        return nil, 'not connected'
+    end
+
+    if bss then
+        local sta = M.get_station(ifname, bss.bssid)
+        if sta then
+            bss.rx_bytes = sta.rx_bytes
+            bss.rx_packets = sta.rx_packets
+            bss.tx_bytes = sta.tx_bytes
+            bss.tx_packets = sta.tx_packets
+            bss.tx_rate = sta.tx_rate
+            bss.rx_rate = sta.rx_rate
+            bss.signal = sta.signal
+            bss.ack_signal_avg = sta.ack_signal_avg
+        end
+    end
+
+    return bss
 end
 
 return setmetatable(M, { __index = nl80211 })

@@ -369,6 +369,10 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "BSS_BEACON_TSF", NL80211_BSS_BEACON_TSF);
     lua_add_constant(L, "BSS_PRESP_DATA", NL80211_BSS_PRESP_DATA);
 
+    lua_add_constant(L, "BSS_STATUS_AUTHENTICATED", NL80211_BSS_STATUS_AUTHENTICATED);
+    lua_add_constant(L, "BSS_STATUS_ASSOCIATED", NL80211_BSS_STATUS_ASSOCIATED);
+    lua_add_constant(L, "BSS_STATUS_IBSS_JOINED", NL80211_BSS_STATUS_IBSS_JOINED);
+
     lua_add_constant(L, "STA_INFO_INACTIVE_TIME", NL80211_STA_INFO_INACTIVE_TIME);
     lua_add_constant(L, "STA_INFO_RX_BYTES", NL80211_STA_INFO_RX_BYTES);
     lua_add_constant(L, "STA_INFO_TX_BYTES", NL80211_STA_INFO_TX_BYTES);
