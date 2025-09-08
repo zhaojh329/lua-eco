@@ -873,7 +873,7 @@ function M.wait_event(grp_name, timeout, cb, data)
     return wait_event(sock, grp_name, timeout, cb, data)
 end
 
-local function get_noise(sock, msg, ifidx)
+local function get_surveys(sock, msg, ifidx)
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
     local ok, err = sock:send(msg)
@@ -881,7 +881,7 @@ local function get_noise(sock, msg, ifidx)
         return nil, err
     end
 
-    local noise = 0
+    local surveys = {}
 
     while true do
         msg, err = sock:recv()
@@ -901,23 +901,41 @@ local function get_noise(sock, msg, ifidx)
             end
 
             if nlh.type == nl.NLMSG_DONE then
-                return noise
+                return surveys
             end
 
             local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
             if attrs[nl80211.ATTR_SURVEY_INFO] then
                 local si = nl.parse_attr_nested(attrs[nl80211.ATTR_SURVEY_INFO])
-                if si[nl80211.SURVEY_INFO_NOISE] then
-                    if noise == 0 or si[nl80211.SURVEY_INFO_IN_USE] then
-                        noise = nl.attr_get_s8(si[nl80211.SURVEY_INFO_NOISE])
-                    end
+                local survey = {}
+
+                if si[nl80211.SURVEY_INFO_FREQUENCY] then
+                    survey.frequency = nl.attr_get_u32(si[nl80211.SURVEY_INFO_FREQUENCY])
                 end
+
+                if si[nl80211.SURVEY_INFO_NOISE] then
+                    survey.noise = nl.attr_get_s8(si[nl80211.SURVEY_INFO_NOISE])
+                end
+
+                if si[nl80211.SURVEY_INFO_IN_USE] then
+                    survey.in_use = true
+                end
+
+                if si[nl80211.SURVEY_INFO_TIME] then
+                    survey.active_time = nl.attr_get_u64(si[nl80211.SURVEY_INFO_TIME])
+                end
+
+                if si[nl80211.SURVEY_INFO_TIME_BUSY] then
+                    survey.busy_time = nl.attr_get_u64(si[nl80211.SURVEY_INFO_TIME_BUSY])
+                end
+
+                surveys[#surveys + 1] = survey
             end
         end
     end
 end
 
-function M.get_noise(ifname)
+function M.get_surveys(ifname)
     if type(ifname) ~= 'string' then
         error('invalid ifname')
     end
@@ -932,7 +950,22 @@ function M.get_noise(ifname)
         return nil, msg
     end
 
-    return get_noise(sock, msg, ifidx)
+    return get_surveys(sock, msg, ifidx)
+end
+
+function M.get_noise(ifname)
+    local surveys, err = M.get_surveys(ifname)
+    if not surveys then
+        return nil, err
+    end
+
+    for _, survey in ipairs(surveys) do
+        if survey.noise then
+            return survey.noise
+        end
+    end
+
+    return 0
 end
 
 local function parse_bitrate(attrs)

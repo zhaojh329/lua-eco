@@ -437,8 +437,11 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "RATE_INFO_EHT_NSS", NL80211_RATE_INFO_EHT_NSS);
     lua_add_constant(L, "RATE_INFO_EHT_GI", NL80211_RATE_INFO_EHT_GI);
 
+    lua_add_constant(L, "SURVEY_INFO_FREQUENCY", NL80211_SURVEY_INFO_FREQUENCY);
     lua_add_constant(L, "SURVEY_INFO_NOISE", NL80211_SURVEY_INFO_NOISE);
     lua_add_constant(L, "SURVEY_INFO_IN_USE", NL80211_SURVEY_INFO_IN_USE);
+    lua_add_constant(L, "SURVEY_INFO_TIME", NL80211_SURVEY_INFO_TIME);
+    lua_add_constant(L, "SURVEY_INFO_TIME_BUSY", NL80211_SURVEY_INFO_TIME_BUSY);
 
     lua_add_constant(L, "PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP", NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP);
 
