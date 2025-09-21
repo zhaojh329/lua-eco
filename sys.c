@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <pwd.h>
 
 #include "eco.h"
 
@@ -32,6 +33,48 @@ static int lua_getpid(lua_State *L)
 static int lua_getppid(lua_State *L)
 {
     lua_pushinteger(L, getppid());
+    return 1;
+}
+
+static int lua_getpwnam(lua_State *L)
+{
+    const char *name = luaL_checkstring(L, 1);
+    struct passwd pwd;
+    struct passwd *result;
+    char buf[1024];
+
+    if (getpwnam_r(name, &pwd, buf, sizeof(buf), &result)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    if (!result) {
+        lua_pushnil(L);
+        lua_pushstring(L, "not found");
+        return 2;
+    }
+
+    lua_newtable(L);
+
+    lua_pushstring(L, pwd.pw_name);
+    lua_setfield(L, -2, "username");
+
+    lua_pushstring(L, pwd.pw_passwd);
+    lua_setfield(L, -2, "password");
+
+    lua_pushinteger(L, pwd.pw_uid);
+    lua_setfield(L, -2, "uid");
+
+    lua_pushinteger(L, pwd.pw_gid);
+    lua_setfield(L, -2, "gid");
+
+    lua_pushstring(L, pwd.pw_dir);
+    lua_setfield(L, -2, "home");
+
+    lua_pushstring(L, pwd.pw_shell);
+    lua_setfield(L, -2, "shell");
+
     return 1;
 }
 
@@ -221,6 +264,7 @@ static const luaL_Reg funcs[] = {
     {"uptime", lua_uptime},
     {"getpid", lua_getpid},
     {"getppid", lua_getppid},
+    {"getpwnam", lua_getpwnam},
     {"kill", lua_kill},
     {"exec", lua_exec},
     {"spawn", lua_spawn},
