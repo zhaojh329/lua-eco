@@ -726,11 +726,13 @@ function M.new(opts)
     end)
 
     o.ping_tmr = time.timer(function(tmr)
+        o.wait_pingresp:set(3)
+
         local ok, err = send_pkt(o, mqtt_packet(PKT_PINGREQ):data())
         if not ok then
+            o.wait_pingresp:cancel()
             on_event(o, 'error', err)
         else
-            o.wait_pingresp:set(3)
             tmr:set(o.opts.keepalive)
         end
     end)
