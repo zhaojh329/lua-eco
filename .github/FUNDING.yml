@@ -13,7 +13,5 @@ polar: # Replace with a single Polar username
 buy_me_a_coffee: # Replace with a single Buy Me a Coffee username
 thanks_dev: # Replace with a single thanks.dev username
 custom: [
-    "https://raw.githubusercontent.com/zhaojh329/zhaojh329/refs/heads/main/微信支付.png",
-    "https://raw.githubusercontent.com/zhaojh329/zhaojh329/refs/heads/main/支付宝.jpg",
-    "https://paypal.me/zjh329?country.x=C2&locale.x=zh_XC"
+    "https://zhaojh329.github.io/zhaojh329/"
 ]
