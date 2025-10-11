@@ -2,7 +2,7 @@
 
 local sys = require 'eco.sys'
 
-local stdout, stderr, err = sys.sh('date', '-u')
+local stdout, stderr, err = sys.sh({'date', '-u'})
 print('stdout:', stdout)
 print('stderr:', stderr)
 
