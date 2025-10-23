@@ -146,6 +146,9 @@ local WLAN_EID_RSN = 48
 local WLAN_EID_MESH_ID = 114
 local WLAN_EID_VENDOR_SPECIFIC = 221
 
+local OUI_MICROSOFT = '\x00\x50\xf2'
+local OUI_IEEE80211 = '\x00\x0f\xac'
+
 function M.ftype_name(typ, subtype)
     return ftypes[typ] and ftypes[typ][subtype]
 end
@@ -529,17 +532,15 @@ local auth_suite_names = {
     [18] = 'OWE'
 }
 
-local ms_oui        = string.char(0x00, 0x50, 0xf2)
-local ieee80211_oui = string.char(0x00, 0x0f, 0xac)
-
 local function parse_cipher(data)
+    local oui = data:sub(1, 3)
     local id = str_byte(data, 4)
 
-    if data:sub(1, 3) == ms_oui then
+    if oui == OUI_MICROSOFT then
         if id < 6 then
             return cipher_names[id]
         end
-    elseif data:sub(1, 3) == ieee80211_oui then
+    elseif oui == OUI_IEEE80211 then
         if id < 11 then
             return cipher_names[id]
         end
@@ -601,13 +602,14 @@ local function parse_rsn(data, defcipher, defauth)
     data = data:sub(3)
 
     while count > 0 do
+        local oui = data:sub(1, 3)
         local id = str_byte(data, 4)
 
-        if data:sub(1, 3) == ms_oui then
+        if oui == OUI_MICROSOFT then
             if id < 3 then
                 auth_suites[auth_suite_names[id]] = true
             end
-        elseif data:sub(1, 3) == ieee80211_oui then
+        elseif oui == OUI_IEEE80211 then
             if id < 19 then
                 auth_suites[auth_suite_names[id]] = true
             end
@@ -618,6 +620,21 @@ local function parse_rsn(data, defcipher, defauth)
     end
 
     return res
+end
+
+local function parse_vendor_specific_ie(info, data)
+    if #data < 4 then
+        return
+    end
+
+    local oui = data:sub(1, 3)
+    local id = str_byte(data, 4)
+
+    if oui == OUI_MICROSOFT then
+        if id == 1 then
+            info.wpa = parse_rsn(data:sub(5), 'TKIP', 'PSK')
+        end
+    end
 end
 
 local function parse_bss_ie(info, data)
@@ -632,11 +649,7 @@ local function parse_bss_ie(info, data)
         elseif typ == WLAN_EID_RSN then
             info.rsn = parse_rsn(data:sub(1, ie_len), 'CCMP', '8021x')
         elseif typ == WLAN_EID_VENDOR_SPECIFIC then
-            if ie_len >= 4 and data:sub(1, 3) == ms_oui then
-                if str_byte(data, 4) == 1 then
-                    info.wpa = parse_rsn(data:sub(5, ie_len), 'TKIP', 'PSK')
-                end
-            end
+            parse_vendor_specific_ie(info, data:sub(1, ie_len))
         end
 
         data = data:sub(ie_len + 1)
