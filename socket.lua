@@ -22,7 +22,7 @@ function methods:close()
 end
 
 function methods:closed()
-    self.sock:closed()
+    return self.sock:closed()
 end
 
 function methods:setoption(name, value)
