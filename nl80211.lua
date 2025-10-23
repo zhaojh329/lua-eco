@@ -140,6 +140,12 @@ local channel_type_name = {
     [nl80211.CHAN_HT40PLUS] = 'HT40+'
 }
 
+-- Element IDs (IEEE Std 802.11-2020, 9.4.2.1, Table 9-92)
+local WLAN_EID_SSID = 0
+local WLAN_EID_RSN = 48
+local WLAN_EID_MESH_ID = 114
+local WLAN_EID_VENDOR_SPECIFIC = 221
+
 function M.ftype_name(typ, subtype)
     return ftypes[typ] and ftypes[typ][subtype]
 end
@@ -621,12 +627,11 @@ local function parse_bss_ie(info, data)
 
         data = data:sub(3)
 
-        -- SSID or Mesh ID
-        if typ == 0 or typ == 114 then
+        if typ == WLAN_EID_SSID or typ == WLAN_EID_MESH_ID then
             info.ssid = data:sub(1, ie_len)
-        elseif typ == 48 then -- RSN
+        elseif typ == WLAN_EID_RSN then
             info.rsn = parse_rsn(data:sub(1, ie_len), 'CCMP', '8021x')
-        elseif typ == 221 then   -- Vendor
+        elseif typ == WLAN_EID_VENDOR_SPECIFIC then
             if ie_len >= 4 and data:sub(1, 3) == ms_oui then
                 if str_byte(data, 4) == 1 then
                     info.wpa = parse_rsn(data:sub(5, ie_len), 'TKIP', 'PSK')
