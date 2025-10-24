@@ -757,6 +757,10 @@ local function nl80211_scan(sock, msg, action, cmd, params)
             end
             msg:put_attr_nest_end()
         end
+
+        if params.ie then
+            msg:put_attr(nl80211.ATTR_IE, params.ie)
+        end
     end
 
     local ok, err = sock:send(msg)
