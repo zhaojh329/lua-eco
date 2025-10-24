@@ -60,6 +60,12 @@ local M = {
     STYPE_QOS_CFACK         = 0x0d,
     STYPE_QOS_CFPOLL        = 0x0e,
     STYPE_QOS_CFACKPOLL     = 0x0f,
+
+    -- Element IDs (IEEE Std 802.11-2020, 9.4.2.1, Table 9-92)
+    WLAN_EID_SSID = 0,
+    WLAN_EID_RSN = 48,
+    WLAN_EID_MESH_ID = 114,
+    WLAN_EID_VENDOR_SPECIFIC = 221,
 }
 
 local ftypes = {
@@ -139,12 +145,6 @@ local channel_type_name = {
     [nl80211.CHAN_HT40MINUS] = 'HT40-',
     [nl80211.CHAN_HT40PLUS] = 'HT40+'
 }
-
--- Element IDs (IEEE Std 802.11-2020, 9.4.2.1, Table 9-92)
-local WLAN_EID_SSID = 0
-local WLAN_EID_RSN = 48
-local WLAN_EID_MESH_ID = 114
-local WLAN_EID_VENDOR_SPECIFIC = 221
 
 local OUI_MICROSOFT = '\x00\x50\xf2'
 local OUI_IEEE80211 = '\x00\x0f\xac'
@@ -637,26 +637,41 @@ local function parse_vendor_specific_ie(info, data)
     end
 end
 
-local function parse_bss_ie(info, data)
-    while #data >= 2 and #data - 2 >= str_byte(data, 2) do
-        local typ = str_byte(data, 1)
-        local ie_len = str_byte(data, 2)
+local function parse_bss_ie(info, data, keep_elems)
+    local elems = {}
 
-        data = data:sub(3)
-
-        if typ == WLAN_EID_SSID or typ == WLAN_EID_MESH_ID then
-            info.ssid = data:sub(1, ie_len)
-        elseif typ == WLAN_EID_RSN then
-            info.rsn = parse_rsn(data:sub(1, ie_len), 'CCMP', '8021x')
-        elseif typ == WLAN_EID_VENDOR_SPECIFIC then
-            parse_vendor_specific_ie(info, data:sub(1, ie_len))
+    while #data > 1 do
+        local typ, elem_data, i = string.unpack('Bs1', data)
+        if not typ then
+            break
         end
 
-        data = data:sub(ie_len + 1)
+        if typ == M.WLAN_EID_SSID or typ == M.WLAN_EID_MESH_ID then
+            info.ssid = elem_data
+        elseif typ == M.WLAN_EID_RSN then
+            info.rsn = parse_rsn(elem_data, 'CCMP', '8021x')
+        elseif typ == M.WLAN_EID_VENDOR_SPECIFIC then
+            parse_vendor_specific_ie(info, elem_data)
+        end
+
+        if keep_elems then
+            if not elems[typ] then
+                elems[typ] = {}
+            end
+
+            local elem = elems[typ]
+            elem[#elem + 1] = elem_data
+        end
+
+        data = data:sub(i)
+    end
+
+    if keep_elems then
+        info.elems = elems
     end
 end
 
-local function parse_bss(nest)
+local function parse_bss(nest, keep_elems)
     local attrs = nl.parse_attr_nested(nest)
     local info = { caps = {} }
 
@@ -694,7 +709,7 @@ local function parse_bss(nest)
     end
 
     if attrs[nl80211.BSS_INFORMATION_ELEMENTS] then
-        parse_bss_ie(info, nl.attr_get_payload(attrs[nl80211.BSS_INFORMATION_ELEMENTS]))
+        parse_bss_ie(info, nl.attr_get_payload(attrs[nl80211.BSS_INFORMATION_ELEMENTS]), keep_elems)
     end
 
     if attrs[nl80211.BSS_STATUS] then
@@ -797,7 +812,7 @@ local function nl80211_scan(sock, msg, action, cmd, params)
 
             local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
             if attrs[nl80211.ATTR_BSS] then
-                local res = parse_bss(attrs[nl80211.ATTR_BSS])
+                local res = parse_bss(attrs[nl80211.ATTR_BSS], params.keep_elems)
                 if res then
                     bss[#bss + 1] = res
                 end
