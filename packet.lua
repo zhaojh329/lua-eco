@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: MIT
+-- Author: Jianhui Zhao <zhaojh329@gmail.com>
+
 local hex = require 'eco.encoding.hex'
 local nl80211 = require 'eco.nl80211'
 local socket = require 'eco.socket'
