@@ -72,6 +72,43 @@ static int lua_rtnl_new_ifaddrmsg(lua_State *L)
     return 1;
 }
 
+static int lua_rtnl_new_rtmsg(lua_State *L)
+{
+    struct rtmsg r = {};
+
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    lua_getfield(L, 1, "family");
+    r.rtm_family = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "dst_len");
+    r.rtm_dst_len = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "src_len");
+    r.rtm_src_len = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "tos");
+    r.rtm_tos = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "table");
+    r.rtm_table = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "protocol");
+    r.rtm_protocol = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "scope");
+    r.rtm_scope = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "type");
+    r.rtm_type = lua_tointeger(L, -1);
+
+    lua_getfield(L, 1, "flags");
+    r.rtm_flags = lua_tointeger(L, -1);
+
+    lua_pushlstring(L, (const char *)&r, sizeof(r));
+    return 1;
+}
+
 static int lua_rtnl_parse_ifinfomsg(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
@@ -152,12 +189,66 @@ static int lua_rtnl_parse_ifaddrmsg(lua_State *L)
     return 1;
 }
 
+static int lua_rtnl_parse_rtmsg(lua_State *L)
+{
+    struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
+    struct nlmsghdr *nlh = msg->nlh;
+    struct rtmsg *r;
+
+    if (!NLMSG_OK(nlh, msg->size)) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "invalid nlmsg");
+        return 2;
+    }
+
+    if (nlh->nlmsg_type != RTM_NEWROUTE && nlh->nlmsg_type != RTM_DELROUTE) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "invalid nlmsg type");
+        return 2;
+    }
+
+	r = NLMSG_DATA(nlh);
+
+    lua_newtable(L);
+
+    lua_pushinteger(L, r->rtm_family);
+    lua_setfield(L, -2, "family");
+
+    lua_pushinteger(L, r->rtm_dst_len);
+    lua_setfield(L, -2, "dst_len");
+
+    lua_pushinteger(L, r->rtm_src_len);
+    lua_setfield(L, -2, "src_len");
+
+    lua_pushinteger(L, r->rtm_tos);
+    lua_setfield(L, -2, "tos");
+
+    lua_pushinteger(L, r->rtm_table);
+    lua_setfield(L, -2, "table");
+
+    lua_pushinteger(L, r->rtm_protocol);
+    lua_setfield(L, -2, "protocol");
+
+    lua_pushinteger(L, r->rtm_scope);
+    lua_setfield(L, -2, "scope");
+
+    lua_pushinteger(L, r->rtm_type);
+    lua_setfield(L, -2, "type");
+
+    lua_pushinteger(L, r->rtm_flags);
+    lua_setfield(L, -2, "flags");
+
+    return 1;
+}
+
 static const luaL_Reg funcs[] = {
     {"rtgenmsg", lua_rtnl_new_rtgenmsg},
     {"ifinfomsg", lua_rtnl_new_ifinfomsg},
     {"ifaddrmsg", lua_rtnl_new_ifaddrmsg},
+    {"rtmsg", lua_rtnl_new_rtmsg},
     {"parse_ifinfomsg", lua_rtnl_parse_ifinfomsg},
     {"parse_ifaddrmsg", lua_rtnl_parse_ifaddrmsg},
+    {"parse_rtmsg", lua_rtnl_parse_rtmsg},
     {NULL, NULL}
 };
 
@@ -295,6 +386,35 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "IFA_RT_PRIORITY", IFA_RT_PRIORITY);
 #endif
 
+    /* Routing message attributes */
+    lua_add_constant(L, "RTA_DST", RTA_DST);
+    lua_add_constant(L, "RTA_SRC", RTA_SRC);
+    lua_add_constant(L, "RTA_IIF", RTA_IIF);
+    lua_add_constant(L, "RTA_OIF", RTA_OIF);
+    lua_add_constant(L, "RTA_GATEWAY", RTA_GATEWAY);
+    lua_add_constant(L, "RTA_PRIORITY", RTA_PRIORITY);
+    lua_add_constant(L, "RTA_PREFSRC", RTA_PREFSRC);
+    lua_add_constant(L, "RTA_METRICS", RTA_METRICS);
+    lua_add_constant(L, "RTA_MULTIPATH", RTA_MULTIPATH);
+    lua_add_constant(L, "RTA_FLOW", RTA_FLOW);
+    lua_add_constant(L, "RTA_CACHEINFO", RTA_CACHEINFO);
+    lua_add_constant(L, "RTA_TABLE", RTA_TABLE);
+    lua_add_constant(L, "RTA_MARK", RTA_MARK);
+    lua_add_constant(L, "RTA_MFC_STATS", RTA_MFC_STATS);
+    lua_add_constant(L, "RTA_VIA", RTA_VIA);
+    lua_add_constant(L, "RTA_NEWDST", RTA_NEWDST);
+    lua_add_constant(L, "RTA_PREF", RTA_PREF);
+    lua_add_constant(L, "RTA_ENCAP_TYPE", RTA_ENCAP_TYPE);
+    lua_add_constant(L, "RTA_ENCAP", RTA_ENCAP);
+    lua_add_constant(L, "RTA_EXPIRES", RTA_EXPIRES);
+    lua_add_constant(L, "RTA_PAD", RTA_PAD);
+    lua_add_constant(L, "RTA_UID", RTA_UID);
+    lua_add_constant(L, "RTA_TTL_PROPAGATE", RTA_TTL_PROPAGATE);
+    lua_add_constant(L, "RTA_IP_PROTO", RTA_IP_PROTO);
+    lua_add_constant(L, "RTA_SPORT", RTA_SPORT);
+    lua_add_constant(L, "RTA_DPORT", RTA_DPORT);
+    lua_add_constant(L, "RTA_NH_ID", RTA_NH_ID);
+
     lua_add_constant(L, "RTNLGRP_LINK", RTNLGRP_LINK);
     lua_add_constant(L, "RTNLGRP_NOTIFY", RTNLGRP_NOTIFY);
     lua_add_constant(L, "RTNLGRP_NEIGH", RTNLGRP_NEIGH);
@@ -345,8 +465,30 @@ int luaopen_eco_rtnl(lua_State *L)
     lua_add_constant(L, "RT_SCOPE_HOST", RT_SCOPE_HOST);
     lua_add_constant(L, "RT_SCOPE_NOWHERE", RT_SCOPE_NOWHERE);
 
+    /* rtm_type */
+    lua_add_constant(L, "RTN_UNSPEC", RTN_UNSPEC);
+    lua_add_constant(L, "RTN_UNICAST", RTN_UNICAST);
+    lua_add_constant(L, "RTN_LOCAL", RTN_LOCAL);
+    lua_add_constant(L, "RTN_BROADCAST", RTN_BROADCAST);
+    lua_add_constant(L, "RTN_ANYCAST", RTN_ANYCAST);
+    lua_add_constant(L, "RTN_MULTICAST", RTN_MULTICAST);
+    lua_add_constant(L, "RTN_BLACKHOLE", RTN_BLACKHOLE);
+    lua_add_constant(L, "RTN_UNREACHABLE", RTN_UNREACHABLE);
+    lua_add_constant(L, "RTN_PROHIBIT", RTN_PROHIBIT);
+    lua_add_constant(L, "RTN_THROW", RTN_THROW);
+    lua_add_constant(L, "RTN_NAT", RTN_NAT);
+    lua_add_constant(L, "RTN_XRESOLVE", RTN_XRESOLVE);
+
+    /* rtm_protocol */
+    lua_add_constant(L, "RTPROT_UNSPEC", RTPROT_UNSPEC);
+    lua_add_constant(L, "RTPROT_REDIRECT", RTPROT_REDIRECT);
+    lua_add_constant(L, "RTPROT_KERNEL", RTPROT_KERNEL);
+    lua_add_constant(L, "RTPROT_BOOT", RTPROT_BOOT);
+    lua_add_constant(L, "RTPROT_STATIC", RTPROT_STATIC);
+
     lua_add_constant(L, "IFINFOMSG_SIZE", sizeof(struct ifinfomsg));
     lua_add_constant(L, "IFADDRMSG_SIZE", sizeof(struct ifaddrmsg));
+    lua_add_constant(L, "RTMSG_SIZE", sizeof(struct rtmsg));
 
     return 1;
 }
