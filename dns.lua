@@ -46,12 +46,12 @@ local function parse_resolvconf()
 
     for line in io.lines('/etc/resolv.conf') do
         if line:match('search') then
-            local search = line:match('search%s+(.+)')
+            local search = line:match('search%s+(%S+)')
             if not search:match('%.') then
                 conf.search = search
             end
         elseif line:match('nameserver') then
-            local nameserver = line:match('nameserver%s+(.+)')
+            local nameserver = line:match('nameserver%s+(%S+)')
             if nameserver then
                 if socket.is_ipv4_address(nameserver) or socket.is_ipv6_address(nameserver) then
                     nameservers[#nameservers + 1] = { nameserver, 53, socket.is_ipv6_address(nameserver) }
