@@ -264,6 +264,7 @@ local function send_http_head(resp)
 
     local code = resp.code
     local status = resp.status
+    local headers = resp.headers
 
     status = status or status_map[code]
 
@@ -275,7 +276,11 @@ local function send_http_head(resp)
 
     data[#data + 1] = '\r\n'
 
-    build_headers(data, resp.headers)
+    if not headers['content-length'] then
+        headers['transfer-encoding'] = 'chunked'
+    end
+
+    build_headers(data, headers)
 
     data[#data + 1] = '\r\n'
 
@@ -293,6 +298,7 @@ function methods:send_error(code, status, content)
     if content then
         self:send(content)
     else
+        self:add_header('content-length', '0')
         send_http_head(self.resp)
     end
 
@@ -701,8 +707,7 @@ local function handle_connection(con, handler)
         code = 200,
         headers = {
             server = 'Lua-eco/' .. eco.VERSION,
-            date = os.date('!%a, %d %b %Y %H:%M:%S GMT'),
-            ['transfer-encoding'] = 'chunked'
+            date = os.date('!%a, %d %b %Y %H:%M:%S GMT')
         },
         data = {}
     }
