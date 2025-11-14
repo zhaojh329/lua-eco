@@ -386,7 +386,6 @@ function methods:send_file(path, count, offset)
         return false, 'forbidden'
     end
 
-
     return http_send_file(self, path, st.size, count, offset)
 end
 
