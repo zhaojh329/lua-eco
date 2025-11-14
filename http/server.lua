@@ -299,6 +299,12 @@ function methods:send_error(code, status, content)
     return true
 end
 
+function methods:redirect(code, location)
+    assert(code >= M.STATUS_MULTIPLE_CHOICES and code <= M.STATUS_PERMANENT_REDIRECT)
+    self:add_header('location', location)
+    return self:send_error(code)
+end
+
 function methods:send(...)
     local resp = self.resp
 
