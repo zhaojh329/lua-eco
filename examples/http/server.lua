@@ -68,6 +68,8 @@ local function handler(con, req)
         con:send('<h2>path: ', req.path, '</h2>\n')
         con:send('<h2>http version: ', req.major_version .. '.' .. req.minor_version, '</h2>\n')
 
+        con:send('<h2>query_string:', req.query_string, '</h2>\n')
+
         con:send('<h2>query:', '</h2>\n')
         for name, value in pairs(req.query) do
             con:send('<p>', name, ': ', value, '</p>\n')

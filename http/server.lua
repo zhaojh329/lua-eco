@@ -725,6 +725,7 @@ local function handle_connection(con, handler)
         minor_version = minor_version,
         headers = headers,
         query = query,
+        query_string = query_string,
         form = {}
     }
 
