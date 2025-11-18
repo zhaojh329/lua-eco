@@ -146,7 +146,7 @@ static int lua_ssl_handshakek(lua_State *L, int status, lua_KContext ctx)
 
         s->co = L;
 
-        ev_timer_set(&s->tmr, 5.0, 0);
+        ev_timer_set(&s->tmr, 15.0, 0);
         ev_timer_start(loop, &s->tmr);
 
         ev_io_modify(&s->io, ret == SSL_WANT_READ ? EV_READ : EV_WRITE);
