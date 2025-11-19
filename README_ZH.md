@@ -17,6 +17,7 @@
 [![Issue Welcome][5]][6]
 [![Release Version][7]][8]
 ![Build Status][9]
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zhaojh329/lua-eco)
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=zhaojh329.lua-eco)
 [![Chinese Chat][11]][12]
 
