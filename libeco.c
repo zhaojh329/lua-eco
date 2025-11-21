@@ -17,13 +17,47 @@ const char **eco_get_obj_registry()
     return &obj_registry;
 }
 
+static bool check_panic_hook(lua_State *L)
+{
+    lua_getglobal(L, "eco");
+    lua_getfield(L, -1, "panic_hook");
+    lua_remove(L, -2);
+
+    return lua_isfunction(L, -1);
+}
+
 void eco_resume(lua_State *co, int narg)
 {
     struct ev_loop *loop = EV_DEFAULT;
     lua_State *L = ev_userdata(loop);
+    double now = ev_now(loop);
     int status, nres;
 
     status = lua_resume(co, L, narg, &nres);
+
+    if (ev_time() - now > 1.0) {
+        const char *msg = "[lua-eco] Coroutine blocking detected!\n\n"
+        "Coroutine has been blocking for 5.02 seconds, exceeding the 1s threshold.\n\n"
+        "Possible causes:\n"
+        "• Blocking system call (e.g., os.execute, io.popen)\n"
+        "• CPU-intensive computation without yielding\n"
+        "• Third-party library using blocking I/O\n"
+        "\n"
+        "This prevents lua-eco from scheduling other coroutines.\n";
+
+        if (check_panic_hook(L)) {
+            lua_pushstring(L, msg);
+            luaL_traceback(L, co, NULL, 2);
+            lua_call(L, 2, 0);
+        } else {
+            fprintf(stderr, "%s\n", msg);
+            luaL_traceback(L, co, NULL, 2);
+            fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        }
+
+        exit(1);
+    }
+
     switch (status) {
     case 0: /* dead */
         lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
@@ -46,11 +80,7 @@ void eco_resume(lua_State *co, int narg)
     default:
         lua_xmove(co, L, 1);
 
-        lua_getglobal(L, "eco");
-        lua_getfield(L, -1, "panic_hook");
-        lua_remove(L, -2);
-
-        if (lua_isfunction(L, -1)) {
+        if (check_panic_hook(L)) {
             lua_pushvalue(L, -2);
             lua_call(L, 1, 0);
         } else {
