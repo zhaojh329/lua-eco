@@ -7,8 +7,13 @@ local url = require 'eco.http.url'
 local log = require 'eco.log'
 
 local str_lower = string.lower
+local str_upper = string.upper
 local concat = table.concat
 local tonumber = tonumber
+local tostring = tostring
+local assert = assert
+local pairs = pairs
+local type = type
 
 local M = {
     STATUS_CONTINUE = 100,
@@ -211,6 +216,22 @@ local month_abbr_map = {
     Dec = 12
 }
 
+local header_name_map = {
+    ['content-type'] = 'Content-Type',
+    ['content-length'] = 'Content-Length',
+    ['transfer-encoding'] = 'Transfer-Encoding',
+    ['connection'] = 'Connection',
+    ['server'] = 'Server',
+    ['date'] = 'Date',
+    ['etag'] = 'ETag',
+    ['last-modified'] = 'Last-Modified',
+    ['content-encoding'] = 'Content-Encoding',
+    ['keep-alive'] = 'Keep-Alive',
+    ['location'] = 'Location',
+    ['if-none-match'] = 'If-None-Match',
+    ['if-modified-since'] = 'If-Modified-Since'
+}
+
 local methods = {}
 
 function methods:remote_addr()
@@ -245,15 +266,12 @@ end
 
 local function build_headers(data, headers)
     for name, value in pairs(headers) do
-        name = name:gsub('^.', function(s)
-            return s:upper()
-        end)
+        local formatted_name = header_name_map[name] or name:gsub('^%l', str_upper):gsub('%-+%l', str_upper)
 
-        name = name:gsub('-.', function(s)
-            return s:upper()
-        end)
-
-        data[#data + 1] = string.format('%s: %s\r\n', name, value)
+        data[#data + 1] = formatted_name
+        data[#data + 1] = ': '
+        data[#data + 1] = value
+        data[#data + 1] = '\r\n'
     end
 end
 
@@ -268,10 +286,16 @@ local function send_http_head(resp)
 
     status = status or status_map[code]
 
-    data[#data + 1] = string.format('HTTP/%d.%d %d', resp.major_version, resp.minor_version, code)
+    data[#data + 1] = 'HTTP/'
+    data[#data + 1] = tostring(resp.major_version)
+    data[#data + 1] = '.'
+    data[#data + 1] = tostring(resp.minor_version)
+    data[#data + 1] = ' '
+    data[#data + 1] = tostring(code)
 
     if status then
-        data[#data + 1] = ' ' .. status
+        data[#data + 1] = ' '
+        data[#data + 1] = status
     end
 
     data[#data + 1] = '\r\n'
@@ -313,9 +337,17 @@ end
 
 function methods:send(...)
     local resp = self.resp
+    local rdata = resp.data
 
-    local data = concat({...})
-    local len = #data
+    local args = {...}
+    local nargs = #args
+    local len = 0
+
+    for i = 1, nargs do
+        args[i] = tostring(args[i])
+        len = len + #args[i]
+    end
+
     if len == 0 then
         return true
     end
@@ -324,10 +356,13 @@ function methods:send(...)
         send_http_head(resp)
     end
 
-    local rdata = resp.data
+    rdata[#rdata + 1] = string.format('%x', len)
+    rdata[#rdata + 1] = '\r\n'
 
-    rdata[#rdata + 1] = string.format('%x\r\n', len)
-    rdata[#rdata + 1] = data
+    for i = 1, nargs do
+        rdata[#rdata + 1] = args[i]
+    end
+
     rdata[#rdata + 1] = '\r\n'
 
     return true
@@ -356,7 +391,8 @@ local function http_send_file(self, path, size, count, offset)
         count = size
     end
 
-    _, err = sock:send(string.format('%x\r\n', count))
+    local header = string.format('%x\r\n', count)
+    _, err = sock:send(header)
     if err then
         return nil, err
     end
@@ -407,7 +443,9 @@ function methods:flush()
         return false, err
     end
 
-    resp.data = {}
+    for i = 1, #data do
+        data[i] = nil
+    end
 
     return true
 end
@@ -430,7 +468,7 @@ function methods:read_body(count, timeout)
         return nil, err
     end
 
-    self.body_remain = self.body_remain - count
+    self.body_remain = body_remain - count
 
     return data
 end
@@ -641,11 +679,6 @@ local function handle_connection(con, handler)
                 return false
             end
 
-            if not method then
-                log.err(log_prefix .. 'not supported http method "' .. method .. '"')
-                return false
-            end
-
             major_version = tonumber(major_version)
             minor_version = tonumber(minor_version)
 
@@ -668,7 +701,7 @@ local function handle_connection(con, handler)
             break
         end
 
-        local name, value = data:match('([%w%p]+) *: *([%w%p ]+)\r?$')
+        local name, value = data:match('([%w%p]+) *: *(.+)\r?$')
         if not name or not value then
             log.err(log_prefix .. 'not a vaild http header: ' .. data)
             return false
@@ -683,18 +716,22 @@ local function handle_connection(con, handler)
     end
 
     local query_string = ''
+    local path = raw_path
 
-    local path = raw_path:gsub('%?(.*)', function(s)
-        query_string = s
-        return ''
-    end)
+    local qpos = raw_path:find('?')
+    if qpos then
+        path = raw_path:sub(1, qpos - 1)
+        query_string = raw_path:sub(qpos + 1)
+    end
 
     local query = {}
 
-    for q in query_string:gmatch('[^&]+') do
-        local name, value = q:match('(.+)=(.+)')
-        if name then
-            query[name] = url.unescape(value)
+    if query_string ~= '' then
+        for q in query_string:gmatch('[^&]+') do
+            local name, value = q:match('(.+)=(.+)')
+            if name then
+                query[name] = url.unescape(value)
+            end
         end
     end
 
@@ -712,7 +749,7 @@ local function handle_connection(con, handler)
     }
 
     if http_keepalive > 0 then
-        resp.headers['keep-alive'] = string.format('timeout=%d', http_keepalive)
+        resp.headers['keep-alive'] = 'timeout=' .. tostring(http_keepalive)
     end
 
     con.resp = resp
@@ -742,9 +779,9 @@ local function handle_connection(con, handler)
     end
 
     -- append chunk end
-    local data = resp.data
-    data[#data + 1] = '0\r\n'
-    data[#data + 1] = '\r\n'
+    local rdata = resp.data
+    rdata[#rdata + 1] = '0\r\n'
+    rdata[#rdata + 1] = '\r\n'
 
     local ok, err = con:flush()
     if not ok then
@@ -817,7 +854,8 @@ function M.listen(ipaddr, port, options, handler)
                     code = 200,
                     headers = {
                         server = 'Lua-eco/' .. eco.VERSION
-                    }
+                    },
+                    data = {}
                 },
                 peer = peer,
                 options = options
