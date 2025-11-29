@@ -3,12 +3,34 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/// @module eco.nl
+
+#include <string.h>
 #include <errno.h>
 
 #include "nl.h"
 
-#define NLMSG_USER_MT "eco{nlmsg-user}"
+#define NLMSG_USER_MT "struct eco_nlmsg *usr"
 
+/**
+ * Netlink message parser returned by @{nl.nlmsg_ker}.
+ *
+ * A single received datagram may contain multiple netlink messages.
+ * Call @{nlmsg_ker:next} to iterate, then use @{nlmsg_ker:payload},
+ * @{nlmsg_ker:parse_attr}, etc. to inspect the *current* message.
+ *
+ * @type nlmsg_ker
+ */
+
+/**
+ * Iterate to the next netlink message in the received datagram.
+ *
+ * The returned table contains header fields for the current message.
+ * When there are no more messages, returns `nil`.
+ *
+ * @function nlmsg_ker:next
+ * @treturn table|nil hdr Header table with fields: `type`, `flags`, `seq`, `pid`.
+ */
 static int eco_nlmsg_next(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
@@ -48,6 +70,16 @@ static int eco_nlmsg_next(lua_State *L)
     return 1;
 }
 
+/**
+ * Get the payload of the current netlink message.
+ *
+ * The current message is the one most recently selected by @{nlmsg_ker:next}.
+ *
+ * @function nlmsg_ker:payload
+ * @treturn string payload
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int eco_nlmsg_payload(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
@@ -63,6 +95,22 @@ static int eco_nlmsg_payload(lua_State *L)
     return 1;
 }
 
+/**
+ * Parse netlink attributes from the current message.
+ *
+ * This parses the payload region starting at `offset` and returns a table
+ * indexed by attribute type. Each value is a binary string representing the
+ * `struct nlattr` (including header).
+ *
+ * Use the module-level accessors (e.g. @{attr_get_u32}, @{attr_get_str}) to
+ * decode the returned attributes.
+ *
+ * @function nlmsg_ker:parse_attr
+ * @tparam int offset Byte offset within the message payload where attributes start.
+ * @treturn table attrs
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int eco_nlmsg_parse_attr(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
@@ -87,6 +135,17 @@ static int eco_nlmsg_parse_attr(lua_State *L)
     return 1;
 }
 
+/**
+ * Parse an `NLMSG_ERROR` message.
+ *
+ * On success, returns the `error` field from `struct nlmsgerr`.
+ * Typically, `0` means ACK/success; a negative value is `-errno`.
+ *
+ * @function nlmsg_ker:parse_error
+ * @treturn int errcode
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int eco_nlmsg_parse_error(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
@@ -117,6 +176,8 @@ static int eco_nlmsg_parse_error(lua_State *L)
     return 1;
 }
 
+/// @section end
+
 static const struct luaL_Reg nlmsg_ker_methods[] =  {
     {"next", eco_nlmsg_next},
     {"payload", eco_nlmsg_payload},
@@ -125,25 +186,20 @@ static const struct luaL_Reg nlmsg_ker_methods[] =  {
     {NULL, NULL}
 };
 
-static int lua_new_nlmsg_ker(lua_State *L)
-{
-    size_t len;
-    const char *data = luaL_checklstring(L, 1, &len);
-    struct eco_nlmsg *msg;
+/**
+ * Netlink message builder returned by @{nl.nlmsg}.
+ *
+ * Use the `put*` methods to append payload and attributes.
+ *
+ * @type nlmsg
+ */
 
-    msg = lua_newuserdata(L, sizeof(struct eco_nlmsg) + len);
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
-
-    memcpy(msg->buf, data, len);
-
-    msg->size = len;
-    msg->nlh = NULL;
-    msg->nest = NULL;
-
-    return 1;
-}
-
+/**
+ * Serialize a message builder to a binary string.
+ *
+ * @function nlmsg:binary
+ * @treturn string data
+ */
 static int eco_nlmsg_to_binary(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -151,6 +207,13 @@ static int eco_nlmsg_to_binary(lua_State *L)
     return 1;
 }
 
+/**
+ * Append raw bytes to the message payload.
+ *
+ * @function nlmsg:put
+ * @tparam string data Bytes to append.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -206,6 +269,14 @@ static int __eco_nlmsg_put_attr(lua_State *L, struct eco_nlmsg *msg,
     return 1;
 }
 
+/**
+ * Append a netlink attribute with an arbitrary payload.
+ *
+ * @function nlmsg:put_attr
+ * @tparam int type Attribute type.
+ * @tparam string value Attribute payload bytes.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -216,6 +287,13 @@ static int eco_nlmsg_put_attr(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, len, value);
 }
 
+/**
+ * Append a flag attribute (attribute with zero-length payload).
+ *
+ * @function nlmsg:put_attr_flag
+ * @tparam int type Attribute type.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_flag(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -224,6 +302,14 @@ static int eco_nlmsg_put_attr_flag(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, 0, NULL);
 }
 
+/**
+ * Append an attribute whose payload is an unsigned 8-bit integer.
+ *
+ * @function nlmsg:put_attr_u8
+ * @tparam int type Attribute type.
+ * @tparam int value Value.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_u8(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -233,6 +319,14 @@ static int eco_nlmsg_put_attr_u8(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint8_t), &value);
 }
 
+/**
+ * Append an attribute whose payload is an unsigned 16-bit integer.
+ *
+ * @function nlmsg:put_attr_u16
+ * @tparam int type Attribute type.
+ * @tparam int value Value.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_u16(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -242,6 +336,14 @@ static int eco_nlmsg_put_attr_u16(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint16_t), &value);
 }
 
+/**
+ * Append an attribute whose payload is an unsigned 32-bit integer.
+ *
+ * @function nlmsg:put_attr_u32
+ * @tparam int type Attribute type.
+ * @tparam int value Value.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_u32(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -256,6 +358,17 @@ static int eco_nlmsg_put_attr_u32(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint32_t), &value);
 }
 
+/**
+ * Append an attribute whose payload is an unsigned 64-bit integer.
+ *
+ * Note: if Lua integers are 32-bit on the current build, values outside the
+ * 32-bit range may lose precision.
+ *
+ * @function nlmsg:put_attr_u64
+ * @tparam int type Attribute type.
+ * @tparam int value Value.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_u64(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -270,6 +383,17 @@ static int eco_nlmsg_put_attr_u64(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, sizeof(uint64_t), &value);
 }
 
+/**
+ * Append an attribute whose payload is a string (without trailing NUL).
+ *
+ * This uses `strlen()` and therefore cannot be used for strings containing
+ * embedded `\0` bytes.
+ *
+ * @function nlmsg:put_attr_str
+ * @tparam int type Attribute type.
+ * @tparam string value String value.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_str(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -279,6 +403,16 @@ static int eco_nlmsg_put_attr_str(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, strlen(value), value);
 }
 
+/**
+ * Append an attribute whose payload is a NUL-terminated string.
+ *
+ * This uses `strlen()` and appends the terminating NUL.
+ *
+ * @function nlmsg:put_attr_strz
+ * @tparam int type Attribute type.
+ * @tparam string value String value.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_strz(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -288,6 +422,19 @@ static int eco_nlmsg_put_attr_strz(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type, strlen(value) + 1, value);
 }
 
+/**
+ * Start a nested attribute.
+ *
+ * After calling this, subsequent attributes appended to the message will be
+ * counted into the nested attribute's length until @{nlmsg:put_attr_nest_end}
+ * is called.
+ *
+ * Note: this implementation tracks a single active nest level.
+ *
+ * @function nlmsg:put_attr_nest_start
+ * @tparam int type Attribute type.
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_nest_start(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -296,6 +443,12 @@ static int eco_nlmsg_put_attr_nest_start(lua_State *L)
     return __eco_nlmsg_put_attr(L, msg, type | NLA_F_NESTED, 0, NULL);
 }
 
+/**
+ * End the current nested attribute.
+ *
+ * @function nlmsg:put_attr_nest_end
+ * @treturn nlmsg self
+ */
 static int eco_nlmsg_put_attr_nest_end(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
@@ -305,6 +458,8 @@ static int eco_nlmsg_put_attr_nest_end(lua_State *L)
 
     return 1;
 }
+
+/// @section end
 
 static const struct luaL_Reg nlmsg_user_methods[] = {
     {"binary", eco_nlmsg_to_binary},
@@ -322,37 +477,12 @@ static const struct luaL_Reg nlmsg_user_methods[] = {
     {NULL, NULL}
 };
 
-static int lua_new_nlmsg_user(lua_State *L)
-{
-    int type = luaL_checkinteger(L, 1);
-    int flags = luaL_checkinteger(L, 2);
-    int seq = luaL_optinteger(L, 3, 0);
-    int size = luaL_optinteger(L, 4, 4096);
-    struct eco_nlmsg *msg;
-    struct nlmsghdr *nlh;
-
-    size = NLMSG_SPACE(size);
-
-    msg = lua_newuserdata(L, sizeof(struct eco_nlmsg) + size);
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
-
-    memset(msg->buf, 0, NLMSG_ALIGN(sizeof(struct nlmsghdr)));
-
-    nlh = (struct nlmsghdr *)msg->buf;
-    nlh->nlmsg_len = NLMSG_ALIGN(sizeof(struct nlmsghdr));
-
-    nlh->nlmsg_type = type;
-    nlh->nlmsg_flags = flags;
-    nlh->nlmsg_seq = seq;
-
-    msg->nlh = nlh;
-    msg->size = size;
-    msg->nest = NULL;
-
-    return 1;
-}
-
+/**
+ * Decode an attribute whose payload is an unsigned 8-bit integer.
+ * @function attr_get_u8
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_u8(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -361,6 +491,12 @@ static int lua_nl_attr_get_u8(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is a signed 8-bit integer.
+ * @function attr_get_s8
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_s8(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -369,6 +505,12 @@ static int lua_nl_attr_get_s8(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is an unsigned 16-bit integer.
+ * @function attr_get_u16
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_u16(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -377,6 +519,12 @@ static int lua_nl_attr_get_u16(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is a signed 16-bit integer.
+ * @function attr_get_s16
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_s16(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -385,6 +533,12 @@ static int lua_nl_attr_get_s16(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is an unsigned 32-bit integer.
+ * @function attr_get_u32
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_u32(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -393,6 +547,12 @@ static int lua_nl_attr_get_u32(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is a signed 32-bit integer.
+ * @function attr_get_s32
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_s32(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -401,6 +561,16 @@ static int lua_nl_attr_get_s32(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is an unsigned 64-bit integer.
+ *
+ * Values larger than `INT64_MAX` are clamped to `INT64_MAX` because Lua integers
+ * are signed.
+ *
+ * @function attr_get_u64
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_u64(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -414,6 +584,12 @@ static int lua_nl_attr_get_u64(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is a signed 64-bit integer.
+ * @function attr_get_s64
+ * @tparam string attr Raw attribute bytes.
+ * @treturn int value
+ */
 static int lua_nl_attr_get_s64(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -423,6 +599,12 @@ static int lua_nl_attr_get_s64(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode an attribute whose payload is a NUL-terminated string.
+ * @function attr_get_str
+ * @tparam string attr Raw attribute bytes.
+ * @treturn string value
+ */
 static int lua_nl_attr_get_str(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -431,6 +613,12 @@ static int lua_nl_attr_get_str(lua_State *L)
     return 1;
 }
 
+/**
+ * Get the raw payload bytes of an attribute.
+ * @function attr_get_payload
+ * @tparam string attr Raw attribute bytes.
+ * @treturn string payload
+ */
 static int lua_nl_attr_get_payload(lua_State *L)
 {
     const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -438,6 +626,16 @@ static int lua_nl_attr_get_payload(lua_State *L)
     return 1;
 }
 
+/**
+ * Parse attributes from a nested attribute.
+ *
+ * The returned table is indexed by attribute type. Each value is a raw
+ * attribute binary string (including header), compatible with `attr_get_*`.
+ *
+ * @function parse_attr_nested
+ * @tparam string nest Raw attribute bytes.
+ * @treturn table attrs
+ */
 static int lua_nl_parse_attr_nested(lua_State *L)
 {
     const struct nlattr *nest = (const struct nlattr *)luaL_checkstring(L, 1);
@@ -469,8 +667,78 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_core_nl(lua_State *L)
+/**
+ * Create a new netlink message builder.
+ *
+ * @function nlmsg
+ * @tparam int type Netlink message type.
+ * @tparam int flags Netlink flags bitmask.
+ * @tparam[opt=0] integer seq Sequence number.
+ * @tparam[opt=4096] integer size Buffer size hint (bytes) for payload/attributes.
+ * @treturn nlmsg msg
+ */
+static int lua_new_nlmsg_user(lua_State *L)
 {
+    int type = luaL_checkinteger(L, 1);
+    int flags = luaL_checkinteger(L, 2);
+    int seq = luaL_optinteger(L, 3, 0);
+    int size = luaL_optinteger(L, 4, 4096);
+    struct eco_nlmsg *msg;
+    struct nlmsghdr *nlh;
+
+    size = NLMSG_SPACE(size);
+
+    msg = lua_newuserdata(L, sizeof(struct eco_nlmsg) + size);
+    luaL_setmetatable(L, NLMSG_USER_MT);
+
+    memset(msg->buf, 0, NLMSG_ALIGN(sizeof(struct nlmsghdr)));
+
+    nlh = (struct nlmsghdr *)msg->buf;
+    nlh->nlmsg_len = NLMSG_ALIGN(sizeof(struct nlmsghdr));
+
+    nlh->nlmsg_type = type;
+    nlh->nlmsg_flags = flags;
+    nlh->nlmsg_seq = seq;
+
+    msg->nlh = nlh;
+    msg->size = size;
+    msg->nest = NULL;
+
+    return 1;
+}
+
+/**
+ * Create a parser for a received netlink datagram.
+ *
+ * The returned object can iterate over all messages within the datagram.
+ *
+ * @function nlmsg_ker
+ * @tparam string data Binary datagram returned by a netlink socket.
+ * @treturn nlmsg_ker msg
+ */
+static int lua_new_nlmsg_ker(lua_State *L)
+{
+    size_t len;
+    const char *data = luaL_checklstring(L, 1, &len);
+    struct eco_nlmsg *msg;
+
+    msg = lua_newuserdata(L, sizeof(struct eco_nlmsg) + len);
+    luaL_setmetatable(L, NLMSG_KER_MT);
+
+    memcpy(msg->buf, data, len);
+
+    msg->size = len;
+    msg->nlh = NULL;
+    msg->nest = NULL;
+
+    return 1;
+}
+
+int luaopen_eco_internal_nl(lua_State *L)
+{
+    creat_metatable(L, NLMSG_USER_MT, NULL, nlmsg_user_methods);
+    creat_metatable(L, NLMSG_KER_MT, NULL, nlmsg_ker_methods);
+
     luaL_newlib(L, funcs);
 
     lua_add_constant(L, "NLMSG_NOOP", NLMSG_NOOP);
@@ -522,12 +790,10 @@ int luaopen_eco_core_nl(lua_State *L)
     lua_add_constant(L, "NETLINK_KOBJECT_UEVENT", NETLINK_KOBJECT_UEVENT);
     lua_add_constant(L, "NETLINK_GENERIC", NETLINK_GENERIC);
 
-    eco_new_metatable(L, NLMSG_USER_MT, NULL, nlmsg_user_methods);
-    lua_pushcclosure(L, lua_new_nlmsg_user, 1);
+    lua_pushcfunction(L, lua_new_nlmsg_user);
     lua_setfield(L, -2, "nlmsg");
-
-    eco_new_metatable(L, NLMSG_KER_MT, NULL, nlmsg_ker_methods);
-    lua_pushcclosure(L, lua_new_nlmsg_ker, 1);
+    
+    lua_pushcfunction(L, lua_new_nlmsg_ker);
     lua_setfield(L, -2, "nlmsg_ker");
 
     return 1;

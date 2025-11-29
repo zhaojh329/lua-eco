@@ -1,5 +1,7 @@
 local socket = require 'eco.socket'
+local bufio = require 'eco.bufio'
 local file = require 'eco.file'
+local eco = require 'eco'
 
 local M = {}
 
@@ -21,9 +23,10 @@ local srv_mt = {
 }
 
 local function handle_conn(self, c)
-    local conn<close> = c
+    local con<close> = c
+    local b = bufio.new(con)
 
-    local action = conn:read('l', 3.0)
+    local action = b:read('l', 3.0)
     if not action then
         return
     end
@@ -32,7 +35,7 @@ local function handle_conn(self, c)
         return
     end
 
-    local key = conn:read('l', 3.0)
+    local key = b:read('l', 3.0)
     if not key then
         return
     end
@@ -40,10 +43,10 @@ local function handle_conn(self, c)
     if action == 'get' then
         local value = self.dict[key]
         if value then
-            conn:write(value .. '\n')
+            c:write(value .. '\n')
         end
     elseif action == 'set' then
-        local value = conn:read('l', 3.0)
+        local value = b:read('l', 3.0)
         if not value then
             return
         end
@@ -109,7 +112,8 @@ function cli_methods:get(name)
     sock:write('get\n')
     sock:write(name .. '\n')
 
-    local value = sock:read('l')
+    local b = bufio.new(sock)
+    local value = b:read('l')
     return value
 end
 

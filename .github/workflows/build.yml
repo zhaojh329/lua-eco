@@ -18,7 +18,7 @@ jobs:
           name: ${{ matrix.name }}
           pkg: ${{ matrix.pkg }}
         run: |
-          sudo apt install -y libev-dev libjson-c-dev libssl-dev libmnl-dev $pkg
+          sudo apt install -y libjson-c-dev libssl-dev libmnl-dev $pkg
           git clone https://git.openwrt.org/project/libubox.git
           git clone https://git.openwrt.org/project/ubus.git
           cd libubox && cmake . -DBUILD_LUA=OFF && sudo make install && cd ..

@@ -1,4 +1,4 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local ubus = require 'eco.ubus'
 

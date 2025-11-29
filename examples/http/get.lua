@@ -1,22 +1,29 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local http = require 'eco.http.client'
+local eco = require 'eco'
 
-local resp, err = http.get('http://127.0.0.1:8080/test')
-if not resp then
-    print(err)
-    return
-end
+eco.run(function()
+    local resp, err = http.get('http://127.0.0.1:8080/test')
+    if not resp then
+        print(err)
+        return
+    end
 
-print('code:', resp.code)
-print('status:', resp.status)
+    print('code:', resp.code)
+    print('status:', resp.status)
 
-print('\nheaders:')
-for name, value in pairs(resp.headers) do
-    print('', name .. ': ' .. value)
-end
+    print('\nheaders:')
+    for name, value in pairs(resp.headers) do
+        print('', name .. ': ' .. value)
+    end
 
-print('\nbody:')
-if resp.body then
-    print(resp.body)
-end
+    print('\nbody:')
+    if resp.body then
+        print(resp.body)
+    end
+
+    eco.unloop()
+end)
+
+eco.loop()

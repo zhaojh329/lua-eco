@@ -1,10 +1,12 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local file = require 'eco.core.file'
+local file = require 'eco.internal.file'
 local socket = require 'eco.socket'
 local url = require 'eco.http.url'
+local bufio = require 'eco.bufio'
 local log = require 'eco.log'
+local eco = require 'eco'
 
 local str_lower = string.lower
 local str_upper = string.upper
@@ -14,6 +16,16 @@ local tostring = tostring
 local assert = assert
 local pairs = pairs
 local type = type
+
+--- HTTP/HTTPS server.
+--
+-- This module implements a simple HTTP/1.1 server (with optional TLS when
+-- `options.cert` and `options.key` are provided).
+--
+-- The main entry point is @{listen}, which accepts connections and invokes a
+-- user handler with a @{connection} object and a request table.
+--
+-- @module eco.http.server
 
 local M = {
     STATUS_CONTINUE = 100,
@@ -232,12 +244,29 @@ local header_name_map = {
     ['if-modified-since'] = 'If-Modified-Since'
 }
 
+--- Connection object.
+--
+-- A `connection` is passed to the handler provided to @{listen}. It contains
+-- helper methods to build and send the HTTP response.
+--
+-- @type connection
 local methods = {}
 
+--- Get peer address.
+--
+-- @function connection:remote_addr
+-- @treturn table Peer address table (e.g. `{ ipaddr=..., port=... }`).
 function methods:remote_addr()
     return self.peer
 end
 
+--- Add/override a response header.
+--
+-- Must be called before the response head is sent.
+--
+-- @function connection:add_header
+-- @tparam string name Header name.
+-- @tparam string value Header value.
 function methods:add_header(name, value)
     local resp = self.resp
 
@@ -248,6 +277,14 @@ function methods:add_header(name, value)
     resp.headers[name:lower()] = value
 end
 
+--- Set response status code.
+--
+-- Must be called before the response head is sent.
+--
+-- @function connection:set_status
+-- @tparam int code Status code.
+-- @tparam[opt] string status Reason phrase.
+-- @treturn boolean true
 function methods:set_status(code, status)
     local resp = self.resp
 
@@ -311,6 +348,15 @@ local function send_http_head(resp)
     resp.head_sent = true
 end
 
+--- Send an error response.
+--
+-- If `content` is omitted, sends an empty body.
+--
+-- @function connection:send_error
+-- @tparam int code Status code.
+-- @tparam[opt] string status Reason phrase.
+-- @tparam[opt] string content Response body.
+-- @treturn boolean true
 function methods:send_error(code, status, content)
     if type(code) ~= 'number' then
         error('invalid code: ' .. tostring(code))
@@ -329,12 +375,26 @@ function methods:send_error(code, status, content)
     return true
 end
 
+--- Redirect to another location.
+--
+-- @function connection:redirect
+-- @tparam int code Redirect status code (3xx).
+-- @tparam string location Location header value.
+-- @treturn boolean true
 function methods:redirect(code, location)
     assert(code >= M.STATUS_MULTIPLE_CHOICES and code <= M.STATUS_PERMANENT_REDIRECT)
     self:add_header('location', location)
     return self:send_error(code)
 end
 
+--- Send response body data.
+--
+-- This server uses chunked transfer encoding by default unless
+-- `Content-Length` is set.
+--
+-- @function connection:send
+-- @param ... Values will be converted to strings and sent.
+-- @treturn boolean true
 function methods:send(...)
     local resp = self.resp
     local rdata = resp.data
@@ -378,7 +438,7 @@ local function http_send_file(self, path, size, count, offset)
 
     local ok, err = self:flush()
     if not ok then
-        return false, err
+        return nil, err
     end
 
     if offset and offset > -1 then
@@ -412,19 +472,36 @@ local function http_send_file(self, path, size, count, offset)
     return true
 end
 
+--- Send a file as chunked response body.
+--
+-- This is a helper for serving static files and uses chunked encoding.
+--
+-- @function connection:send_file
+-- @tparam string path File path.
+-- @tparam[opt] int count Bytes to send.
+-- @tparam[opt] int offset Start offset.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_file(path, count, offset)
     local st, err = file.stat(path)
     if not st then
-        return false, err
+        return nil, err
     end
 
     if st.type ~= 'REG' then
-        return false, 'forbidden'
+        return nil, 'forbidden'
     end
 
     return http_send_file(self, path, st.size, count, offset)
 end
 
+--- Flush pending response data.
+--
+-- @function connection:flush
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:flush()
     local resp = self.resp
     local sock = self.sock
@@ -440,7 +517,7 @@ function methods:flush()
 
     local _, err = sock:send(concat(data))
     if err then
-        return false, err
+        return nil, err
     end
 
     for i = 1, #data do
@@ -450,9 +527,20 @@ function methods:flush()
     return true
 end
 
+--- Read request body data.
+--
+-- Reads up to `count` bytes from the request body. Returns an empty string
+-- when the body is fully consumed.
+--
+-- @function connection:read_body
+-- @tparam[opt] int count Bytes to read (defaults to remaining).
+-- @tparam[opt] number timeout Timeout in seconds.
+-- @treturn string data
+-- @treturn[2] nil On error.
+-- @treturn[2] string Error message.
 function methods:read_body(count, timeout)
     local body_remain = self.body_remain
-    local sock = self.sock
+    local b = self.b
 
     if body_remain == 0 then
         return ''
@@ -463,7 +551,7 @@ function methods:read_body(count, timeout)
         count = body_remain
     end
 
-    local data, err = sock:readfull(count, timeout)
+    local data, err = b:readfull(count, timeout)
     if not data then
         return nil, err
     end
@@ -473,8 +561,24 @@ function methods:read_body(count, timeout)
     return data
 end
 
+--- Incrementally parse multipart/form-data.
+--
+-- This helper parses multipart formdata from the request body and returns
+-- events:
+--
+-- - `"header"`, `{ name, value }`
+-- - `"body"`, `{ data, done }` where `done` indicates end of part
+-- - `"end"` when finished
+--
+-- @function connection:read_formdata
+-- @tparam table req Request table passed to handler.
+-- @tparam[opt] number timeout Timeout in seconds.
+-- @treturn string event
+-- @treturn[opt] table data
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:read_formdata(req, timeout)
-    local sock = self.sock
+    local b = self.b
 
     local form = req.form
 
@@ -496,7 +600,7 @@ function methods:read_formdata(req, timeout)
     end
 
     if form.state == 'init' then
-        local line, err = sock:recv('l', timeout)
+        local line, err = b:read('l', timeout)
         if not line then
             return nil, err
         end
@@ -511,7 +615,7 @@ function methods:read_formdata(req, timeout)
     end
 
     if form.state == 'header' then
-        local line, err = sock:recv('l', timeout)
+        local line, err = b:read('l', timeout)
         if not line then
             return nil, err
         end
@@ -519,7 +623,7 @@ function methods:read_formdata(req, timeout)
         if line == '\r' then
             form.state = 'body'
         else
-            local name, value = line:match('([%w%p]+) *: *(.+)\r?$')
+            local name, value = line:match('([%w%p]+) *: *(.-)\r?$')
             if not name or not value then
                 return nil, 'invalid http header'
             end
@@ -529,13 +633,13 @@ function methods:read_formdata(req, timeout)
     end
 
     if form.state == 'body' then
-        local data, found = sock:readuntil(form.boundary, timeout)
+        local data, found = b:readuntil(form.boundary, timeout)
         if not data then
             return nil, found
         end
 
         if found then
-            local x, err = sock:peek(2)
+            local x, err = b:peek(2)
             if not x then
                 return nil, err
             end
@@ -547,7 +651,7 @@ function methods:read_formdata(req, timeout)
                     return nil, 'bad request'
                 end
 
-                sock:recv(2)
+                b:read(2)
 
                 form.state = 'header'
             end
@@ -559,8 +663,14 @@ function methods:read_formdata(req, timeout)
     return 'end'
 end
 
+--- Discard remaining request body bytes.
+--
+-- @function connection:discard_body
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:discard_body()
-    local ok, err = self.sock:discard(self.body_remain)
+    local ok, err = self.b:discard(self.body_remain)
     if not ok then
         return nil, err
     end
@@ -570,6 +680,15 @@ function methods:discard_body()
     return true
 end
 
+--- Serve a static file from `options.docroot`.
+--
+-- This helper implements basic file serving with `etag` and
+-- `if-modified-since` handling.
+--
+-- @function connection:serve_file
+-- @tparam table req Request table.
+-- @treturn boolean true When handled (including errors written).
+-- @treturn[2] nil When handler should close the connection.
 function methods:serve_file(req)
     local options = self.options
     local path = req.path
@@ -653,9 +772,12 @@ function methods:serve_file(req)
     return http_send_file(self, phy_path, st.size)
 end
 
+--- End of `connection` class section.
+-- @section end
+
 local function handle_connection(con, handler)
-    local sock = con.sock
     local peer = con.peer
+    local b = con.b
 
     local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
     local http_keepalive = con.options.http_keepalive
@@ -664,7 +786,7 @@ local function handle_connection(con, handler)
     local method, raw_path, major_version, minor_version
 
     while true do
-        local data, err = sock:recv('l', http_keepalive > 0 and http_keepalive or read_timeout)
+        local data, err = b:read('l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
             if err ~= 'timeout' then
                 log.err(log_prefix .. err)
@@ -672,8 +794,10 @@ local function handle_connection(con, handler)
             return false
         end
 
+        data = data:gsub('\r$', '')
+
         if #data > 0 then
-            method, raw_path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)\r?$')
+            method, raw_path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)$')
             if not method or not raw_path or not major_version or not minor_version then
                 log.err(log_prefix .. 'not a vaild http request start line')
                 return false
@@ -691,17 +815,19 @@ local function handle_connection(con, handler)
     local headers = {}
 
     while true do
-        local data, err = sock:recv('l', read_timeout)
+        local data, err = b:read('l', read_timeout)
         if not data then
             log.err(log_prefix .. 'not a complete http request: ' .. err)
             return false
         end
 
-        if data == '\r' or data == '' then
+        data = data:gsub('\r$', '')
+
+        if data == '' then
             break
         end
 
-        local name, value = data:match('([%w%p]+) *: *(.+)\r?$')
+        local name, value = data:match('([%w%p]+) *: *(.*)$')
         if not name or not value then
             log.err(log_prefix .. 'not a vaild http header: ' .. data)
             return false
@@ -815,6 +941,38 @@ end
 
 local metatable = { __index = methods }
 
+--- Listen and serve HTTP requests.
+--
+-- This function creates a listening socket and enters an accept loop.
+--
+-- The `handler` is called as `handler(con, req)` for each request.
+-- Returning `false` from the handler closes the connection.
+--
+-- `req` is a plain table with common fields:
+--
+-- - `method`, `raw_path`, `path`
+-- - `major_version`, `minor_version`
+-- - `headers` (lowercased keys)
+-- - `query` (table) and `query_string`
+-- - `form` (table) used by @{connection:read_formdata}
+--
+-- `options` commonly used:
+--
+-- - `docroot` (string) document root (default `.`).
+-- - `index` (string) index file name (default `index.html`).
+-- - `http_keepalive` (number) keepalive timeout seconds (default 30).
+-- - `gzip` (boolean) serve `.gz` when available.
+-- - TLS: set `cert` and `key` to enable TLS via @{eco.ssl.listen}.
+--
+-- Other fields are passed to @{eco.socket.listen_tcp} / @{eco.ssl.listen}.
+--
+-- @function listen
+-- @tparam[opt] string ipaddr Listen address.
+-- @tparam int port Listen port.
+-- @tparam[opt] table options Server options.
+-- @tparam function handler Request handler.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.listen(ipaddr, port, options, handler)
     options = options or {}
 
@@ -850,6 +1008,7 @@ function M.listen(ipaddr, port, options, handler)
 
             local con = setmetatable({
                 sock = c,
+                b = bufio.new(c),
                 resp = {
                     code = 200,
                     headers = {

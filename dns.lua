@@ -3,23 +3,50 @@
 
 -- Referenced from https://github.com/openresty/lua-resty-dns/blob/master/lib/resty/dns/resolver.lua
 
-local file = require 'eco.core.file'
+--- DNS resolver utilities.
+--
+-- This module implements a simple DNS client over UDP.
+--
+-- It resolves names using:
+--
+-- - `/etc/hosts` first
+-- - then DNS servers from `opts.nameservers` or `/etc/resolv.conf`
+--
+-- @module eco.dns
+
+local file = require 'eco.internal.file'
 local socket = require 'eco.socket'
 
 local M = {
+    --- Resource record type: A.
     TYPE_A      = 1,
+    --- Resource record type: NS.
     TYPE_NS     = 2,
+    --- Resource record type: CNAME.
     TYPE_CNAME  = 5,
+    --- Resource record type: SOA.
     TYPE_SOA    = 6,
+    --- Resource record type: PTR.
     TYPE_PTR    = 12,
+    --- Resource record type: MX.
     TYPE_MX     = 15,
+    --- Resource record type: TXT.
     TYPE_TXT    = 16,
+    --- Resource record type: AAAA.
     TYPE_AAAA   = 28,
+    --- Resource record type: SRV.
     TYPE_SRV    = 33,
+    --- Resource record type: SPF.
     TYPE_SPF    = 99,
+
+    --- DNS class: IN (Internet).
     CLASS_IN    = 1,
+
+    --- DNS answer section: Answer.
     SECTION_AN  = 1,
+    --- DNS answer section: Authority.
     SECTION_NS  = 2,
+    --- DNS answer section: Additional.
     SECTION_AR  = 3
 }
 
@@ -412,13 +439,12 @@ local function parse_response(buf, id)
         return nil, resolver_errstrs[code] or 'unknown'
     end
 
-    local err
-
-    pos, err = parse_section(answers, M.SECTION_AN, buf, pos, nan)
-
-    if not pos then
-        return nil, err
+    local new_pos, perr = parse_section(answers, M.SECTION_AN, buf, pos, nan)
+    if not new_pos then
+        return nil, perr
     end
+
+    pos = new_pos
 
     return answers
 end
@@ -472,17 +498,40 @@ local function name_from_hosts(qname, opts)
     end
 end
 
---[[
-    opts is an optional Table that supports the following fields:
-    type: The current resource record type, possible values are 1 (TYPE_A), 5 (TYPE_CNAME),
-            28 (TYPE_AAAA), and any other values allowed by RFC 1035.
-    no_recurse: a boolean flag controls whether to disable the "recursion desired" (RD) flag
-                in the UDP request. Defaults to false
-    nameservers: a list of nameservers to be used. Each nameserver entry can be either a
-                single hostname string or a table holding both the hostname string and the port number.
-    mark: a number used to set SO_MARK to socket
-    device: a string used to set SO_BINDTODEVICE to socket
---]]
+--- Resolve a DNS name.
+--
+-- The return value is an array of answer records. Record table fields depend
+-- on the record type. Common fields:
+--
+-- - `name`, `type`, `class`, `ttl`, `section`
+--
+-- Type-specific fields include:
+--
+-- - `A/AAAA`: `address`
+-- - `CNAME`: `cname`
+-- - `MX`: `preference`, `exchange`
+-- - `SRV`: `priority`, `weight`, `port`, `target`
+-- - `NS`: `nsdname`
+-- - `TXT`: `txt` (string or array of strings)
+-- - `SPF`: `spf` (string or array of strings)
+-- - `PTR`: `ptrdname`
+-- - `SOA`: `mname`, `rname`, `serial`, `refresh`, `retry`, `expire`, `minimum`
+--
+-- @function query
+-- @tparam string qname Domain name or IP address.
+-- @tparam[opt] table opts Options:
+--
+-- - `type` (int) RR type (default @{TYPE_A}).
+-- - `no_recurse` (boolean) Disable recursion desired (RD) flag.
+-- - `nameservers` (table) Nameserver list. Each entry can be:
+--   - `"ip"` string
+--   - `{ ip, port }` table
+-- - `mark` (number) SO_MARK for the UDP socket.
+-- - `device` (string) SO_BINDTODEVICE for the UDP socket.
+--
+-- @treturn table answers
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.query(qname, opts)
     if string.byte(qname, 1) == string.byte('.') or #qname > 255 then
         return nil, 'bad name'
@@ -573,6 +622,11 @@ function M.query(qname, opts)
     return nil, err
 end
 
+--- Convert RR type number to its mnemonic.
+--
+-- @function type_name
+-- @tparam int n RR type number.
+-- @treturn string
 function M.type_name(n)
     local names = {
         [M.TYPE_A]      = 'A',

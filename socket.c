@@ -3,13 +3,14 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/// @module eco.socket
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 
-#include <sys/sendfile.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -24,42 +25,14 @@
 
 #include "eco.h"
 
-#define SOCKET_MT "eco{socket}"
+#define SOCKET_MT "struct eco_socket *"
 
 struct eco_socket {
-    struct ev_timer tmr;
     struct {
-        uint8_t overtime:1;
         uint8_t established:1;
-        uint8_t connecting:1;
     } flag;
     int domain;
     int fd;
-    struct {
-        struct ev_io io;
-        lua_State *co;
-        size_t len;
-        size_t sent;
-        const void *data;
-        union {
-            struct {
-                int fd;
-                off_t offset;
-            };
-            struct {
-                uint8_t addr[sizeof(struct sockaddr_un)];
-                socklen_t addrlen;
-            };
-        };
-    } snd;
-    struct {
-        struct ev_io io;
-        lua_State *co;
-        double timeout;
-        bool from;
-        size_t len;
-        void *buf;
-    } rcv;
 };
 
 struct sock_opt {
@@ -68,43 +41,6 @@ struct sock_opt {
   int opt;
   int (*func)(struct eco_socket *sock, lua_State *L, struct sock_opt *o);
 };
-
-
-static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
-{
-    struct eco_socket *sock = container_of(w, struct eco_socket, tmr);
-
-    sock->flag.overtime = 1;
-
-    if (sock->flag.connecting) {
-        ev_io_stop(loop, &sock->snd.io);
-        eco_resume(sock->snd.co, 0);
-    } else {
-        ev_io_stop(loop, &sock->rcv.io);
-        eco_resume(sock->rcv.co, 0);
-    }
-}
-
-static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-    struct eco_socket *sock = container_of(w, struct eco_socket, rcv.io);
-
-    ev_io_stop(loop, w);
-    ev_timer_stop(loop, &sock->tmr);
-    eco_resume(sock->rcv.co, 0);
-}
-
-static void ev_io_write_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-    struct eco_socket *sock = container_of(w, struct eco_socket, snd.io);
-
-    ev_io_stop(loop, w);
-
-    if (sock->flag.connecting)
-        ev_timer_stop(loop, &sock->tmr);
-
-    eco_resume(sock->snd.co, 0);
-}
 
 static int lua_push_sockaddr(lua_State *L, struct sockaddr *addr, socklen_t len)
 {
@@ -252,17 +188,11 @@ static int eco_socket_init(lua_State *L, int fd, int domain, bool established)
 
     memset(sock, 0, sizeof(struct eco_socket));
 
-    luaL_getmetatable(L, SOCKET_MT);
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, SOCKET_MT);
 
     sock->domain = domain;
     sock->flag.established = established;
     sock->fd = fd;
-
-    ev_timer_init(&sock->tmr, ev_timer_cb, 0.0, 0);
-
-    ev_io_init(&sock->rcv.io, ev_io_read_cb, fd, EV_READ);
-    ev_io_init(&sock->snd.io, ev_io_write_cb, fd, EV_WRITE);
 
     return 1;
 }
@@ -282,7 +212,7 @@ static int lua_bind(lua_State *L)
         return 2;
     }
 
-    lua_pushvalue(L, 1);
+    lua_pushboolean(L, true);
     return 1;
 }
 
@@ -297,14 +227,13 @@ static int lua_listen(lua_State *L)
         return 2;
     }
 
-    lua_pushvalue(L, 1);
+    lua_pushboolean(L, true);
     return 1;
 }
 
-static int lua_acceptk(lua_State *L, int status, lua_KContext ctx)
+static int lua_accept(lua_State *L)
 {
-    struct eco_socket *sock = (struct eco_socket *)ctx;
-    struct ev_loop *loop = EV_DEFAULT;
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     union {
         struct sockaddr_un un;
         struct sockaddr_in in;
@@ -313,26 +242,14 @@ static int lua_acceptk(lua_State *L, int status, lua_KContext ctx)
     socklen_t addrlen = sizeof(addr);
     int fd;
 
-    sock->rcv.co = NULL;
-
     if (sock->fd < 0) {
         lua_pushnil(L);
         lua_pushliteral(L, "closed");
         return 2;
     }
 
-again:
     fd = accept4(sock->fd, (struct sockaddr *)&addr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (fd < 0) {
-        if (errno == EINTR)
-            goto again;
-
-        if (errno == EAGAIN) {
-            sock->rcv.co = L;
-            ev_io_start(loop, &sock->rcv.io);
-            return lua_yieldk(L, 0, ctx, lua_acceptk);
-        }
-
         lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
         return 2;
@@ -344,362 +261,44 @@ again:
     return 2;
 }
 
-static int lua_accept(lua_State *L)
-{
-    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-
-    return lua_acceptk(L, 0, (lua_KContext)sock);
-}
-
-static int lua_connectk(lua_State *L, int status, lua_KContext ctx)
-{
-    struct eco_socket *sock = (struct eco_socket *)ctx;
-    socklen_t len = sizeof(int);
-    int narg = 1;
-    int err = 0;
-
-    sock->flag.connecting = false;
-    sock->snd.co = NULL;
-
-    if (sock->flag.overtime) {
-        sock->flag.overtime = 0;
-        lua_pushnil(L);
-        lua_pushliteral(L, "timeout");
-        return 2;
-    }
-
-    if (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
-        err = errno;
-
-    if (err) {
-        narg++;
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(err));
-    } else {
-        lua_pushvalue(L, 1);
-    }
-
-    return narg;
-}
-
 static int lua_connect(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
     socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
-    struct ev_loop *loop = EV_DEFAULT;
 
-again:
     if (connect(sock->fd, (struct sockaddr *)&addr, addrlen)) {
         if (errno == EINPROGRESS) {
-            ev_timer_set(&sock->tmr, 5.0, 0);
-            ev_timer_start(loop, &sock->tmr);
-
-            ev_io_start(loop, &sock->snd.io);
-
-            sock->flag.connecting = true;
-            sock->snd.co = L;
-
-            return lua_yieldk(L, 0, (lua_KContext)sock, lua_connectk);
+            lua_pushboolean(L, false);
+            return 1;
         }
-
-        if (errno == EINTR)
-            goto again;
-
         lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
         return 2;
     }
 
-    lua_pushvalue(L, 1);
+    lua_pushboolean(L, true);
     return 1;
-}
-
-static int lua_recvk(lua_State *L, int status, lua_KContext ctx)
-{
-    struct eco_socket *sock = (struct eco_socket *)ctx;
-    struct ev_loop *loop = EV_DEFAULT;
-    union {
-        struct sockaddr_ll ll;
-        struct sockaddr_nl nl;
-        struct sockaddr_un un;
-        struct sockaddr_in in;
-        struct sockaddr_in6 in6;
-    } addr = {};
-    socklen_t addrlen = sizeof(addr);
-    void *buf = sock->rcv.buf;
-    size_t len = sock->rcv.len;
-    bool from = sock->rcv.from;
-    int fd = sock->fd;
-    ssize_t ret;
-
-    sock->rcv.co = NULL;
-
-    if (sock->fd < 0) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "closed");
-        goto err;
-    }
-
-    if (sock->flag.overtime) {
-        sock->flag.overtime = 0;
-        lua_pushnil(L);
-        lua_pushliteral(L, "timeout");
-        goto err;
-    }
-
-again:
-    if (sock->rcv.from)
-        ret = recvfrom(fd, buf, len, 0, (struct sockaddr *)&addr, &addrlen);
-    else
-        ret = recv(fd, buf, len, 0);
-    if (ret < 0) {
-        if (errno == EINTR)
-            goto again;
-
-        if (errno == EAGAIN) {
-            sock->rcv.co = L;
-
-            if (sock->rcv.timeout > 0) {
-                ev_timer_set(&sock->tmr, sock->rcv.timeout, 0);
-                ev_timer_start(loop, &sock->tmr);
-            }
-
-            ev_io_start(loop, &sock->rcv.io);
-            return lua_yieldk(L, 0, ctx, lua_recvk);
-        }
-
-        free(buf);
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
-
-    lua_pushlstring(L, buf, ret);
-    free(buf);
-
-    if (from && addrlen) {
-        lua_push_sockaddr(L, (struct sockaddr *)&addr, addrlen);
-        return 2;
-    }
-
-    return 1;
-err:
-    free(buf);
-    return 2;
-}
-
-static int __lua_recv(lua_State *L, bool from)
-{
-    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-
-    if (sock->rcv.co) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "busy reading");
-        return 2;
-    }
-
-    sock->rcv.len = luaL_checkinteger(L, 2);
-    sock->rcv.timeout = lua_tonumber(L, 3);
-    sock->rcv.from = from;
-
-    sock->rcv.buf = malloc(sock->rcv.len);
-    if (!sock->rcv.buf) {
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
-
-    return lua_recvk(L, 0, (lua_KContext)sock);
-}
-
-static int lua_recv(lua_State *L)
-{
-    return __lua_recv(L, false);
-}
-
-static int lua_recvfrom(lua_State *L)
-{
-    return __lua_recv(L, true);
-}
-
-static inline int lua_init_snd(struct eco_socket *sock, lua_State *L)
-{
-    if (sock->fd < 0) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "closed");
-        return -1;
-    }
-
-    if (sock->snd.co) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "busy");
-        return -1;
-    }
-
-    sock->snd.data = luaL_checklstring(L, 2, &sock->snd.len);
-    sock->snd.sent = 0;
-    sock->snd.addrlen = 0;
-
-    return 0;
-}
-
-static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
-{
-    struct eco_socket *sock = (struct eco_socket *)ctx;
-    struct ev_loop *loop = EV_DEFAULT;
-    socklen_t addrlen = sock->snd.addrlen;
-    const void *data = sock->snd.data;
-    size_t sent = sock->snd.sent;
-    size_t len = sock->snd.len;
-    int ret;
-
-    sock->snd.co = NULL;
-
-    if (sent == len) {
-        lua_pushinteger(L, sent);
-        return 1;
-    }
-
-    if (sock->fd < 0) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "closed");
-        return 2;
-    }
-
-    if (addrlen)
-        ret = sendto(sock->fd, data, len - sent, 0, (struct sockaddr *)&sock->snd.addr, addrlen);
-    else
-        ret = send(sock->fd, data, len - sent, 0);
-    if (ret < 0) {
-        if (errno == EINTR || errno == EAGAIN)
-            goto again;
-
-        lua_pushnil(L);
-        if (errno == EPIPE)
-            lua_pushliteral(L, "closed");
-        else
-            lua_pushstring(L, strerror(errno));
-        return 2;
-    }
-
-    sock->snd.sent += ret;
-    sock->snd.data += ret;
-
-again:
-    sock->snd.co = L;
-    ev_io_start(loop, &sock->snd.io);
-    return lua_yieldk(L, 0, ctx, lua_sendk);
-}
-
-static int lua_send(lua_State *L)
-{
-    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-
-    if (lua_init_snd(sock, L))
-        return 2;
-
-    return lua_sendk(L, 0, (lua_KContext)sock);
 }
 
 static int lua_sendto(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-
-    if (lua_init_snd(sock, L))
-        return 2;
-
-    sock->snd.addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)sock->snd.addr, 1);
-
-    return lua_sendk(L, 0, (lua_KContext)sock);
-}
-
-static int lua_sendfilek(lua_State *L, int status, lua_KContext ctx)
-{
-    struct eco_socket *sock = (struct eco_socket *)ctx;
-    struct ev_loop *loop = EV_DEFAULT;
-    int fd = sock->snd.fd;
-    int len = sock->snd.len;
-    size_t sent = sock->snd.sent;
-    off_t offset = sock->snd.offset;
+    size_t size;
+    const char *data = luaL_checklstring(L, 2, &size);
+    uint8_t addr[sizeof(struct sockaddr_un)];
+    socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 1);
     int ret;
 
-    sock->snd.co = NULL;
-
-    if (sent == len) {
-        close(sock->snd.fd);
-        lua_pushinteger(L, sent);
-        return 1;
-    }
-
-    if (sock->fd < 0) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "closed");
-        return 2;
-    }
-
-    if (offset < 0)
-        ret = sendfile(sock->fd, fd, NULL, len - sent);
-    else
-        ret = sendfile(sock->fd, fd, &offset, len - sent);
+    ret = sendto(sock->fd, data, size, 0, (struct sockaddr *)addr, addrlen);
     if (ret < 0) {
-        if (errno == EINTR || errno == EAGAIN)
-            goto again;
-
-        close(sock->snd.fd);
-        lua_pushnil(L);
-        if (errno == EPIPE)
-            lua_pushliteral(L, "closed");
-        else
-            lua_pushstring(L, strerror(errno));
-        return 2;
-    }
-
-    sock->snd.sent += ret;
-    sock->snd.offset = offset;
-
-    if (ret == 0)
-        sock->snd.len = sock->snd.sent;
-
-again:
-    sock->snd.co = L;
-    ev_io_start(loop, &sock->snd.io);
-    return lua_yieldk(L, 0, ctx, lua_sendfilek);
-}
-
-static int lua_sendfile(lua_State *L)
-{
-    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-    const char *path;
-    int fd;
-
-    if (sock->fd < 0) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "closed");
-        return 2;
-    }
-
-    if (sock->snd.co) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "busy");
-        return 2;
-    }
-
-    path = luaL_checkstring(L, 2);
-
-    fd = open(path, O_RDONLY);
-    if (fd < 0) {
         lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
         return 2;
     }
 
-    sock->snd.sent = 0;
-    sock->snd.fd = fd;
-    sock->snd.len = luaL_checkinteger(L, 3);
-    sock->snd.offset = luaL_optinteger(L, 4, -1);
-
-    return lua_sendfilek(L, 0, (lua_KContext)sock);
+    lua_pushinteger(L, ret);
+    return 1;
 }
 
 static int lua_getsockname(lua_State *L)
@@ -746,7 +345,6 @@ static int sockopt_set(struct eco_socket *sock, lua_State *L,
     }
 
     lua_pushboolean(L, true);
-
     return 1;
 }
 
@@ -917,6 +515,45 @@ static int lua_setoption(lua_State *L)
     return o->func(sock, L, o);
 }
 
+static int sockopt_get_error(struct eco_socket *sock, lua_State *L, struct sock_opt *o)
+{
+    socklen_t len = sizeof(int);
+    int err;
+
+    if (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
+        err = errno;
+
+    if (err)
+        lua_pushstring(L, strerror(err));
+    else
+        lua_pushnil(L);
+
+    return 1;
+}
+
+static struct sock_opt optgets[] = {
+    {"error", SOL_SOCKET, SO_ERROR, sockopt_get_error},
+    {}
+};
+
+static int lua_getoption(lua_State *L)
+{
+    struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
+    const char *name = luaL_checkstring(L, 2);
+    struct sock_opt *o = optgets;
+
+    while (o->name && strcmp(name, o->name))
+        o++;
+
+    if (!o->func) {
+        char msg[60];
+        sprintf(msg, "unsupported option '%.35s'", name);
+        luaL_argerror(L, 2, msg);
+    }
+
+    return o->func(sock, L, o);
+}
+
 static int lua_getfd(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
@@ -938,7 +575,6 @@ static int lua_closed(lua_State *L)
 static int lua_sock_close(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-    struct ev_loop *loop = EV_DEFAULT;
 
     if (sock->fd < 0)
         return 0;
@@ -951,16 +587,9 @@ static int lua_sock_close(lua_State *L)
             unlink(un.sun_path);
     }
 
-    ev_timer_stop(loop, &sock->tmr);
-    ev_io_stop(loop, &sock->rcv.io);
-    ev_io_stop(loop, &sock->snd.io);
-
     close(sock->fd);
 
     sock->fd = -1;
-
-    if (sock->rcv.co)
-        eco_resume(sock->rcv.co, 0);
 
     return 0;
 }
@@ -970,14 +599,11 @@ static const luaL_Reg methods[] = {
     {"listen", lua_listen},
     {"accept", lua_accept},
     {"connect", lua_connect},
-    {"recv", lua_recv},
-    {"recvfrom", lua_recvfrom},
-    {"send", lua_send},
     {"sendto", lua_sendto},
-    {"sendfile", lua_sendfile},
     {"getsockname", lua_getsockname},
     {"getpeername", lua_getpeername},
     {"setoption", lua_setoption},
+    {"getoption", lua_getoption},
     {"getfd", lua_getfd},
     {"closed", lua_closed},
     {"close", lua_sock_close},
@@ -1025,6 +651,13 @@ static int lua_socketpair(lua_State *L)
     return 2;
 }
 
+/**
+ * Check whether a string is a valid IPv4 address.
+ *
+ * @function is_ipv4_address
+ * @tparam string ip Address string.
+ * @treturn boolean
+ */
 static int lua_is_ipv4_address(lua_State *L)
 {
     const char *ip = luaL_checkstring(L, 1);
@@ -1034,6 +667,13 @@ static int lua_is_ipv4_address(lua_State *L)
     return 1;
 }
 
+/**
+ * Check whether a string is a valid IPv6 address.
+ *
+ * @function is_ipv6_address
+ * @tparam string ip Address string.
+ * @treturn boolean
+ */
 static int lua_is_ipv6_address(lua_State *L)
 {
     const char *ip = luaL_checkstring(L, 1);
@@ -1043,6 +683,15 @@ static int lua_is_ipv6_address(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert an IPv4 address string to an integer.
+ *
+ * This is a wrapper around `inet_aton(3)` and returns `in_addr.s_addr`.
+ *
+ * @function inet_aton
+ * @tparam string ip IPv4 address string.
+ * @treturn int IPv4 address as an integer (network byte order).
+ */
 static int lua_inet_aton(lua_State *L)
 {
     const char *src = luaL_checkstring(L, 1);
@@ -1054,16 +703,32 @@ static int lua_inet_aton(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert an IPv4 address integer to a string.
+ *
+ * @function inet_ntoa
+ * @tparam int addr IPv4 address as an integer (network byte order).
+ * @treturn string IPv4 address string.
+ */
 static int lua_inet_ntoa(lua_State *L)
 {
     struct in_addr in;
 
-    in.s_addr = (uint32_t)luaL_checknumber(L, 1);
+    in.s_addr = luaL_checkinteger(L, 1);
     lua_pushstring(L, inet_ntoa(in));
 
     return 1;
 }
 
+/**
+ * Convert a binary network address to presentation format.
+ *
+ * @function inet_ntop
+ * @tparam int family Address family (e.g. `AF_INET`, `AF_INET6`).
+ * @tparam string addr Binary address.
+ * @treturn string Address string.
+ * @treturn[2] nil On failure.
+ */
 static int lua_inet_ntop(lua_State *L)
 {
     int family = luaL_checkinteger(L, 1);
@@ -1078,6 +743,15 @@ static int lua_inet_ntop(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert a presentation format address to binary.
+ *
+ * @function inet_pton
+ * @tparam int family Address family (e.g. `AF_INET`, `AF_INET6`).
+ * @tparam string ip Address string.
+ * @treturn string Binary address.
+ * @treturn[2] nil On failure.
+ */
 static int lua_inet_pton(lua_State *L)
 {
     int family = luaL_checkinteger(L, 1);
@@ -1092,6 +766,14 @@ static int lua_inet_pton(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert interface name to interface index.
+ *
+ * @function if_nametoindex
+ * @tparam string ifname Interface name.
+ * @treturn int Interface index.
+ * @treturn[2] nil If interface does not exist.
+ */
 static int lua_if_nametoindex(lua_State *L)
 {
     const char *ifname = luaL_checkstring(L, 1);
@@ -1105,6 +787,13 @@ static int lua_if_nametoindex(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert interface index to interface name.
+ *
+ * @function if_indextoname
+ * @tparam int Interface index.
+ * @treturn string Interface name.
+ */
 static int lua_if_indextoname(lua_State *L)
 {
     int index = luaL_checkinteger(L, 1);
@@ -1116,6 +805,13 @@ static int lua_if_indextoname(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert 32-bit integer from host to network byte order.
+ *
+ * @function htonl
+ * @tparam int n
+ * @treturn int
+ */
 static int lua_htonl(lua_State *L)
 {
     uint32_t n = luaL_checkinteger(L, 1);
@@ -1123,6 +819,13 @@ static int lua_htonl(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert 16-bit integer from host to network byte order.
+ *
+ * @function htons
+ * @tparam int n
+ * @treturn int
+ */
 static int lua_htons(lua_State *L)
 {
     uint16_t n = luaL_checkinteger(L, 1);
@@ -1130,6 +833,13 @@ static int lua_htons(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert 32-bit integer from network to host byte order.
+ *
+ * @function ntohl
+ * @tparam int n
+ * @treturn int
+ */
 static int lua_ntohl(lua_State *L)
 {
     uint32_t n = luaL_checkinteger(L, 1);
@@ -1137,13 +847,19 @@ static int lua_ntohl(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert 16-bit integer from network to host byte order.
+ *
+ * @function ntohs
+ * @tparam int n
+ * @treturn int
+ */
 static int lua_ntohs(lua_State *L)
 {
     uint16_t n = luaL_checkinteger(L, 1);
     lua_pushinteger(L, ntohs(n));
     return 1;
 }
-
 static const luaL_Reg funcs[] = {
     {"socket", lua_socket},
     {"socketpair", lua_socketpair},
@@ -1162,9 +878,9 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_core_socket(lua_State *L)
+int luaopen_eco_internal_socket(lua_State *L)
 {
-    eco_new_metatable(L, SOCKET_MT, metatable, methods);
+    creat_metatable(L, SOCKET_MT, metatable, methods);
 
     luaL_newlib(L, funcs);
 

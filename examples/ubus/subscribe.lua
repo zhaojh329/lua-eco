@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local ubus = require 'eco.ubus'
 local time = require 'eco.time'
+local eco = require 'eco'
 
 eco.run(function()
     local con, err = ubus.connect()
@@ -25,13 +26,11 @@ eco.run(function()
         error(err)
     end
 
-    con:subscribe('eco', function(method, msg)
+    con:subscribe('eco', function(_, method, msg)
         if method == 'time' then
             print('recv:', msg.ts)
         end
     end)
-
-    while true do
-        time.sleep(1000)
-    end
 end)
+
+eco.loop()

@@ -1,7 +1,29 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+--- MQTT 3.1.1 client.
+--
+-- This module implements a small MQTT client that integrates with lua-eco's
+-- coroutine scheduler.
+--
+-- Create a client with `new`, register event handlers with `client:on`, then
+-- call `client:run` to connect and start processing packets.
+--
+-- Events are delivered via callbacks registered by `client:on`. A handler is
+-- called as `handler(data, client)`.
+--
+-- Known events:
+--
+-- - `conack`: CONNACK received. `data = { rc = integer, reason = string, session_present = boolean }`
+-- - `suback`: SUBACK received. `data = { rc = integer, topic = string }`
+-- - `unsuback`: UNSUBACK received. `data = topic` (string)
+-- - `publish`: PUBLISH received. `data = { topic = string, payload = string, qos = integer, dup = boolean, retain = boolean }`
+-- - `error`: network/protocol errors and timeouts. `data = err` (string)
+--
+-- @module eco.mqtt
+
 local socket = require 'eco.socket'
+local bufio = require 'eco.bufio'
 local time = require 'eco.time'
 
 local str_char = string.char
@@ -9,15 +31,27 @@ local str_byte = string.byte
 local concat = table.concat
 
 local M = {
+    --- QoS 0: at most once.
     QOS0 = 0,
+    --- QoS 1: at least once.
     QOS1 = 1,
+    --- QoS 2: exactly once.
     QOS2 = 2,
+
+    --- SUBACK failure return code.
     SUBACK_FAILURE = 0x80,
+
+    --- CONNACK return code: connection accepted.
     CONNACK_ACCEPTED = 0,
+    --- CONNACK return code: unacceptable protocol version.
     CONNACK_REFUSED_PROTOCOL_VERSION = 1,
+    --- CONNACK return code: identifier rejected.
     CONNACK_REFUSED_IDENTIFIER_REJECTED = 2,
+    --- CONNACK return code: server unavailable.
     CONNACK_REFUSED_SERVER_UNAVAILABLE = 3,
+    --- CONNACK return code: bad username or password.
     CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD = 4,
+    --- CONNACK return code: not authorized.
     CONNACK_REFUSED_NOT_AUTHORIZED = 5
 }
 
@@ -197,8 +231,8 @@ end
 
 local max_mult = 128 * 128 * 128
 
-local function read_packet(sock)
-    local byte, err = sock:read(1)
+local function read_packet(b)
+    local byte, err = b:read(1)
     if not byte then
         return nil, err
     end
@@ -212,7 +246,7 @@ local function read_packet(sock)
     local mult = 1
 
     repeat
-        byte, err = sock:read(1, read_timeout)
+        byte, err = b:read(1, read_timeout)
         if not byte then
             return nil, 'network: ' .. err
         end
@@ -226,7 +260,7 @@ local function read_packet(sock)
         end
     until byte & 0x80 == 0
 
-    local data, err = sock:readfull(remlen, read_timeout)
+    local data, err = b:readfull(remlen, read_timeout)
     if not data then
         return nil, 'network: ' .. err
     end
@@ -234,8 +268,8 @@ local function read_packet(sock)
     return typ, flags, data
 end
 
-local function handle_packet(self)
-    local pt, flags, data = read_packet(self.sock)
+local function handle_packet(self, b)
+    local pt, flags, data = read_packet(b)
     if not pt then
         return false, flags
     end
@@ -468,15 +502,33 @@ local function mqtt_connect(self)
     return send_pkt(self, pkt:data())
 end
 
+--- MQTT client object.
+--
+-- A client instance is created by calling @{mqtt.new}.
+--
+-- @type client
+
 local methods = {}
 
+--- Publish a message.
+--
+-- For QoS 1 and 2, the client will keep the packet for retransmission until
+-- an acknowledgement is received.
+--
+-- @tparam string topic Topic name.
+-- @tparam string payload Message payload.
+-- @tparam[opt=mqtt.QOS0] integer qos One of @{mqtt.QOS0}, @{mqtt.QOS1}, @{mqtt.QOS2}.
+-- @tparam[opt] boolean retain Set the RETAIN flag.
+-- @treturn boolean true On success
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:publish(topic, payload, qos, retain)
     assert(type(topic) == 'string')
     assert(type(payload) == 'string')
     assert(retain == nil or type(retain) == 'boolean')
 
     if not self.connected then
-        return false, 'unconnected'
+        return nil, 'unconnected'
     end
 
     if qos ~= nil then
@@ -533,18 +585,27 @@ function methods:publish(topic, payload, qos, retain)
             end
         end
 
-        return false, err
+        return nil, err
     end
 
     return true
 end
 
+--- Subscribe to a topic.
+--
+-- This sends a SUBSCRIBE packet and later triggers the `suback` event.
+--
+-- @tparam string topic Topic filter.
+-- @tparam[opt=mqtt.QOS0] integer qos Requested QoS.
+-- @treturn boolean true On success
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:subscribe(topic, qos)
     assert(type(topic) == 'string' and #topic > 0)
     assert(qos == nil or qos == M.QOS0 or qos == M.QOS1 or qos == M.QOS2)
 
     if not self.connected then
-        return false, 'unconnected'
+        return nil, 'unconnected'
     end
 
     local remlen = 2 + 2 + #topic + 1
@@ -565,17 +626,25 @@ function methods:subscribe(topic, qos)
     local ok, err = send_pkt(self, data)
     if not ok then
         self.wait_for_suback[mid] = nil
-        return false, err
+        return nil, err
     end
 
     return true
 end
 
+--- Unsubscribe from a topic.
+--
+-- This sends an UNSUBSCRIBE packet and later triggers the `unsuback` event.
+--
+-- @tparam string topic Topic filter.
+-- @treturn boolean true On success
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:unsubscribe(topic)
     assert(type(topic) == 'string' and #topic > 0)
 
     if not self.connected then
-        return false, 'unconnected'
+        return nil, 'unconnected'
     end
 
     local remlen = 2 + 2 + #topic
@@ -595,12 +664,19 @@ function methods:unsubscribe(topic)
     local ok, err = send_pkt(self, data)
     if not ok then
         self.wait_for_unsuback[mid] = nil
-        return false, err
+        return nil, err
     end
 
     return true
 end
 
+--- Send DISCONNECT.
+--
+-- This only sends the packet; the underlying socket is not closed here.
+--
+-- @treturn boolean true On success
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:disconnect()
     if not self.connected then
         return true
@@ -611,13 +687,23 @@ function methods:disconnect()
 end
 
 
+--- Close the underlying network socket.
 function methods:close()
     self.sock:close()
 end
 
--- Add functions as handlers of given events
--- client:on(event, function)
--- client:on({ event1 = func1, event2 = func2 })
+--- Register event handler(s).
+--
+-- This function supports two calling forms:
+--
+-- - `client:on(event, handler)`
+-- - `client:on({ event1 = handler1, event2 = handler2 })`
+--
+-- The handler is called as `handler(data, client)`.
+--
+-- @tparam string event Event name (when using the 2-argument form).
+-- @tparam function handler Callback (when using the 2-argument form).
+-- @tparam table handlers A table of `{ event = handler }` pairs (when using the 1-argument form).
 function methods:on(...)
     local nargs = select('#', ...)
     local events
@@ -637,13 +723,22 @@ function methods:on(...)
     end
 end
 
+--- Set one option on the client.
+--
+-- This is equivalent to providing the field in @{new}'s `opts`.
+--
+-- @tparam string name Option name.
+-- @tparam any value Option value.
 function methods:set(name, value)
     local opts = self.opts
     check_option(name, value)
     opts[name] = value
 end
 
--- Start handling events until the network connection is closed
+--- Connect and start handling packets.
+--
+-- This call returns when the network connection is closed or an error occurs.
+-- Any termination reason is reported through the `error` event.
 function methods:run()
     local ok, err = mqtt_connect(self)
     if not ok then
@@ -651,8 +746,10 @@ function methods:run()
         return
     end
 
+    local b = bufio.new(self.sock)
+
     repeat
-        ok, err = handle_packet(self)
+        ok, err = handle_packet(self, b)
     until not ok
 
     on_event(self, 'error', err)
@@ -664,33 +761,39 @@ function methods:run()
     self.connected = false
 end
 
+--- End of `client` class section.
+-- @section end
+
 local metatable = {
     __index = methods
 }
 
---[[
-    opts: A table contains some options:
-        ipaddr: Network address to connect to. Defaults to '127.0.0.1'.
-        port: Network port to connect to. Defaults to 1883 for plain MQTT and 8883 for MQTT over TLS.
-        ssl: A boolean, indicates connecting with SSL/TLS.
-        ca: CA certificate for authentication if required by server.
-        cert: Client certificate for authentication, if required by server.
-        key: Client private key for authentication, if required by server.
-        insecure: A boolean, SSL connecting with insecure.
-        mark: A number used to set SO_MARK to socket.
-        device: A string used to set SO_BINDTODEVICE to socket.
-
-        id: client id, will be randomly generated if not provided.
-        keepalive: Keep alive in sesonds, defaults 30.
-        clean_session: A boolean
-        will: A table contains some options for will:
-            topic: The topic name of client's will message.
-            message: The message to be published when the client disconnected.
-            qos: The qos used to published will message.
-            retain: Retain will message.
-        username: The username to be used to connect to the broker with.
-        password: The password to be used to connect to the broker with.
---]]
+--- Create a new MQTT client.
+--
+-- `opts` fields (all optional):
+--
+-- - `ipaddr` (string): broker address. Default `'127.0.0.1'`.
+-- - `port` (number): broker port. Default `1883` (plain) or `8883` (TLS) depending on `ssl`.
+-- - `ssl` (boolean): enable MQTT over TLS.
+-- - `ca` (string): CA certificate path for TLS.
+-- - `cert` (string): client certificate path for TLS.
+-- - `key` (string): client private key path for TLS.
+-- - `insecure` (boolean): disable TLS certificate verification.
+-- - `mark` (number): set `SO_MARK` on the socket.
+-- - `device` (string): set `SO_BINDTODEVICE` on the socket.
+-- - `id` (string): client id. Randomly generated if absent.
+-- - `keepalive` (number): keepalive seconds. Default `30`. Must be >= 5.
+-- - `clean_session` (boolean): clean session flag.
+-- - `will` (table): last will message:
+--   - `topic` (string)
+--   - `message` (string)
+--   - `qos` (integer): one of @{mqtt.QOS0}, @{mqtt.QOS1}, @{mqtt.QOS2}
+--   - `retain` (boolean)
+-- - `username` (string): username.
+-- - `password` (string): password.
+--
+-- @tparam[opt] table opts Options table.
+-- @treturn client
 function M.new(opts)
     opts = opts or {}
 

@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local channel = require 'eco.channel'
 local time = require 'eco.time'
+local eco = require 'eco'
 
 -- Create a channel with 5 buffers.
 local ch = channel.new(5)
@@ -36,6 +37,4 @@ eco.run(function()
     end
 end)
 
-while true do
-    time.sleep(1)
-end
+eco.loop()

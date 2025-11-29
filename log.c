@@ -3,11 +3,21 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/// @module eco.log
+
 #include <stdio.h>
 
 #include "log/log.h"
 #include "eco.h"
 
+/**
+ * Set current log level.
+ *
+ * Messages with priority greater than `level` are discarded.
+ *
+ * @function set_level
+ * @tparam int level One of the level constants (e.g. @{log.INFO}, @{log.DEBUG}).
+ */
 static int lua_log_set_level(lua_State *L)
 {
     int level = luaL_checkinteger(L, 1);
@@ -89,6 +99,12 @@ static void __lua_log(lua_State *L, int priority)
     ___log(filename, line, priority, "%s", buf);
 }
 
+/**
+ * Log a DEBUG message.
+ *
+ * @function debug
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log_debug(lua_State *L)
 {
     __lua_log(L, LOG_DEBUG);
@@ -96,6 +112,12 @@ static int lua_log_debug(lua_State *L)
     return 0;
 }
 
+/**
+ * Log an INFO message.
+ *
+ * @function info
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log_info(lua_State *L)
 {
     __lua_log(L, LOG_INFO);
@@ -103,6 +125,12 @@ static int lua_log_info(lua_State *L)
     return 0;
 }
 
+/**
+ * Log an ERR message.
+ *
+ * @function err
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log_err(lua_State *L)
 {
     __lua_log(L, LOG_ERR);
@@ -110,6 +138,13 @@ static int lua_log_err(lua_State *L)
     return 0;
 }
 
+/**
+ * Log a message at a specific priority.
+ *
+ * @function log
+ * @tparam int priority One of the level constants (e.g. @{log.WARNING}).
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log(lua_State *L)
 {
     int priority = lua_tointeger(L, 1);
@@ -121,6 +156,15 @@ static int lua_log(lua_State *L)
     return 0;
 }
 
+/**
+ * Set log output file path.
+ *
+ * When set to a non-empty path, logs are appended to that file.
+ * Passing an empty string resets output back to stdout/syslog.
+ *
+ * @function set_path
+ * @tparam string path Output file path, or `''` to reset.
+ */
 static int lua_log_set_path(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
@@ -130,6 +174,14 @@ static int lua_log_set_path(lua_State *L)
     return 0;
 }
 
+/**
+ * Set log flags.
+ *
+ * Combine flags using bitwise OR, e.g. @{log.FLAG_LF} | @{log.FLAG_FILE}.
+ *
+ * @function set_flags
+ * @tparam int flags Bitmask of `FLAG_*` constants.
+ */
 static int lua_log_set_flags(lua_State *L)
 {
     int flags = lua_tointeger(L, 1);
@@ -139,6 +191,14 @@ static int lua_log_set_flags(lua_State *L)
     return 0;
 }
 
+/**
+ * Set syslog/file ident.
+ *
+ * This also affects the prefix when logging to file/stdout.
+ *
+ * @function set_ident
+ * @tparam string ident Identifier string.
+ */
 static int lua_log_set_ident(lua_State *L)
 {
     const char *ident = luaL_checkstring(L, 1);
@@ -160,7 +220,7 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_log(lua_State *L)
+int luaopen_eco_internal_log(lua_State *L)
 {
     luaL_newlib(L, funcs);
 

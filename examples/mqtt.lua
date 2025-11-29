@@ -1,10 +1,11 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 -- Using emqx for testing
 -- docker run -d --name emqx -p 1883:1883 -p 8083:8083 -p 8084:8084 -p 8883:8883 -p 18083:18083 emqx/emqx:latest
 
 local mqtt = require 'eco.mqtt'
 local time = require 'eco.time'
+local eco = require 'eco'
 
 local auto_reconnect = false
 
@@ -60,15 +61,19 @@ client:on({
 -- Or add one event handler at a time
 client:on('error', on_error)
 
-while true do
-    -- Start handling events until the network connection is closed
-    client:run()
+eco.run(function()
+    while true do
+        -- Start handling events until the network connection is closed
+        client:run()
 
-    if not auto_reconnect then
-        break
+        if not auto_reconnect then
+            eco.unloop()
+        end
+
+        print('reconnect in 5s...')
+
+        time.sleep(5)
     end
+end)
 
-    print('reconnect in 5s...')
-
-    time.sleep(5)
-end
+eco.loop()

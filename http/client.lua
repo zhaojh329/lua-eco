@@ -3,10 +3,26 @@
 
 local socket = require 'eco.socket'
 local URL = require 'eco.http.url'
+local bufio = require 'eco.bufio'
 local file = require 'eco.file'
+local eco = require 'eco'
 
 local concat = table.concat
 local tonumber = tonumber
+
+--- HTTP/HTTPS/WebSocket client.
+--
+-- This module provides a simple HTTP/1.1 client with optional TLS support.
+--
+-- Supported URL schemes:
+--
+-- - `http`, `https`
+-- - `ws`, `wss` (HTTP upgrade handshake only)
+--
+-- For `https`/`wss`, this module uses @{eco.ssl.connect} internally and sets
+-- `opts.server_name` to the URL host for SNI.
+--
+-- @module eco.http.client
 
 local M = {}
 
@@ -46,7 +62,7 @@ local function send_http_request(sock, method, path, headers, body)
 
     local _, err = sock:send(concat(data))
     if err then
-        return false, err
+        return nil, err
     end
 
     if not body then
@@ -70,14 +86,14 @@ local function send_http_request(sock, method, path, headers, body)
     end
 
     if err then
-        return false, 'send body fail: ' .. err
+        return nil, 'send body fail: ' .. err
     end
 
     return true
 end
 
-local function recv_status_line(sock, timeout)
-    local data, err = sock:recv('l', timeout)
+local function recv_status_line(b, timeout)
+    local data, err = b:read('l', timeout)
     if not data then
         return nil, err
     end
@@ -90,11 +106,11 @@ local function recv_status_line(sock, timeout)
     return tonumber(code), status
 end
 
-local function recv_http_headers(sock, timeout)
+local function recv_http_headers(b, timeout)
     local headers = {}
 
     while true do
-        local data, err = sock:recv('l', timeout)
+        local data, err = b:read('l', timeout)
         if not data then
             return nil, err
         end
@@ -112,11 +128,11 @@ local function recv_http_headers(sock, timeout)
     return headers
 end
 
-local function receive_body_until_closed(resp, sock, timeout, body_to_file)
+local function receive_body_until_closed(resp, b, timeout, body_to_file)
     local body = {}
 
     while true do
-        local data = sock:recv(4096, timeout)
+        local data = b:read(4096, timeout)
         if not data then
             break
         end
@@ -135,11 +151,11 @@ local function receive_body_until_closed(resp, sock, timeout, body_to_file)
     return true
 end
 
-local function receive_body(resp, sock, timeout, length, body_to_file)
+local function receive_body(resp, b, timeout, length, body_to_file)
     local body = {}
 
     while length > 0 do
-        local data, err = sock:recv(length > 4096 and 4096 or length, timeout)
+        local data, err = b:read(length > 4096 and 4096 or length, timeout)
         if not data then
             return false, 'read body fail: ' .. err
         end
@@ -160,13 +176,13 @@ local function receive_body(resp, sock, timeout, length, body_to_file)
     return true
 end
 
-local function receive_chunked_body(resp, sock, timeout, body_to_file)
+local function receive_chunked_body(resp, b, timeout, body_to_file)
     local chunk_size
     local body = {}
 
     while true do
         -- first read chunk size
-        local data, err = sock:recv('l', timeout)
+        local data, err = b:read('l', timeout)
         if not data then
             return nil, err
         end
@@ -186,7 +202,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
         end
 
         -- second read chunk data
-        data, err = sock:readfull(chunk_size, timeout)
+        data, err = b:readfull(chunk_size, timeout)
         if not data then
             return nil, err
         end
@@ -197,7 +213,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
             body[#body + 1] = data
         end
 
-        data, err = sock:recv('l', timeout)
+        data, err = b:read('l', timeout)
         if not data then
             return nil, err
         end
@@ -218,12 +234,14 @@ local function do_http_request(self, method, path, headers, body, opts)
         timeout = 30
     end
 
-    local code, status = recv_status_line(sock, timeout)
+    local b = bufio.new(sock)
+
+    local code, status = recv_status_line(b, timeout)
     if not code then
         return nil, status
     end
 
-    headers, err = recv_http_headers(sock, timeout)
+    headers, err = recv_http_headers(b, timeout)
     if not headers then
         return nil, err
     end
@@ -249,12 +267,12 @@ local function do_http_request(self, method, path, headers, body, opts)
     end
 
     if headers['transfer-encoding'] == 'chunked' then
-        ok, err = receive_chunked_body(resp, sock, timeout, body_to_file)
+        ok, err = receive_chunked_body(resp, b, timeout, body_to_file)
     elseif headers['content-length'] then
         local content_length = tonumber(headers['content-length'])
-        ok, err = receive_body(resp, sock, timeout, content_length, body_to_file)
+        ok, err = receive_body(resp, b, timeout, content_length, body_to_file)
     else
-        ok, err = receive_body_until_closed(resp, sock, timeout, body_to_file)
+        ok, err = receive_body_until_closed(resp, b, timeout, body_to_file)
     end
 
     if body_to_file then
@@ -268,8 +286,15 @@ local function do_http_request(self, method, path, headers, body, opts)
     return resp
 end
 
+---
+-- HTTP client object returned by @{new}.
+--
+-- @type client
 local methods = {}
 
+--- Close the underlying connection.
+--
+-- @function client:close
 function methods:close()
     local sock = self.__sock
 
@@ -281,6 +306,12 @@ function methods:close()
     self.sock = nil
 end
 
+--- Get the underlying connected socket.
+--
+-- @function client:sock
+-- @treturn socket sock
+-- @treturn[2] nil When not connected.
+-- @treturn[2] string Error message.
 function methods:sock()
     local sock = self.__sock
     if sock then
@@ -319,6 +350,18 @@ local function generate_websocket_key()
     return base64.encode(table.concat(bytes))
 end
 
+--- Perform a request using this client.
+--
+-- For `https`/`wss`, TLS options in `opts` are passed to @{eco.ssl.connect}.
+--
+-- @function client:request
+-- @tparam string method HTTP method.
+-- @tparam string url Request URL.
+-- @tparam[opt] string|body_file|body_form body Request body.
+-- @tparam[opt] table opts See @{request}.
+-- @treturn table resp
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:request(method, url, body, opts)
     opts = opts or {}
 
@@ -437,32 +480,47 @@ local metatable = {
     __close = methods.close
 }
 
+--- End of `client` class section.
+-- @section end
+
+--- Create a new HTTP client.
+--
+-- @function new
+-- @treturn client
 function M.new()
     return setmetatable({}, metatable)
 end
 
---[[
-    method: HTTP request method, such as "GET", "POST".
-    url: HTTP request url, such as "http://test.com", "https://test.com", "ws://test.com", "wss://test.com".
-    body: HTTP request body, can be a string or a table created by method "body_with_file".
-    opts: A table contains some options:
-        timeout: A number, defaults to 30s.
-        insecure: A boolean, SSL connecting with insecure.
-        ipv6: A boolean, parse ipv6 address for host.
-        body_to_file: A string indicates that the body is to be written to the file.
-        mark: a number used to set SO_MARK to socket
-        device: a string used to set SO_BINDTODEVICE to socket
-        nameservers: see dns.query
-        headers: A table contains headers user customized
-
-    In case of failure, the function returns nil followed by an error message.
-    If successful, returns a table contains the
-    following fields:
-        body: response body as a string;
-        code: response status code;
-        status: response status;
-        headers: response headers as a table.
---]]
+--- Perform an HTTP request.
+--
+-- This is a convenience wrapper that creates a temporary client, performs the
+-- request, and closes the connection.
+--
+-- `opts` options commonly used:
+--
+-- - `timeout` (number) request timeout in seconds (default 30).
+-- - `headers` (table) extra request headers.
+-- - `body_to_file` (string) write response body to the given file path.
+-- - `ipv6` (boolean) resolve AAAA records.
+-- - `mark` (number) SO_MARK for sockets.
+-- - `device` (string) SO_BINDTODEVICE for sockets.
+-- - `nameservers` (table) DNS servers (see @{eco.dns.query}).
+-- - TLS: `ca`, `cert`, `key`, `insecure` (passed to @{eco.ssl.connect}).
+--
+-- @function request
+-- @tparam string method HTTP method, e.g. `"GET"`, `"POST"`.
+-- @tparam string url Request URL.
+-- @tparam[opt] string|body_file|body_form body Request body.
+-- @tparam[opt] table opts Options table.
+-- @treturn table resp Response table:
+--
+-- - `code` (number)
+-- - `status` (string)
+-- - `headers` (table)
+-- - `body` (string) (omitted when `body_to_file` is used)
+--
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.request(method, url, body, opts)
     if body then
         if type(body) ~= 'string' and not body_is_file(body) and not body_is_form(body) then
@@ -479,16 +537,46 @@ function M.request(method, url, body, opts)
     return c:request(method, url, body, opts)
 end
 
+--- Convenience wrapper for `GET`.
+-- @function get
+-- @tparam string url
+-- @tparam[opt] table opts See @{request}.
+-- @treturn table resp
+-- @treturn[2] nil
+-- @treturn[2] string Error message.
 function M.get(url, opts)
     return M.request('GET', url, nil, opts)
 end
 
+--- Convenience wrapper for `POST`.
+-- @function post
+-- @tparam string url
+-- @tparam[opt] string|body_file|body_form body
+-- @tparam[opt] table opts See @{request}.
+-- @treturn table resp
+-- @treturn[2] nil
+-- @treturn[2] string Error message.
 function M.post(url, body, opts)
     return M.request('POST', url, body, opts)
 end
 
+--- File body descriptor returned by @{body_with_file}.
+--
+-- @type body_file
 local body_file_mt = { name = BODY_FILE_MT }
 
+--- End of `body_file` class section.
+-- @section end
+
+--- Use a file as request body.
+--
+-- The returned object can be used as the `body` argument of @{request}.
+--
+-- @function body_with_file
+-- @tparam string name File path.
+-- @treturn body_file body
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.body_with_file(name)
     local st, err = file.stat(name)
     if not st then
@@ -511,8 +599,18 @@ function M.body_with_file(name)
     return setmetatable(o, body_file_mt)
 end
 
+--- Multipart form body returned by @{form}.
+--
+-- @type body_form
+
 local form_methods = {}
 
+--- Add a simple form field.
+--
+-- @function body_form:add
+-- @tparam string name Field name.
+-- @tparam string value Field value.
+-- @treturn boolean true
 function form_methods:add(name, value)
     assert(type(name) == 'string')
     assert(type(value) == 'string')
@@ -531,6 +629,14 @@ function form_methods:add(name, value)
     return true
 end
 
+--- Add a file field.
+--
+-- @function body_form:add_file
+-- @tparam string name Field name.
+-- @tparam string path File path.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function form_methods:add_file(name, path)
     assert(type(name) == 'string')
     assert(type(path) == 'string')
@@ -570,6 +676,9 @@ function form_methods:add_file(name, path)
     return true
 end
 
+--- End of `body_form` class section.
+-- @section end
+
 local form_metatable = {
     name = BODY_FORM_MT,
     __index = form_methods
@@ -587,6 +696,12 @@ local function generate_boundary()
     return '------------------------' .. concat(boundary)
 end
 
+--- Create a multipart form body.
+--
+-- The returned object can be used as the `body` argument of @{request}.
+--
+-- @function form
+-- @treturn body_form
 function M.form()
     local boundary = generate_boundary()
     return setmetatable({ boundary = boundary, length = 0, contents = {} }, form_metatable)

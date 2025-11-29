@@ -6,6 +6,13 @@ local packet = require 'eco.packet'
 local time = require 'eco.time'
 local dns = require 'eco.dns'
 
+--- Network utilities.
+--
+-- Currently this module provides simple ICMP echo (ping) helpers for both
+-- IPv4 and IPv6.
+--
+-- @module eco.net
+
 local M = {}
 
 local function ping_any(host, opts, ipv6)
@@ -105,22 +112,43 @@ local function ping_any(host, opts, ipv6)
     end
 end
 
---[[
-    host: Target host to ping, can be an IPv4 address (e.g., "8.8.8.8") or a domain name (e.g., "example.com").
-    opts: A table containing optional parameters:
-        timeout: A number specifying the maximum time (in seconds) to wait for a reply; defaults to 5.0.
-        data: A string used as the ICMP payload; defaults to "hello".
-        mark: A number used to set SO_MARK on the underlying socket.
-        device: A string used to bind the socket to a specific network interface (e.g., "eth0").
-        nameservers: A table of DNS server addresses (e.g., {"1.1.1.1", "8.8.8.8"}) used for domain resolution.
+--- Options table for @{net.ping} / @{net.ping6}.
+-- @table PingOptions
+-- @tfield[opt=5.0] number timeout Receive timeout in seconds.
+-- @tfield[opt="hello"] string data ICMP payload.
+-- @tfield[opt] number mark Set `SO_MARK` on the underlying socket (Linux).
+-- @tfield[opt] string device Bind socket to a specific interface (e.g. `"eth0"`).
+-- @tfield[opt] table nameservers DNS servers used for name resolution.
+--   Each entry is typically an IP string (e.g. `{ "1.1.1.1", "8.8.8.8" }`).
 
-    In case of failure, the function returns nil followed by an error message.
-    If successful, returns a number representing the round-trip time (RTT) in seconds (as a high-precision float).
---]]
+--- Send an ICMP echo request (IPv4).
+--
+-- If `host` is a domain name, it will be resolved using DNS A records.
+--
+-- @function ping
+-- @tparam string host IPv4 address or domain name.
+-- @tparam[opt] PingOptions opts Options table.
+-- @treturn number Round-trip time in seconds.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
+-- @usage
+-- local net = require 'eco.net'
+-- local rtt, err = net.ping('8.8.8.8', { timeout = 1 })
+-- print(rtt or err)
 function M.ping(host, opts)
    return ping_any(host, opts, false)
 end
 
+--- Send an ICMP echo request (IPv6).
+--
+-- If `host` is a domain name, it will be resolved using DNS AAAA records.
+--
+-- @function ping6
+-- @tparam string host IPv6 address or domain name.
+-- @tparam[opt] PingOptions opts Options table.
+-- @treturn number Round-trip time in seconds.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.ping6(host, opts)
     return ping_any(host, opts, true)
 end

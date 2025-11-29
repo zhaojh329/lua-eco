@@ -1,10 +1,10 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local nl80211 = require 'eco.core.nl80211'
+local nl80211 = require 'eco.internal.nl80211'
 local hex = require 'eco.encoding.hex'
 local socket = require 'eco.socket'
-local sys = require 'eco.core.sys'
+local sys = require 'eco.internal.sys'
 local file = require 'eco.file'
 local genl = require 'eco.genl'
 local nl = require 'eco.nl'
@@ -1553,18 +1553,16 @@ function M.get_link(ifname)
         return nil, 'not connected'
     end
 
-    if bss then
-        local sta = M.get_station(ifname, bss.bssid)
-        if sta then
-            bss.rx_bytes = sta.rx_bytes
-            bss.rx_packets = sta.rx_packets
-            bss.tx_bytes = sta.tx_bytes
-            bss.tx_packets = sta.tx_packets
-            bss.tx_rate = sta.tx_rate
-            bss.rx_rate = sta.rx_rate
-            bss.signal = sta.signal
-            bss.ack_signal_avg = sta.ack_signal_avg
-        end
+    local sta = M.get_station(ifname, bss.bssid)
+    if sta then
+        bss.rx_bytes = sta.rx_bytes
+        bss.rx_packets = sta.rx_packets
+        bss.tx_bytes = sta.tx_bytes
+        bss.tx_packets = sta.tx_packets
+        bss.tx_rate = sta.tx_rate
+        bss.rx_rate = sta.rx_rate
+        bss.signal = sta.signal
+        bss.ack_signal_avg = sta.ack_signal_avg
     end
 
     return bss

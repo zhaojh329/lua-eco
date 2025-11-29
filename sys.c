@@ -3,17 +3,29 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/// @module eco.sys
+
+#include <sys/signalfd.h>
 #include <sys/sysinfo.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 #include <stdbool.h>
+#include <string.h>
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <pwd.h>
 
 #include "eco.h"
 
+/**
+ * Get system uptime.
+ *
+ * @function uptime
+ * @treturn int Uptime in seconds.
+ */
 static int lua_uptime(lua_State *L)
 {
     struct sysinfo info = {};
@@ -24,18 +36,82 @@ static int lua_uptime(lua_State *L)
     return 1;
 }
 
+/**
+ * Wait for a child process status change (non-blocking).
+ *
+ * This is a thin wrapper around `waitpid(pid, ..., WNOHANG | WUNTRACED)`.
+ *
+ * @function waitpid
+ * @tparam int pid Process id to wait for. Use `-1` for any child.
+ * @treturn int pid The pid that changed state, or `0` if none.
+ * @treturn table Status information.
+ * @treturn[2] nil On error.
+ * @treturn[2] string err Error message.
+ */
+static int lua_waitpid(lua_State *L)
+{
+    pid_t pid = luaL_checkinteger(L, 1);
+    int status;
+    pid_t ret;
+
+    ret = waitpid(pid, &status, WNOHANG | WUNTRACED);
+    if (ret < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, ret);
+
+    lua_newtable(L);
+
+     if (WIFEXITED(status)) {
+        lua_pushboolean(L, true);
+        lua_setfield(L, -2, "exited");
+        status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+        lua_pushboolean(L, true);
+        lua_setfield(L, -2, "signaled");
+        status = WTERMSIG(status);
+    }
+
+    lua_pushinteger(L, status);
+    lua_setfield(L, -2, "status");
+
+    return 2;
+}
+
+/**
+ * Get current process id.
+ * @function getpid
+ * @treturn int pid
+ */
 static int lua_getpid(lua_State *L)
 {
     lua_pushinteger(L, getpid());
     return 1;
 }
 
+/**
+ * Get parent process id.
+ * @function getppid
+ * @treturn int pid
+ */
 static int lua_getppid(lua_State *L)
 {
     lua_pushinteger(L, getppid());
     return 1;
 }
 
+/**
+ * Lookup a user by name.
+ *
+ * @function getpwnam
+ * @tparam string name User name.
+ * @treturn table User info table with fields: `username`, `password`, `uid`, `gid`, `home`, `shell`.
+ * @treturn[2] nil On error or not found.
+ * @treturn[2] string err Error message.
+ */
 static int lua_getpwnam(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
@@ -78,6 +154,16 @@ static int lua_getpwnam(lua_State *L)
     return 1;
 }
 
+/**
+ * Send a signal to a process.
+ *
+ * @function kill
+ * @tparam int pid Target pid.
+ * @tparam int sig Signal number.
+ * @treturn boolean true on Success
+ * @treturn[2] nil On error
+ * @treturn[2] string err Error message.
+ */
 static int lua_kill(lua_State *L)
 {
     int pid = luaL_checkinteger(L, 1);
@@ -86,7 +172,7 @@ static int lua_kill(lua_State *L)
 
     ret = kill(pid, sig);
     if (ret < 0) {
-        lua_pushboolean(L, false);
+        lua_pushnil(L);
         lua_pushstring(L, strerror(errno));
         return 2;
     }
@@ -101,7 +187,7 @@ static int lua_exec(lua_State *L)
     int epipe[2] = {};
     pid_t pid;
 
-    if (pipe(opipe) < 0 || pipe(epipe) < 0) {
+    if (pipe2(opipe, O_CLOEXEC | O_NONBLOCK) < 0 || pipe2(epipe, O_CLOEXEC | O_NONBLOCK) < 0) {
         lua_pushnil(L);
         lua_pushfstring(L, "pipe: %s", strerror(errno));
         goto err;
@@ -201,11 +287,17 @@ err:
     return 2;
 }
 
-static int lua_spawn(lua_State *L)
+/**
+ * Fork the current process.
+ *
+ * @function fork
+ * @treturn int Child pid in parent, 0 in child.
+ * @treturn[2] nil On error.
+ * @treturn[2] string Error message.
+ */
+static int lua_fork(lua_State *L)
 {
     pid_t pid;
-
-    luaL_checktype(L, 1, LUA_TFUNCTION);
 
     pid = fork();
     if (pid < 0) {
@@ -214,35 +306,49 @@ static int lua_spawn(lua_State *L)
         return 2;
     }
 
-    if (pid == 0) {
-        struct ev_loop *loop = EV_DEFAULT;
-        int error;
-
-        prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-        ev_break(loop, 0);
-
-        lua_getglobal(L, "eco");
-        lua_getfield(L, -1, "run");
-        lua_remove(L, -2);
-        lua_insert(L, 1);
-
-        error = lua_pcall(L, lua_gettop(L) - 1, 0, 0);
-        if (error) {
-            fprintf(stderr, "%s\n", lua_tostring(L, -1));
-            goto err;
-        }
-
-        ev_run(loop, 0);
-err:
-        ev_default_destroy();
-        exit(0);
-    }
-
     lua_pushinteger(L, pid);
+
     return 1;
 }
 
+/**
+ * Process control operations.
+ *
+ * Currently supports `PR_SET_PDEATHSIG`.
+ *
+ * @function prctl
+ * @tparam int option prctl option.
+ * @tparam[opt] int arg Option-specific argument.
+ * @treturn boolean true on success.
+ * @treturn[2] nil On error or unsupported option.
+ * @treturn[2] string Error message.
+ */
+static int lua_prctl(lua_State *L)
+{
+    int option = luaL_checkinteger(L, 1);
+
+    if (option == PR_SET_PDEATHSIG) {
+        int sig = luaL_checkinteger(L, 2);
+        if (prctl(PR_SET_PDEATHSIG, sig)) {
+            lua_pushnil(L);
+            lua_pushstring(L, strerror(errno));
+            return 2;
+        }
+
+        lua_pushboolean(L, true);
+        return 1;
+    } else {
+        lua_pushnil(L);
+        lua_pushliteral(L, "unsupported option");
+        return 2;
+    }
+}
+
+/**
+ * Get number of available processors.
+ * @function get_nprocs
+ * @treturn int n
+ */
 static int lua_get_nprocs(lua_State *L)
 {
     int nprocs = get_nprocs();
@@ -252,6 +358,12 @@ static int lua_get_nprocs(lua_State *L)
     return 1;
 }
 
+/**
+ * Convert errno value to message.
+ * @function strerror
+ * @tparam int errno Error number.
+ * @treturn string message
+ */
 static int lua_strerror(lua_State *L)
 {
     int no = luaL_checkinteger(L, 1);
@@ -260,20 +372,57 @@ static int lua_strerror(lua_State *L)
     return 1;
 }
 
+static int lua_signalfd(lua_State *L)
+{
+    int n = lua_gettop(L);
+    sigset_t mask;
+    int fd;
+    int i;
+
+    if (n < 1)
+        return luaL_error(L, "invalid argument");
+
+    sigemptyset(&mask);
+
+    for (i = 1; i <= n; i++) {
+        int sig = luaL_checkinteger(L, i);
+        if (sigaddset(&mask, sig) < 0)
+            goto err;
+    }
+
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
+        goto err;
+
+    fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+    if (fd < 0)
+        goto err;
+
+    lua_pushinteger(L, fd);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return 2;
+}
+
 static const luaL_Reg funcs[] = {
     {"uptime", lua_uptime},
+    {"waitpid", lua_waitpid},
     {"getpid", lua_getpid},
     {"getppid", lua_getppid},
     {"getpwnam", lua_getpwnam},
     {"kill", lua_kill},
     {"exec", lua_exec},
-    {"spawn", lua_spawn},
+    {"fork", lua_fork},
+    {"prctl", lua_prctl},
     {"get_nprocs", lua_get_nprocs},
     {"strerror", lua_strerror},
+    {"signalfd", lua_signalfd},
     {NULL, NULL}
 };
 
-int luaopen_eco_core_sys(lua_State *L)
+int luaopen_eco_internal_sys(lua_State *L)
 {
     luaL_newlib(L, funcs);
 
@@ -450,6 +599,9 @@ int luaopen_eco_core_sys(lua_State *L)
     lua_add_constant(L, "ENOTRECOVERABLE", ENOTRECOVERABLE);
     lua_add_constant(L, "ERFKILL", ERFKILL);
     lua_add_constant(L, "EHWPOISON", EHWPOISON);
+
+    /* prctl */
+    lua_add_constant(L, "PR_SET_PDEATHSIG", PR_SET_PDEATHSIG);
 
     return 1;
 }

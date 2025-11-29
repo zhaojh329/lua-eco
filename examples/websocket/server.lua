@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local websocket = require 'eco.websocket'
 local http = require 'eco.http.server'
+local eco = require 'eco'
 
 local page =
 [[
@@ -104,8 +105,12 @@ local function handler(con, req)
     end
 end
 
-local srv, err = http.listen(nil, 8080, { reuseaddr = true }, handler)
-if not srv then
-    print(err)
-    return
-end
+eco.run(function()
+    local srv, err = http.listen(nil, 8080, { reuseaddr = true }, handler)
+    if not srv then
+        print(err)
+        return
+    end
+end)
+
+eco.loop()

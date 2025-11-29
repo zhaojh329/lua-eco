@@ -11,7 +11,7 @@
 
 #include "eco.h"
 
-#define NLMSG_KER_MT "eco{nlmsg-kernel}"
+#define NLMSG_KER_MT "struct eco_nlmsg *ker"
 
 struct eco_nlmsg {
     struct nlmsghdr *nlh;

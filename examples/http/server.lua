@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local http = require 'eco.http.server'
 local log = require 'eco.log'
+local eco = require 'eco'
 
 log.set_level(log.DEBUG)
 
@@ -101,8 +102,12 @@ local options = {
 -- options.key = 'key.pem'
 -- options.insecure = true
 
-local srv, err = http.listen(nil, 8080, options, handler)
-if not srv then
-    print(err)
-    return
-end
+eco.run(function()
+    local srv, err = http.listen(nil, 8080, options, handler)
+    if not srv then
+        print(err)
+        return
+    end
+end)
+
+eco.loop()

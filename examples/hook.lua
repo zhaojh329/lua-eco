@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
 local log = require 'eco.log'
+local eco = require 'eco'
 
 local function hook(event)
     local info3 = debug.getinfo(3, 'Sl')
@@ -30,3 +31,5 @@ end)
 for _, co in ipairs(eco.all()) do
     debug.sethook(co, hook, 'rc')
 end
+
+eco.loop()

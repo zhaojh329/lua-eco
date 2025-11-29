@@ -3,13 +3,23 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/**
+ * SHA1 hash functions.
+ *
+ * Provides one-shot hashing via @{sum} and incremental hashing via @{new}.
+ * The digest is returned as raw binary bytes (20 bytes).
+ *
+ * @module eco.hash.sha1
+ */
+
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "eco.h"
 
-#define SHA1_MT "eco{sha1}"
+#define SHA1_MT "struct sha1_ctx *"
 
 struct sha1_ctx {
     uint32_t state[5];
@@ -212,6 +222,13 @@ static void sha1_final(struct sha1_ctx *ctx, uint8_t digest[20])
         digest[i] = (ctx->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255;
 }
 
+/**
+ * Compute SHA1 digest of the given data.
+ *
+ * @function sum
+ * @tparam string data Input bytes.
+ * @treturn string Raw 20-byte digest.
+ */
 static int lua_sha1_sum(lua_State *L)
 {
     size_t len;
@@ -228,6 +245,17 @@ static int lua_sha1_sum(lua_State *L)
     return 1;
 }
 
+/**
+ * sha1 object created by @{new}.
+ * @type sha1
+ */
+
+/**
+ * Update digest with more data.
+ *
+ * @function sha1:update
+ * @tparam string data Input bytes.
+ */
 static int lua_sha1_update(lua_State *L)
 {
     struct sha1_ctx *ctx = luaL_checkudata(L, 1, SHA1_MT);
@@ -239,6 +267,12 @@ static int lua_sha1_update(lua_State *L)
     return 0;
 }
 
+/**
+ * Finalize and return digest.
+ *
+ * @function sha1:final
+ * @treturn string Raw 20-byte digest.
+ */
 static int lua_sha1_final(lua_State *L)
 {
     struct sha1_ctx *ctx = luaL_checkudata(L, 1, SHA1_MT);
@@ -250,18 +284,25 @@ static int lua_sha1_final(lua_State *L)
     return 1;
 }
 
+/// @section end
+
 static const struct luaL_Reg sha1_methods[] = {
     {"update", lua_sha1_update},
     {"final", lua_sha1_final},
     {NULL, NULL}
 };
 
+/**
+ * Create a new incremental SHA1 context.
+ *
+ * @function new
+ * @treturn sha1 ctx
+ */
 static int lua_sha1_new(lua_State *L)
 {
     struct sha1_ctx *ctx = lua_newuserdata(L, sizeof(struct sha1_ctx));
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, SHA1_MT);
 
     sha1_init(ctx);
 
@@ -270,6 +311,8 @@ static int lua_sha1_new(lua_State *L)
 
 int luaopen_eco_hash_sha1(lua_State *L)
 {
+    creat_metatable(L, SHA1_MT, NULL, sha1_methods);
+
     lua_newtable(L);
 
     lua_pushstring(L, SHA1_MT);
@@ -278,8 +321,7 @@ int luaopen_eco_hash_sha1(lua_State *L)
     lua_pushcfunction(L, lua_sha1_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, SHA1_MT, NULL, sha1_methods);
-    lua_pushcclosure(L, lua_sha1_new, 1);
+    lua_pushcfunction(L, lua_sha1_new);
     lua_setfield(L, -2, "new");
 
     return 1;

@@ -5,13 +5,40 @@
  * Modified from https://github.com/openwrt/uci/blob/master/lua/uci.c
  */
 
+/**
+ * UCI (Unified Configuration Interface) bindings.
+ *
+ * This module provides bindings to OpenWrt's `libuci`.
+ *
+ * The main entry point is @{cursor}, which creates a cursor object used to
+ * load, query and modify UCI configuration.
+ *
+ * @module eco.uci
+ */
+
+#include <string.h>
 #include <stdlib.h>
 #include <uci.h>
 
 #include "eco.h"
 
-#define UCI_MT "eco{uci}"
+#define UCI_MT "struct uci_context *"
 
+/**
+ * UCI cursor returned by @{uci.cursor}.
+ *
+ * The cursor is a userdata; it supports explicit @{cursor:close} and is
+ * also finalized on GC. In Lua 5.4 it additionally supports to-be-closed
+ * variables via the `__close` metamethod.
+ *
+ * @type cursor
+ */
+
+/**
+ * Close the cursor and free underlying libuci context.
+ *
+ * @function cursor:close
+ */
 static int lua_uci_close(lua_State *L)
 {
     struct uci_context **ctx = luaL_checkudata(L, 1, UCI_MT);
@@ -228,6 +255,15 @@ static struct uci_context *lua_uci_check_ctx(lua_State *L)
     return ctx;
 }
 
+/**
+ * Unload a previously loaded package.
+ *
+ * @function cursor:unload
+ * @tparam string package Package name.
+ * @treturn boolean ok `true` on success, `false` if not loaded.
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_unload(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);    
@@ -245,6 +281,17 @@ static int lua_uci_unload(lua_State *L)
     return 1;
 }
 
+/**
+ * Load a UCI package.
+ *
+ * This first unloads any previously loaded package with the same name.
+ *
+ * @function cursor:load
+ * @tparam string package Package name (e.g. `'network'`).
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_load(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -306,16 +353,71 @@ error:
     return uci_push_status(L, ctx, true);
 }
 
+/**
+ * Get a UCI value.
+ *
+ * Accepted call forms:
+ *
+ * - `c:get('p.s.o')`
+ * - `c:get('p', 's')` (returns section `type, name`)
+ * - `c:get('p', 's', 'o')`
+ *
+ * Return values:
+ *
+ * - option: string value, or a list table for list options
+ * - section: `type, name` (two strings)
+ * - package: a table of sections
+ *
+ * On error: returns `nil, err`.
+ *
+ * @function cursor:get
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name (or anonymous ref, e.g. `'@type[0]'`).
+ * @tparam[opt] string option Option name.
+ * @treturn any value
+ * @treturn[2] nil
+ * @treturn[2] string err
+ */
 static int lua_uci_get(lua_State *L)
 {
     return __lua_uci_get(L, false);
 }
 
+/**
+ * Get a UCI value, returning full section tables.
+ *
+ * Similar to @{cursor:get}, but when pointing to a section it returns a table
+ * containing:
+ *
+ * - `['.anonymous']` boolean
+ * - `['.type']` string
+ * - `['.name']` string
+ * - `['.index']` integer (when available)
+ * - plus all options under their option names
+ *
+ * @function cursor:get_all
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name (or anonymous ref, e.g. `'@type[0]'`).
+ * @tparam[opt] string option Option name.
+ * @treturn any value
+ * @treturn[2] nil
+ * @treturn[2] string err
+ */
 static int lua_uci_get_all(lua_State *L)
 {
     return __lua_uci_get(L, true);
 }
 
+/**
+ * Add a new section.
+ *
+ * @function cursor:add
+ * @tparam string package Package name.
+ * @tparam string type Section type.
+ * @treturn string sid Section identifier (name).
+ * @treturn[2] nil
+ * @treturn[2] string err
+ */
 static int lua_uci_add(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -341,6 +443,25 @@ fail:
     return uci_push_status(L, ctx, true);
 }
 
+/**
+ * Set a package/section/option.
+ *
+ * Accepted call forms:
+ *
+ * - `c:set('p.s.o=v')` or `c:set('p.s=v')`
+ * - `c:set('p', 's', 'o', 'v')`
+ * - `c:set('p', 's', 'v')` (sets section type?)
+ * - `c:set('p', 's', 'o', {'v1', 'v2'})` (list option)
+ *
+ * @function cursor:set
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name.
+ * @tparam[opt] string option Option name.
+ * @tparam[opt] any value Value (string) or list table.
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_set(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -357,10 +478,10 @@ static int lua_uci_set(lua_State *L)
 
     switch(nargs - 1) {
     case 1:
-        /* Format: uci.set("p.s.o=v") or uci.set("p.s=v") */
+        /* Format: uci.set('p.s.o=v') or uci.set('p.s=v') */
         break;
     case 4:
-        /* Format: uci.set("p", "s", "o", "v") */
+        /* Format: uci.set('p', 's', 'o', 'v') */
         if (lua_istable(L, nargs)) {
             if (lua_rawlen(L, nargs) < 1) {
                 free(s);
@@ -375,7 +496,7 @@ static int lua_uci_set(lua_State *L)
         }
         break;
     case 3:
-        /* Format: uci.set("p", "s", "v") */
+        /* Format: uci.set('p', 's', 'v') */
         ptr.value = ptr.option;
         ptr.option = NULL;
         break;
@@ -431,6 +552,20 @@ error:
     return uci_push_status(L, ctx, false);
 }
 
+/**
+ * Rename a section or option.
+ *
+ * Accepted call forms match @{cursor:set} (without list values).
+ *
+ * @function cursor:rename
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name.
+ * @tparam[opt] string option Option name.
+ * @tparam[opt] string value New name.
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_rename(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -527,11 +662,36 @@ err:
     return uci_push_status(L, ctx, false);
 }
 
+/**
+ * Save a package.
+ *
+ * @function cursor:save
+ * @tparam string package Package name.
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_save(lua_State *L)
 {
     return uci_lua_package_cmd(L, CMD_SAVE);
 }
 
+/**
+ * Delete a section or option.
+ *
+ * Accepted call forms:
+ *
+ * - `c:delete('p.s.o')` / `c:delete('p.s')`
+ * - `c:delete('p', 's')` / `c:delete('p', 's', 'o')`
+ *
+ * @function cursor:delete
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name.
+ * @tparam[opt] string option Option name.
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_delete(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -549,16 +709,49 @@ error:
     return uci_push_status(L, ctx, false);
 }
 
+/**
+ * Commit a package (write changes).
+ *
+ * @function cursor:commit
+ * @tparam string package Package name.
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_commit(lua_State *L)
 {
     return uci_lua_package_cmd(L, CMD_COMMIT);
 }
 
+/**
+ * Revert changes.
+ *
+ * This can revert a whole package or a specific section/option.
+ *
+ * @function cursor:revert
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name (or anonymous ref).
+ * @tparam[opt] string option Option name.
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_revert(lua_State *L)
 {
     return uci_lua_package_cmd(L, CMD_REVERT);
 }
 
+/**
+ * Reorder a section by index.
+ *
+ * @function cursor:reorder
+ * @tparam string package Package name or combined path.
+ * @tparam[opt] string section Section name.
+ * @tparam[opt] integer index New position (0-based).
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_reorder(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -607,6 +800,23 @@ error:
     return uci_push_status(L, ctx, false);
 }
 
+/**
+ * Iterate sections and call a callback.
+ *
+ * The callback is invoked as `cb(section_table)`.
+ * Return `false` from the callback to stop iteration early.
+ *
+ * @function cursor:foreach
+ * @tparam string package Package name.
+ * @tparam[opt] string type Filter by section type (or `nil` for all types).
+ * @tparam function cb Callback.
+ * @treturn boolean ok `true` if iteration ran, `false` otherwise.
+ * @usage
+ * local c = uci.cursor()
+ * c:foeach('network', function(s)
+ *     print(s['.type'], s['.name'])
+ * end)
+ */
 static int lua_uci_foreach(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -693,6 +903,20 @@ again:
     return 1;
 }
 
+/**
+ * Get an iterator over sections.
+ *
+ * @function cursor:each
+ * @tparam string package Package name.
+ * @tparam[opt] string type Filter by section type.
+ * @treturn function iter Iterator function yielding section tables.
+ * @treturn[2] nil If package does not exist.
+ * @usage
+ * local c = uci.cursor()
+ * for s in c:each('network') do
+ *     print(s['.type'], s['.name'])
+ * end
+ */
 static int lua_uci_each(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -725,6 +949,12 @@ static int lua_uci_each(lua_State *L)
     return 1;
 }
 
+/**
+ * Get current configuration directory.
+ *
+ * @function cursor:get_confdir
+ * @treturn string dir
+ */
 static int lua_uci_get_confdir(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -732,6 +962,15 @@ static int lua_uci_get_confdir(lua_State *L)
     return 1;
 }
 
+/**
+ * Set configuration directory.
+ *
+ * @function cursor:set_confdir
+ * @tparam string dir
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_set_confdir(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -741,6 +980,12 @@ static int lua_uci_set_confdir(lua_State *L)
     return uci_push_status(L, ctx, false);
 }
 
+/**
+ * Get current save directory.
+ *
+ * @function cursor:get_savedir
+ * @treturn string dir
+ */
 static int lua_uci_get_savedir(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -748,6 +993,15 @@ static int lua_uci_get_savedir(lua_State *L)
     return 1;
 }
 
+/**
+ * Set save directory.
+ *
+ * @function cursor:set_savedir
+ * @tparam string dir
+ * @treturn boolean ok
+ * @treturn[2] boolean false
+ * @treturn[2] string err
+ */
 static int lua_uci_set_savedir(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -757,6 +1011,14 @@ static int lua_uci_set_savedir(lua_State *L)
     return uci_push_status(L, ctx, false);
 }
 
+/**
+ * List available config files.
+ *
+ * @function cursor:list_configs
+ * @treturn table configs Array of config file names.
+ * @treturn[2] nil On failure.
+ * @treturn[2] string err Error message.
+ */
 static int lua_uci_list_configs(lua_State *L)
 {
     struct uci_context *ctx = lua_uci_check_ctx(L);
@@ -777,6 +1039,8 @@ static int lua_uci_list_configs(lua_State *L)
     free(configs);
     return 1;
 }
+
+/// @section end
 
 static const luaL_Reg uci_methods[] = {
     {"close", lua_uci_close},
@@ -808,6 +1072,24 @@ static const luaL_Reg uci_mt[] = {
     {NULL, NULL}
 };
 
+/**
+ * Create a UCI cursor.
+ *
+ * Call forms:
+ *
+ * - `uci.cursor()` (use default dirs)
+ * - `uci.cursor(confdir)`
+ * - `uci.cursor(confdir, savedir)`
+ *
+ * @function cursor
+ * @tparam[opt] string confdir Configuration directory.
+ * @tparam[opt] string savedir Save directory.
+ * @treturn cursor c
+ * @usage
+ * local uci = require 'eco.uci'
+ * local c = uci.cursor('/etc/config')
+ * local ip = c:get('network', 'lan', 'ipaddr')
+ */
 static int lua_uci_cursor(lua_State *L)
 {
     struct uci_context **ctx = lua_newuserdata(L, sizeof(struct uci_context *));
@@ -835,18 +1117,17 @@ static int lua_uci_cursor(lua_State *L)
         return luaL_error(L, "Invalid args");
     }
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, UCI_MT);
 
     return 1;
 }
-
 int luaopen_eco_uci(lua_State *L)
 {
+    creat_metatable(L, UCI_MT, uci_mt, uci_methods);
+
     lua_newtable(L);
 
-    eco_new_metatable(L, UCI_MT, uci_mt, uci_methods);
-    lua_pushcclosure(L, lua_uci_cursor, 1);
+    lua_pushcfunction(L, lua_uci_cursor);
     lua_setfield(L, -2, "cursor");
 
     return 1;

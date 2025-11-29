@@ -19,71 +19,149 @@
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=zhaojh329.lua-eco)
 
 [lua]: https://www.lua.org
-[libev]: http://software.schmorp.de/pkg/libev.html
 [ubus]: https://openwrt.org/docs/techref/ubus
 
-Lua-eco is a Lua interpreter with a built-in event loop for scheduling lightweight coroutines automatically, enabling efficient concurrency in Lua. Build high-performance, scalable applications.
+Lua-eco is a coroutine-first runtime environment for Lua 5.4.
 
-Lua-eco also provides some modules for you to build applications quickly:
+Its core is an **I/O-event-driven coroutine scheduler** (Linux `epoll` + timers): all I/O APIs are implemented with **non-blocking file descriptors** under the hood, while exposing a **synchronous** programming style in Lua.
 
-* `log`: Provides logging functionality for Lua-eco applications, allowing you to log messages at different severity levels and output them to various destinations.
-* `time`: Provides a Lua interface, allowing you to get current time, sleeping, performing timer operations.
-* `file`: Provides a Lua interface, allowing you to read and write files, traverse directory and perform other file-related operations.
-* `sys`: Provides access to various system-level functionality, such as process id, system information, and allows you to execute shell commands while obtaining their exit status as well as their standard output and standard error output.
-* `socket`: Provides a low-level network socket interface for Lua-eco applications, allowing you to create and manage network connections. Includes tcp, tcp6, udp, udp6 and unix.
-* `ssl`: Provides SSL/TLS support for Lua-eco applications, allowing you to establish secure connections to remote servers.
-* `http/https`: Provides a HTTP client and server implementation for Lua-eco applications.
-* `websocket`: Provides a WebSocket client and server implementation for Lua-eco applications, allowing you to build real-time web applications.
-* `mqtt`: Provides an implementation of the MQTT 3.1.1 protocol for Lua-eco applications.
-* `dns`: Provides a DNS client implementation for Lua-eco applications, allowing you to perform DNS lookups and resolve domain names.
-* `ubus`: Provides a Lua interface to the [ubus] system in OpenWrt, allowing you to interact with system services and daemons.
-* `sync`: Provides operations for synchronization between coroutines.
-* `channel`: Provides a mechanism for communication between coroutines by sending and receiving values.
-* `netlink`: Provides operations for inter-process communication (IPC) between both the kernel and userspace processes.
-* `nl80211`: Show/manipulate wireless devices and their configuration.
-* `termios`: Bind unix API for terminal/serial I/O.
-* `ssh`: Bind libssh2.
-* `packet`: For low-level packet construction and parsing.
+That means you can write code like "connect → read → write → sleep" in a single coroutine, and Lua-eco will automatically yield/resume that coroutine based on I/O readiness.
 
-Would you like to try it? Kinda interesting.
+## Why lua-eco
+
+- **Synchronous APIs, non-blocking under the hood**: write straightforward code (no callbacks/state machines); coroutines yield on `EAGAIN` and resume on readiness.
+- **High concurrency with lightweight coroutines**: run thousands of tasks in a single OS thread.
+- **Practical built-in modules**: sockets, TLS, HTTP/WebSocket, MQTT, DNS, logging, filesystem, sync primitives, netlink, OpenWrt integrations, and more — all I/O modules share the same coroutine scheduler.
+
+## Quick start
+
+Run multiple coroutines and let the scheduler drive them:
 
 ```lua
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
+local eco = require 'eco'
 
 eco.run(function(name)
-    while true do
-        print(time.now(), name, coroutine.running())
+    local co = coroutine.running()
+    while true do    
+        print(time.now(), name, co)
         time.sleep(1.0)
     end
 end, 'eco1')
 
 eco.run(function(name)
-    while true do
-        print(time.now(), name, coroutine.running())
+    local co = coroutine.running()
+    while true do    
+        print(time.now(), name, co)
         time.sleep(2.0)
     end
 end, 'eco2')
+
+eco.loop()
 ```
 
+Simple HTTPS request (still written synchronously):
+
+```lua
+#!/usr/bin/env lua5.4
+
+local http = require 'eco.http.client'
+local eco = require 'eco'
+
+eco.run(function()
+    local resp, err = http.get('https://example.com', { timeout = 10.0 })
+    assert(resp, err)
+    print('status:', resp.code)
+    print(resp.body)
+end)
+
+eco.loop()
+```
+
+## How it works (high level)
+
+- Lua-eco creates non-blocking FDs for sockets/files.
+- When a coroutine calls an I/O method and the FD is not ready, Lua-eco registers the FD in `epoll`, then yields.
+- The main loop waits for readiness/timers and resumes the coroutine automatically.
+
+This mechanism is the foundation used by all I/O-heavy modules (socket/TLS/HTTP/MQTT/DNS/ubus/netlink/...): they share the same scheduler.
+
+## Modules
+
+Core primitives:
+
+- `eco`: scheduler (`run`, `loop`, `sleep`, `io`, `reader`, `writer`, ...)
+- `time`: timers and time helpers
+- `log`: structured logging
+- `sys`: signals, process utilities, spawn/exec helpers
+- `file`: filesystem helpers + inotify wrappers
+- `bufio`: buffered reader utilities
+- `sync`: coroutine sync primitives (cond/mutex/...)
+- `channel`: coroutine communication channel
+
+Networking:
+
+- `socket`: TCP/UDP/UNIX/ICMP/raw packet sockets
+- `ssl`: TLS client/server built on top of TCP sockets (OpenSSL/WolfSSL/MbedTLS backend)
+- `http`: HTTP client/server (`eco.http.client`, `eco.http.server`, `eco.http.url`)
+- `websocket`: WebSocket client/server (HTTP upgrade)
+- `mqtt`: MQTT 3.1.1 client implementation
+- `dns`: UDP DNS resolver
+
+Linux / system integrations:
+
+- `packet`: low-level packet construction/parsing helpers
+- `nl`, `genl`, `rtnl`, `nl80211`: netlink helpers and Wi-Fi (nl80211)
+- `termios`: terminal/serial I/O bindings
+- `ip`, `net`: network utilities built on top of netlink/socket
+- `shared`: a tiny local shared dictionary over Unix domain sockets
+
+OpenWrt:
+
+- `ubus`: integration with OpenWrt [ubus]
+- `uci`: bindings for UCI config (optional)
+
+Hash / encoding:
+
+- `eco.hash`: `md5`, `sha1`, `sha256`, `hmac`
+- `eco.encoding`: `base64`, `hex`
+
 ## Requirements
-* [libev] - A full-featured and high-performance event loop
+
+- Linux (Lua-eco scheduler uses `epoll`)
+- Lua 5.4 development headers (`lua.h`)
+
+Optional dependencies (auto-detected; missing deps will skip the module):
+
+- TLS backend: OpenSSL, WolfSSL, or MbedTLS
+- `ubus`: libubus + libubox (+ json-c)
+- `uci`: libuci
+- `ssh`: libssh2
 
 ## Build
 
 ### Ubuntu
 
-    sudo apt install -y liblua5.4-dev libev-dev libssl-dev
+    sudo apt install -y liblua5.4-dev
     git clone --recursive https://github.com/zhaojh329/lua-eco.git
     cd lua-eco && mkdir build && cd build
     cmake .. && sudo make install
+
+If you want TLS support via OpenSSL on Ubuntu:
+
+    sudo apt install -y libssl-dev
+
+Disable optional modules if you don't need them:
+
+    cmake .. -DECO_SSL_SUPPORT=OFF -DECO_UBUS_SUPPORT=OFF -DECO_UCI_SUPPORT=OFF -DECO_SSH_SUPPORT=OFF
 
 ### OpenWrt
 
     Languages  --->
         Lua  --->
-            -*- lua-eco............... A Lua interpreter with a built-in libev event loop
+            -*- lua-eco............... A Lua interpreter with a built-in event loop
             -*- lua-eco-base64................................ base64 support for lua-eco
              -*- lua-eco-dns...................................... dns support for lua-eco
              -*- lua-eco-file.............................. file utils support for lua-eco
@@ -102,5 +180,10 @@ end, 'eco2')
             <*> lua-eco-netlink............................... netlink support for lua-eco
             <*> lua-eco-nl80211............................... nl80211 support for lua-eco
             <*> lua-eco-packet................................. packet support for lua-eco
+
+## Documentation
+
+- Browse the generated API docs at [doc/index.html](/doc/index.html).
+- See runnable scripts in [examples](/examples) and [tests](/tests).
 
 ## ❤️ [Donation](https://zhaojh329.github.io/zhaojh329/)

@@ -50,7 +50,7 @@ static int parse_sta_flag_update(lua_State *L)
     return 1;
 }
 
-int luaopen_eco_core_nl80211(lua_State *L)
+int luaopen_eco_internal_nl80211(lua_State *L)
 {
     lua_newtable(L);
 

@@ -1,6 +1,7 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local dns = require 'eco.dns'
+local eco = require 'eco'
 
 local function print_answer(prefix, answers)
     print(prefix)
@@ -16,18 +17,24 @@ local function print_answer(prefix, answers)
     end
 end
 
-local answers, err = dns.query('bing.com')
-if not answers then
-    print('query fail:', err)
-    return
-end
+eco.run(function()
+    local answers, err = dns.query('bing.com')
+    if not answers then
+        print('query fail:', err)
+        return
+    end
 
-print_answer('-----IPv4-----', answers)
+    print_answer('-----IPv4-----', answers)
 
-answers, err = dns.query('bing.com', { type = dns.TYPE_AAAA })
-if not answers then
-    print('query fail:', err)
-    return
-end
+    answers, err = dns.query('bing.com', { type = dns.TYPE_AAAA })
+    if not answers then
+        print('query fail:', err)
+        return
+    end
 
-print_answer('-----IPv6-----', answers)
+    print_answer('-----IPv6-----', answers)
+
+    eco.unloop()
+end)
+
+eco.loop()

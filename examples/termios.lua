@@ -1,46 +1,33 @@
 #!/usr/bin/env eco
 
 local termios = require 'eco.termios'
-local bufio = require 'eco.bufio'
 local file = require 'eco.file'
-local sys = require 'eco.sys'
+local eco = require 'eco'
 
-local done = false
+local f<close>, err = file.open('/dev/tty')
+assert(f, err)
 
-sys.signal(sys.SIGINT, function()
-    done = true
-    eco.unloop()
-end)
-
-local fd = file.open('/dev/tty')
-
-local attr, err = termios.tcgetattr(fd)
-if not attr then
-    print('tcgetattr:', err)
-    return
-end
+local attr, err = termios.tcgetattr(f.fd)
+assert(attr, err)
 
 local nattr = attr:clone()
 
 nattr:clr_flag('l', termios.ECHO)
 nattr:set_speed(termios.B115200)
 
-local ok, err = termios.tcsetattr(fd, termios.TCSANOW, nattr)
-if not ok then
-    print('tcsetattr:', err)
-    return
-end
+local ok, err = termios.tcsetattr(f.fd, termios.TCSANOW, nattr)
+assert(ok, err)
 
-local b = bufio.new(fd)
+eco.run(function()
+    local data, err = f:read(1024)
+    assert(data, err)
 
-local data, err = b:read(1024)
-if not data then
-    print('read file:', err)
-else
     print('read:', data)
-end
 
--- recover term attr
-termios.tcsetattr(fd, termios.TCSANOW, attr)
+    -- recover term attr
+    termios.tcsetattr(f.fd, termios.TCSANOW, attr)
 
-file.close(fd)
+    eco.unloop()
+end)
+
+eco.loop()
