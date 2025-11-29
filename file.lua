@@ -1,9 +1,10 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local file = require 'eco.core.file'
+local file = require 'eco.internal.file'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
+local eco = require 'eco'
 
 local M = {
     SKIP = 1
@@ -152,12 +153,7 @@ function inotify_methods:wait(timeout)
         return read_inotify_event(self, timeout)
     end
 
-    local ok, err = self.iow:wait(timeout)
-    if not ok then
-        return nil, err
-    end
-
-    local data, err = file.read(self.fd, 1024)
+    local data, err = self.rd:read(1024, timeout)
     if not data then
         return nil, err
     end
@@ -199,7 +195,6 @@ function inotify_methods:close()
         return
     end
 
-    self.iow:cancel()
     file.close(self.fd)
     self.fd = -1
 end
@@ -220,7 +215,7 @@ function M.inotify()
     return setmetatable({
         fd = fd,
         watchs = {},
-        iow = eco.watcher(eco.IO, fd),
+        rd = eco.reader(fd),
     }, inotify_mt)
 end
 

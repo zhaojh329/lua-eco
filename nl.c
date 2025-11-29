@@ -3,11 +3,12 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <string.h>
 #include <errno.h>
 
 #include "nl.h"
 
-#define NLMSG_USER_MT "eco{nlmsg-user}"
+#define NLMSG_USER_MT "struct eco_nlmsg *usr"
 
 static int eco_nlmsg_next(lua_State *L)
 {
@@ -132,8 +133,7 @@ static int lua_new_nlmsg_ker(lua_State *L)
     struct eco_nlmsg *msg;
 
     msg = lua_newuserdata(L, sizeof(struct eco_nlmsg) + len);
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, NLMSG_KER_MT);
 
     memcpy(msg->buf, data, len);
 
@@ -334,8 +334,7 @@ static int lua_new_nlmsg_user(lua_State *L)
     size = NLMSG_SPACE(size);
 
     msg = lua_newuserdata(L, sizeof(struct eco_nlmsg) + size);
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, NLMSG_USER_MT);
 
     memset(msg->buf, 0, NLMSG_ALIGN(sizeof(struct nlmsghdr)));
 
@@ -469,8 +468,11 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_core_nl(lua_State *L)
+int luaopen_eco_internal_nl(lua_State *L)
 {
+    creat_metatable(L, NLMSG_USER_MT, NULL, nlmsg_user_methods);
+    creat_metatable(L, NLMSG_KER_MT, NULL, nlmsg_ker_methods);
+
     luaL_newlib(L, funcs);
 
     lua_add_constant(L, "NLMSG_NOOP", NLMSG_NOOP);
@@ -522,12 +524,10 @@ int luaopen_eco_core_nl(lua_State *L)
     lua_add_constant(L, "NETLINK_KOBJECT_UEVENT", NETLINK_KOBJECT_UEVENT);
     lua_add_constant(L, "NETLINK_GENERIC", NETLINK_GENERIC);
 
-    eco_new_metatable(L, NLMSG_USER_MT, NULL, nlmsg_user_methods);
-    lua_pushcclosure(L, lua_new_nlmsg_user, 1);
+    lua_pushcfunction(L, lua_new_nlmsg_user);
     lua_setfield(L, -2, "nlmsg");
-
-    eco_new_metatable(L, NLMSG_KER_MT, NULL, nlmsg_ker_methods);
-    lua_pushcclosure(L, lua_new_nlmsg_ker, 1);
+    
+    lua_pushcfunction(L, lua_new_nlmsg_ker);
     lua_setfield(L, -2, "nlmsg_ker");
 
     return 1;

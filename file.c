@@ -3,10 +3,11 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
-#include <sys/sendfile.h>
 #include <sys/statvfs.h>
 #include <sys/inotify.h>
 #include <sys/file.h>
+#include <sys/stat.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -116,10 +117,7 @@ again:
         if (errno == EINTR)
             goto again;
         lua_pushnil(L);
-        if (errno == EPIPE)
-            lua_pushliteral(L, "closed");
-        else
-            lua_pushstring(L, strerror(errno));
+        lua_pushstring(L, strerror(errno));
         return 2;
     }
 
@@ -330,8 +328,7 @@ static int lua_file_dir(lua_State *L)
     const char *path = luaL_checkstring(L, 1);
     DIR **d = (DIR **)lua_newuserdata(L, sizeof(DIR *));
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, ECO_FILE_DIR_MT);
 
     *d = opendir(path);
 
@@ -477,14 +474,17 @@ static const luaL_Reg funcs[] = {
     {"dirname", lua_dirname},
     {"basename", lua_basename},
     {"flock", lua_flock},
+    {"dir", lua_file_dir},
     {"inotify_init", lua_inotify_init},
     {"inotify_add_watch", lua_inotify_add_watch},
     {"inotify_rm_watch", lua_inotify_rm_watch},
     {NULL, NULL}
 };
 
-int luaopen_eco_core_file(lua_State *L)
+int luaopen_eco_internal_file(lua_State *L)
 {
+    creat_metatable(L, ECO_FILE_DIR_MT, dir_mt, NULL);
+
     luaL_newlib(L, funcs);
 
     lua_add_constant(L, "O_RDONLY", O_RDONLY);
@@ -540,10 +540,6 @@ int luaopen_eco_core_file(lua_State *L)
     lua_add_constant(L, "IN_MOVE_SELF", IN_MOVE_SELF);
     lua_add_constant(L, "IN_ALL_EVENTS", IN_ALL_EVENTS);
     lua_add_constant(L, "IN_ISDIR", IN_ISDIR);
-
-    eco_new_metatable(L, ECO_FILE_DIR_MT, dir_mt, NULL);
-    lua_pushcclosure(L, lua_file_dir, 1);
-    lua_setfield(L, -2, "dir");
 
     return 1;
 }

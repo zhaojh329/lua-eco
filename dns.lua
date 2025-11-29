@@ -3,7 +3,7 @@
 
 -- Referenced from https://github.com/openresty/lua-resty-dns/blob/master/lib/resty/dns/resolver.lua
 
-local file = require 'eco.core.file'
+local file = require 'eco.internal.file'
 local socket = require 'eco.socket'
 
 local M = {

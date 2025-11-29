@@ -1,29 +1,51 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+local time = require 'eco.time'
+local eco = require 'eco'
+
 local M = {}
 
 local cond_methods = {}
 
 -- waiting to be awakened
 function cond_methods:wait(timeout)
-    local watchers = self.watchers
+    local waiters = self.waiters
 
-    local w = eco.watcher(eco.ASYNC)
+    local co = coroutine.running()
 
-    watchers[#watchers + 1] = w
+    waiters[co] = false
 
-    return w:wait(timeout)
+    if timeout and timeout > 0 then
+        time.sleep(timeout)
+        if not waiters[co] then
+            waiters[co] = nil
+            return nil, 'timeout'
+        end
+    else
+        coroutine.yield()
+    end
+
+    local data = waiters[co]
+
+    waiters[co] = nil
+
+    return data
 end
 
 -- wakes one coroutine waiting on the cond, if there is any.
 -- returns true if one coroutine was waked
-function cond_methods:signal()
-    local watchers = self.watchers
+function cond_methods:signal(data)
+    local waiters = self.waiters
 
-    if #watchers > 0 then
-        watchers[1]:send()
-        table.remove(watchers, 1)
+    for co in pairs(waiters) do
+        if data ~= nil and data then
+            waiters[co] = data
+        else
+            waiters[co] = true
+        end
+
+        eco.resume(co)
         return true
     end
 
@@ -33,34 +55,40 @@ end
 -- wakes all coroutines waiting on the cond
 -- returns the number of awakened coroutines
 function cond_methods:broadcast()
-    local cnt = #self.watchers
+    local waiters = self.waiters
+    local n = 0
 
-    for _, w in ipairs(self.watchers) do
-        w:send()
+    for co in pairs(waiters) do
+        waiters[co] = true
+        eco.resume(co)
+        n = n + 1
     end
 
-    self.watchers = {}
-
-    return cnt
+    return n
 end
 
-local cond_mt = { __index = cond_methods }
+local cond_mt = {
+    __index = cond_methods
+}
 
--- implements a condition variable, a rendezvous point for coroutines waiting for or announcing the occurrence of an event.
+-- implements a condition variable, a rendezvous point for coroutines
+-- waiting for or announcing the occurrence of an event.
 function M.cond()
-    return setmetatable({ watchers = {} }, cond_mt)
+    return setmetatable({ waiters = {} }, cond_mt)
 end
 
 local waitgroup_methods = {}
 
 function waitgroup_methods:add(delta)
-   self.counter = self.counter + delta
+   local counter = self.counter + delta
+    if counter < 0 then
+        error('negative waitgroup counter')
+    end
+    self.counter = counter
 end
 
 function waitgroup_methods:done()
-    local counter = self.counter
-
-    counter = counter - 1
+    local counter = self.counter - 1
 
     if counter < 0 then
         error('negative wait group counter')
@@ -98,23 +126,24 @@ end
 
 local mutex_methods = {}
 
-function mutex_methods:lock()
-    self.counter = self.counter + 1
-
-    if self.counter == 1 then
-        return
+function mutex_methods:lock(timeout)
+    while self.locked do
+        local ok, err = self.cond:wait(timeout)
+        if not ok then
+            return nil, err
+        end
     end
 
-    self.cond:wait()
+    self.locked = true
+    return true
 end
 
 function mutex_methods:unlock()
-    self.counter = self.counter - 1
-
-    if self.counter == 0 then
-        return
+    if not self.locked then
+        error('unlock of unlocked mutex')
     end
 
+    self.locked = false
     self.cond:signal()
 end
 
@@ -122,7 +151,7 @@ local mutex_mt = { __index = mutex_methods }
 
 function M.mutex()
     return setmetatable({
-        counter = 0,
+        locked = false,
         cond = M.cond()
     }, mutex_mt)
 end

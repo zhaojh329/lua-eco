@@ -3,9 +3,12 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <sys/signalfd.h>
 #include <sys/sysinfo.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 #include <stdbool.h>
+#include <string.h>
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -22,6 +25,39 @@ static int lua_uptime(lua_State *L)
     lua_pushinteger(L, info.uptime);
 
     return 1;
+}
+
+static int lua_waitpid(lua_State *L)
+{
+    pid_t pid = luaL_checkinteger(L, 1);
+    int status;
+    pid_t ret;
+
+    ret = waitpid(pid, &status, WNOHANG | WUNTRACED);
+    if (ret < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    lua_pushinteger(L, ret);
+
+    lua_newtable(L);
+
+     if (WIFEXITED(status)) {
+        lua_pushboolean(L, true);
+        lua_setfield(L, -2, "exited");
+        status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+        lua_pushboolean(L, true);
+        lua_setfield(L, -2, "signaled");
+        status = WTERMSIG(status);
+    }
+
+    lua_pushinteger(L, status);
+    lua_setfield(L, -2, "status");
+
+    return 2;
 }
 
 static int lua_getpid(lua_State *L)
@@ -215,27 +251,16 @@ static int lua_spawn(lua_State *L)
     }
 
     if (pid == 0) {
-        struct ev_loop *loop = EV_DEFAULT;
         int error;
 
         prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-        ev_break(loop, 0);
-
-        lua_getglobal(L, "eco");
-        lua_getfield(L, -1, "run");
-        lua_remove(L, -2);
-        lua_insert(L, 1);
 
         error = lua_pcall(L, lua_gettop(L) - 1, 0, 0);
         if (error) {
             fprintf(stderr, "%s\n", lua_tostring(L, -1));
             goto err;
         }
-
-        ev_run(loop, 0);
 err:
-        ev_default_destroy();
         exit(0);
     }
 
@@ -260,8 +285,43 @@ static int lua_strerror(lua_State *L)
     return 1;
 }
 
+static int lua_signalfd(lua_State *L)
+{
+    int n = lua_gettop(L);
+    sigset_t mask;
+    int fd;
+    int i;
+
+    if (n < 1)
+        return luaL_error(L, "invalid argument");
+
+    sigemptyset(&mask);
+
+    for (i = 1; i <= n; i++) {
+        int sig = luaL_checkinteger(L, i);
+        if (sigaddset(&mask, sig) < 0)
+            goto err;
+    }
+
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
+        goto err;
+
+    fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+    if (fd < 0)
+        goto err;
+
+    lua_pushinteger(L, fd);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return 2;
+}
+
 static const luaL_Reg funcs[] = {
     {"uptime", lua_uptime},
+    {"waitpid", lua_waitpid},
     {"getpid", lua_getpid},
     {"getppid", lua_getppid},
     {"getpwnam", lua_getpwnam},
@@ -270,10 +330,11 @@ static const luaL_Reg funcs[] = {
     {"spawn", lua_spawn},
     {"get_nprocs", lua_get_nprocs},
     {"strerror", lua_strerror},
+    {"signalfd", lua_signalfd},
     {NULL, NULL}
 };
 
-int luaopen_eco_core_sys(lua_State *L)
+int luaopen_eco_internal_sys(lua_State *L)
 {
     luaL_newlib(L, funcs);
 

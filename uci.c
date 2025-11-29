@@ -5,12 +5,13 @@
  * Modified from https://github.com/openwrt/uci/blob/master/lua/uci.c
  */
 
+#include <string.h>
 #include <stdlib.h>
 #include <uci.h>
 
 #include "eco.h"
 
-#define UCI_MT "eco{uci}"
+#define UCI_MT "struct uci_context *"
 
 static int lua_uci_close(lua_State *L)
 {
@@ -835,18 +836,18 @@ static int lua_uci_cursor(lua_State *L)
         return luaL_error(L, "Invalid args");
     }
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, UCI_MT);
 
     return 1;
 }
 
 int luaopen_eco_uci(lua_State *L)
 {
+    creat_metatable(L, UCI_MT, uci_mt, uci_methods);
+
     lua_newtable(L);
 
-    eco_new_metatable(L, UCI_MT, uci_mt, uci_methods);
-    lua_pushcclosure(L, lua_uci_cursor, 1);
+    lua_pushcfunction(L, lua_uci_cursor);
     lua_setfield(L, -2, "cursor");
 
     return 1;

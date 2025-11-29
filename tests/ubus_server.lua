@@ -1,8 +1,9 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local ubus = require 'eco.ubus'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
+local eco = require 'eco'
 
 sys.signal(sys.SIGINT, function()
     print('\nGot SIGINT, now quit')
@@ -24,6 +25,4 @@ con:listen('*', function(ev, msg)
     con:notify(obj, 'test', msg)
 end)
 
-while true do
-    time.sleep(1000)
-end
+eco.loop()

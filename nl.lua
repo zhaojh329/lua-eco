@@ -2,7 +2,7 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local socket = require 'eco.socket'
-local nl = require 'eco.core.nl'
+local nl = require 'eco.internal.nl'
 
 local M = {}
 

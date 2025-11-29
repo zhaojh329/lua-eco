@@ -1,11 +1,31 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local file = require 'eco.core.file'
-local sys = require 'eco.core.sys'
+local file = require 'eco.internal.file'
+local sys = require 'eco.internal.sys'
 local bufio = require 'eco.bufio'
+local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local M = {}
+
+local childs = {}
+
+local function sigchld_cb()
+    local pid, status = sys.waitpid(-1)
+    if not pid then
+        return
+    end
+
+    local c = childs[pid]
+    if not c then
+        return
+    end
+
+    childs[pid] = nil
+
+    c:signal({ pid = pid, status = status })
+end
 
 local exec_methods = {}
 
@@ -22,7 +42,16 @@ function exec_methods:close()
 end
 
 function exec_methods:wait(timeout)
-    return self.child_w:wait(timeout or 30.0)
+    local c = sync.cond()
+
+    childs[self.__pid] = c
+
+    local res, err = c:wait(timeout)
+    if not res then
+        return nil, err
+    end
+
+    return res.pid, res.status
 end
 
 function exec_methods:pid()
@@ -43,6 +72,8 @@ local exec_metatable = {
     __close = exec_methods.close
 }
 
+-- p, err = sys.exec(cmd, arg1, arg2)
+-- p, err = sys.exec({ cmd, arg1, arg2 }, { a = 1, b = 2 })
 function M.exec(...)
     local pid, stdout_fd, stderr_fd = sys.exec(...)
     if not pid then
@@ -53,7 +84,6 @@ function M.exec(...)
         __pid = pid,
         stdout_fd = stdout_fd,
         stderr_fd = stderr_fd,
-        child_w = eco.watcher(eco.CHILD, pid),
         stdout_b = bufio.new(stdout_fd),
         stderr_b = bufio.new(stderr_fd)
     }, exec_metatable)
@@ -90,16 +120,31 @@ function M.sh(cmd, timeout)
 end
 
 function M.signal(sig, cb, ...)
-    local w = eco.watcher(eco.SIGNAL, sig)
+    local sfd, err = sys.signalfd(sig)
+    if not sfd then
+        return nil, err
+    end
+
+    local rd = eco.reader(sfd)
 
     eco.run(function(...)
         while true do
-            if not w:wait() then return end
-            cb(...)
+            local si = rd:read(128)
+            if not si then
+                file.close(sfd)
+                return
+            end
+
+            local signo = string.unpack('I4', si)
+            if signo == sig then
+                cb(...)
+            end
         end
     end, ...)
 
-    return w
+    return rd
 end
+
+M.signal(sys.SIGCHLD, sigchld_cb)
 
 return setmetatable(M, { __index = sys })

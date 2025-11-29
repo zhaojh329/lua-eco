@@ -8,10 +8,11 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "eco.h"
 
-#define MD5_MT "eco{md5}"
+#define MD5_MT "struct md5_ctx *"
 
 struct md5_ctx {
     uint32_t lo, hi;
@@ -318,8 +319,7 @@ static int lua_md5_new(lua_State *L)
 {
     struct md5_ctx *ctx = lua_newuserdata(L, sizeof(struct md5_ctx));
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, MD5_MT);
 
     md5_init(ctx);
 
@@ -328,6 +328,8 @@ static int lua_md5_new(lua_State *L)
 
 int luaopen_eco_hash_md5(lua_State *L)
 {
+    creat_metatable(L, MD5_MT, NULL, md5_methods);
+
     lua_newtable(L);
 
     lua_pushstring(L, MD5_MT);
@@ -336,8 +338,7 @@ int luaopen_eco_hash_md5(lua_State *L)
     lua_pushcfunction(L, lua_md5_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, MD5_MT, NULL, md5_methods);
-    lua_pushcclosure(L, lua_md5_new, 1);
+    lua_pushcfunction(L, lua_md5_new);
     lua_setfield(L, -2, "new");
 
     return 1;

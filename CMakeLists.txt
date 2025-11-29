@@ -13,8 +13,6 @@ set(ECO_VERSION_MAJOR 3)
 set(ECO_VERSION_MINOR 14)
 set(ECO_VERSION_PATCH 0)
 
-find_package(Libev REQUIRED)
-
 pkg_search_module(LUA54 lua-5.4)
 
 if (NOT LUA54)
@@ -31,7 +29,7 @@ add_compile_options(-D_GNU_SOURCE -DLUA_USE_LINUX -Os -Wall -Werror --std=gnu99 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-include_directories(${LUA54_INCLUDE_DIRS} ${LIBEV_INCLUDE_DIR})
+include_directories(${LUA54_INCLUDE_DIRS})
 
 set(LUA_INSTALL_PREFIX lib/lua/5.4)
 
@@ -40,20 +38,12 @@ option(ECO_UBUS_SUPPORT "ubus" ON)
 option(ECO_UCI_SUPPORT "uci" ON)
 option(ECO_SSH_SUPPORT "ssh" ON)
 
-add_library(libeco SHARED libeco.c)
-set_target_properties(libeco PROPERTIES OUTPUT_NAME eco)
-set_target_properties(libeco PROPERTIES VERSION
-    ${ECO_VERSION_MAJOR}.${ECO_VERSION_MINOR}.${ECO_VERSION_PATCH} SOVERSION ${ECO_VERSION_MAJOR})
-
-add_executable(eco eco.c)
-target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA54_LIBRARIES})
+add_library(eco MODULE eco.c)
 target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+set_target_properties(eco PROPERTIES OUTPUT_NAME eco PREFIX "")
 
 add_library(time MODULE time.c)
 set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
-
-add_library(bufio MODULE bufio.c)
-set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
 
 add_library(sys MODULE sys.c)
 set_target_properties(sys PROPERTIES OUTPUT_NAME sys PREFIX "")
@@ -103,7 +93,7 @@ if (ECO_SSL_SUPPORT)
 
         install(
             TARGETS essl
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
         )
 
         install(
@@ -124,7 +114,7 @@ if (ECO_UBUS_SUPPORT)
 
         install(
             TARGETS lubus
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
         )
 
         install(
@@ -161,7 +151,7 @@ if (ECO_SSH_SUPPORT)
 
         install(
             TARGETS ssh
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
         )
 
         install(
@@ -174,23 +164,18 @@ if (ECO_SSH_SUPPORT)
 endif()
 
 install(
-    TARGETS libeco
-    DESTINATION lib
-)
-
-install(
     TARGETS eco
-    DESTINATION bin
+    DESTINATION ${LUA_INSTALL_PREFIX}
 )
 
 install(
-    TARGETS log termios rtnl bufio
+    TARGETS log termios rtnl
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
     TARGETS sys file time nl genl socket nl80211
-    DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
 )
 
 install(
@@ -214,7 +199,7 @@ install(
 )
 
 install(
-    FILES time.lua sys.lua file.lua dns.lua socket.lua packet.lua mqtt.lua
+    FILES bufio.lua time.lua sys.lua file.lua dns.lua socket.lua packet.lua mqtt.lua
         websocket.lua sync.lua channel.lua nl.lua genl.lua ip.lua nl80211.lua
         shared.lua net.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco

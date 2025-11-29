@@ -7,8 +7,8 @@
 
 #include "eco.h"
 
-#define ECO_SSH_SESSION_MT "eco{ssh.session}"
-#define ECO_SSH_CHANNEL_MT "eco{ssh.channel}"
+#define ECO_SSH_SESSION_MT "struct eco_ssh_session *"
+#define ECO_SSH_CHANNEL_MT "struct eco_ssh_channel *"
 
 struct eco_ssh_session {
     LIBSSH2_SESSION *session;
@@ -23,8 +23,7 @@ static int lua_ssh_session_new(lua_State *L)
 {
     struct eco_ssh_session *session = lua_newuserdata(L, sizeof(struct eco_ssh_session));
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, ECO_SSH_SESSION_MT);
 
     libssh2_init(0);
 
@@ -387,8 +386,7 @@ static int lua_ssh_session_open_channel(lua_State *L)
     }
 
     lchannel = lua_newuserdata(L, sizeof(struct eco_ssh_channel));
-    eco_new_metatable(L, ECO_SSH_CHANNEL_MT, NULL, channel_methods);
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, ECO_SSH_CHANNEL_MT);
 
     lchannel->session = session->session;
     lchannel->channel = channel;
@@ -420,8 +418,7 @@ static int lua_ssh_session_scp_recv(lua_State *L)
     }
 
     lchannel = lua_newuserdata(L, sizeof(struct eco_ssh_channel));
-    eco_new_metatable(L, ECO_SSH_CHANNEL_MT, NULL, channel_methods);
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, ECO_SSH_CHANNEL_MT);
 
     lchannel->session = session->session;
     lchannel->channel = channel;
@@ -456,8 +453,7 @@ static int lua_ssh_session_scp_send(lua_State *L)
     }
 
     lchannel = lua_newuserdata(L, sizeof(struct eco_ssh_channel));
-    eco_new_metatable(L, ECO_SSH_CHANNEL_MT, NULL, channel_methods);
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, ECO_SSH_CHANNEL_MT);
 
     lchannel->session = session->session;
     lchannel->channel = channel;
@@ -552,8 +548,11 @@ static const luaL_Reg session_methods[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_core_ssh(lua_State *L)
+int luaopen_eco_internal_ssh(lua_State *L)
 {
+    creat_metatable(L, ECO_SSH_SESSION_MT, NULL, session_methods);
+    creat_metatable(L, ECO_SSH_CHANNEL_MT, NULL, channel_methods);
+
     lua_newtable(L);
 
     lua_add_constant(L, "ERROR_NONE", LIBSSH2_ERROR_NONE);
@@ -637,8 +636,7 @@ int luaopen_eco_core_ssh(lua_State *L)
     lua_add_constant(L, "DISCONNECT_NO_MORE_AUTH_METHODS_AVAILABLE", SSH_DISCONNECT_NO_MORE_AUTH_METHODS_AVAILABLE);
     lua_add_constant(L, "DISCONNECT_ILLEGAL_USER_NAME", SSH_DISCONNECT_ILLEGAL_USER_NAME);
 
-    eco_new_metatable(L, ECO_SSH_SESSION_MT, NULL, session_methods);
-    lua_pushcclosure(L, lua_ssh_session_new, 1);
+    lua_pushcfunction(L, lua_ssh_session_new);
     lua_setfield(L, -2, "new");
 
     return 1;

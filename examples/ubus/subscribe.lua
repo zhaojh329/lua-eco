@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local ubus = require 'eco.ubus'
 local time = require 'eco.time'
+local eco = require 'eco'
 
 eco.run(function()
     local con, err = ubus.connect()
@@ -35,3 +36,5 @@ eco.run(function()
         time.sleep(1000)
     end
 end)
+
+eco.loop()

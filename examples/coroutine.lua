@@ -1,6 +1,7 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
+local eco = require 'eco'
 
 eco.run(function(name)
     while true do
@@ -15,3 +16,5 @@ eco.run(function(name)
         time.sleep(2.0)
     end
 end, 'eco2')
+
+eco.loop()

@@ -1,6 +1,7 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
+local eco = require 'eco'
 
 for i = 1, 10000 do
     eco.run(function(n)
@@ -10,3 +11,5 @@ for i = 1, 10000 do
         end
     end, i)
 end
+
+eco.loop()

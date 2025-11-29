@@ -2,10 +2,11 @@
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
 local socket = require 'eco.socket'
-local ssl = require 'eco.core.ssl'
+local ssl = require 'eco.internal.ssl'
 local bufio = require 'eco.bufio'
 local file = require 'eco.file'
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local M = {}
 
@@ -35,7 +36,7 @@ function cli_methods:send(data)
     local mutex = self.mutex
 
     mutex:lock()
-    local sent, err = self.ssock:send(data)
+    local sent, err = self.wr:write(data)
     mutex:unlock()
 
     if sent then
@@ -134,7 +135,6 @@ function cli_methods:discard(n, timeout)
 end
 
 function cli_methods:close()
-    self.b:close()
     self.ssock:free()
 
     if not self.keep_ctx and self.ctx then
@@ -157,18 +157,41 @@ function srv_methods:close()
     self.sock:close()
 end
 
+local function ssl_handshake(ssock, io)
+    local timeout = 15.0
+
+    while true do
+        local ret, err = ssock:handshake()
+        if not ret then
+            return nil, err
+        end
+
+        if ret == true then
+            return true
+        end
+
+        ret, err = io:wait(ret == ssl.SSL_WANT_READ and eco.READ or eco.WRITE, timeout)
+        if not ret then
+            return nil, err
+        end
+    end
+end
+
 local function create_ssl_client(sock, ssock, ctx, keep_ctx)
-    local b = bufio.new(
-        sock:getfd(), {
-        eof_error = 'closed',
-        fill = ssl.bufio_fill,
-        ctx = ssock:pointer()
-    })
+    local ssock_ptr = ssock:pointer()
+    local fd = sock:getfd()
+
+    local rd = eco.reader(fd, ssl.read, ssock_ptr)
+    local b = bufio.new(rd)
+
+    local wr = eco.writer(fd, ssl.write, ssock_ptr)
+
     return setmetatable({
         ctx = ctx,
         sock = sock,
         ssock = ssock,
         b = b,
+        wr = wr,
         keep_ctx = keep_ctx,
         mutex = sync.mutex()
     }, cli_metatable)
@@ -182,7 +205,7 @@ function srv_methods:accept()
 
     local ssock = self.ctx:new(sock:getfd(), self.insecure)
 
-    local ok, err = ssock:handshake()
+    local ok, err = ssl_handshake(ssock, sock.io)
     if not ok then
         ssock:free()
         sock:close()
@@ -251,7 +274,7 @@ function M.connect(ipaddr, port, options)
         ssock:set_server_name(options.server_name)
     end
 
-    local ok, err = ssock:handshake()
+    local ok, err = ssl_handshake(ssock, sock.io)
     if not ok then
         ssock:free()
         if not keep_ctx then

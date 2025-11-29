@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local cond = sync.cond()
 
@@ -25,3 +26,5 @@ time.at(3, function()
     local cnt = cond:broadcast()
     print('waked', cnt, 'coroutines')
 end)
+
+eco.loop()
