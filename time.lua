@@ -1,39 +1,63 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local time = require 'eco.core.time'
+local time = require 'eco.internal.time'
+local file = require 'eco.internal.file'
+local eco = require 'eco'
 
 local M = {}
 
 local timer_methods = {}
 
 function timer_methods:cancel()
-    self.w:cancel()
+    self.rd:cancel()
 end
 
 function timer_methods:set(delay)
-    local w = self.w
+    local ok, err = time.timerfd_settime(self.tfd, self.flags, delay)
+    if not ok then
+        return nil, err
+    end
 
-    w:cancel()
-
-    eco.run(function(...)
-        if w:wait(delay) then
-            self.cb(...)
+    eco.run(function()
+        if self.rd:read(8) then
+            self.cb()
         end
-    end, self, table.unpack(self.arguments))
+    end)
 end
 
-local metatable = { __index = timer_methods }
+function timer_methods:close()
+    file.close(self.tfd)
+end
+
+local metatable = {
+    __index = timer_methods,
+    __gc = timer_methods.close
+}
+
+local function creat_timer(clock_id, cb, ...)
+    local tfd, err = time.timerfd_create(clock_id)
+    if not tfd then
+        return nil, err
+    end
+
+    local tmr = setmetatable({
+        tfd = tfd,
+        rd = eco.reader(tfd),
+        flags = clock_id == time.CLOCK_REALTIME and time.TFD_TIMER_ABSTIME or 0
+    }, metatable)
+
+    local arguments = { ... }
+
+    tmr.cb = function() cb(tmr, table.unpack(arguments)) end
+
+    return tmr
+end
 
 -- The timer function is similar to `at`, but will not be started immediately.
 function M.timer(cb, ...)
     assert(type(cb) == 'function')
-
-    return setmetatable({
-        w = eco.watcher(eco.TIMER),
-        cb = cb,
-        arguments = { ... }
-    }, metatable)
+    return creat_timer(time.CLOCK_MONOTONIC, cb, ...)
 end
 
 --[[
@@ -48,23 +72,27 @@ end
 --]]
 function M.at(delay, cb, ...)
     assert(type(delay) == 'number')
+    assert(type(cb) == 'function')
 
-    local tmr = M.timer(cb, ...)
+    local tmr, err = M.timer(cb, ...)
+    if not tmr then
+        return nil, err
+    end
 
     tmr:set(delay)
 
     return tmr
 end
 
+-- timer with absolute time
 function M.on(ts, cb, ...)
     assert(type(ts) == 'number')
     assert(type(cb) == 'function')
 
-    local tmr = setmetatable({
-        w = eco.watcher(eco.TIMER, true),
-        cb = cb,
-        arguments = { ... }
-    }, metatable)
+    local tmr, err = creat_timer(time.CLOCK_REALTIME, cb, ...)
+    if not tmr then
+        return nil, err
+    end
 
     tmr:set(ts)
 

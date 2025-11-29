@@ -1,7 +1,8 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local mutex = sync.mutex()
 
@@ -20,3 +21,5 @@ eco.run(function()
         mutex:unlock()
     end
 end)
+
+eco.loop()

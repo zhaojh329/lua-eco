@@ -1,8 +1,28 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
-eco.panic_hook = function(...)
-    print('panic_hook:', ...)
+local eco = require 'eco'
+
+eco.set_panic_hook(function(...)
+    print('panic_hook:')
+
+    for _, v in ipairs({...}) do
+        print(v)
+    end
+end)
+
+local function test2()
+    -- call a nil value
+    x()
 end
 
--- call a nil value
-x()
+local function test1()
+    test2()
+end
+
+local function main()
+    eco.run(function ()
+        test1()
+    end)
+end
+
+main()

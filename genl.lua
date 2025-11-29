@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local genl = require 'eco.core.genl'
+local genl = require 'eco.internal.genl'
 local sys = require 'eco.sys'
 local nl = require 'eco.nl'
 

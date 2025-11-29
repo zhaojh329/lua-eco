@@ -3,695 +3,1277 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <sys/sendfile.h>
+#include <sys/epoll.h>
 #include <sys/time.h>
-#include <stdlib.h>
-#include <lualib.h>
+#include <stdbool.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <time.h>
 
 #include "config.h"
 #include "eco.h"
+#include "list.h"
 
-enum {
-    ECO_WATCHER_IO,
-    ECO_WATCHER_ASYNC,
-    ECO_WATCHER_TIMER,
-    ECO_WATCHER_CHILD,
-    ECO_WATCHER_SIGNAL
+static char eco_scheduler_key;
+static char eco_co_key;
+
+#define MAX_EVENTS 128
+
+#define MAX_TIMER_CACHE 32
+
+#define ECO_IO_MT "struct eco_io *"
+#define ECO_BUFFER_MT "struct eco_buf *"
+#define ECO_READER_MT "struct eco_reader *"
+#define ECO_WRITER_MT "struct eco_writer *"
+
+struct eco_scheduler {
+    struct list_head timer_cache;
+    struct list_head timers;
+    size_t timer_cache_size;
+    int panic_hook;
+    int epoll_fd;
+    bool quit;
 };
 
-enum {
-    ECO_FLAG_TIMER_PERIODIC = 1 << 0
-};
-
-struct eco_watcher {
-    struct ev_timer tmr;
-    union {
-        struct ev_io io;
-        struct ev_async async;
-        struct ev_child child;
-        struct ev_signal signal;
-        struct ev_periodic periodic;
-    } w;
+struct eco_timer {
+    struct list_head list;
+    uint64_t at;
     lua_State *co;
-    uint8_t flags;
-    int type;
 };
 
-#define ECO_WATCHER_IO_MT     "eco{watcher.io}"
-#define ECO_WATCHER_ASYNC_MT  "eco{watcher.async}"
-#define ECO_WATCHER_TIMER_MT  "eco{watcher.timer}"
-#define ECO_WATCHER_CHILD_MT  "eco{watcher.child}"
-#define ECO_WATCHER_SIGNAL_MT "eco{watcher.signal}"
+struct eco_buffer {
+    size_t size;
+    size_t len;
+    uint8_t buf[];
+};
 
-static int eco_count(lua_State *L)
+struct eco_io {
+    struct eco_timer timer;
+    unsigned is_timeout:1;
+    unsigned is_canceled:1;
+    double timeout;
+    lua_State *co;
+    int fd;
+};
+
+struct eco_reader {
+    struct eco_io io;
+    size_t expected;
+    void *buf;
+    int (*read)(void *buf, size_t len, void *ctx, char **err);
+    void *ctx;
+};
+
+struct eco_writer {
+    struct eco_io io;
+    union {
+        struct {
+            const char *data;
+            int ref;
+        } data;
+        struct {
+            off_t offset;
+            int fd;
+        } file;
+    };
+    size_t total;
+    size_t written;
+    int (*write)(const void *buf, size_t len, void *ctx, char **err);
+    void *ctx;
+};
+
+static int eco_scheduler_init(lua_State *L)
+{
+    struct eco_scheduler *sched = calloc(1, sizeof(struct eco_scheduler));
+    if (!sched)
+        return luaL_error(L, "failed to allocate scheduler");
+
+    sched->epoll_fd = epoll_create1(0);
+    if (sched->epoll_fd < 0) {
+        free(sched);
+        return luaL_error(L, "failed to create epoll: %s", strerror(errno));
+    }
+
+    sched->panic_hook = LUA_NOREF;
+    sched->quit = false;
+
+    INIT_LIST_HEAD(&sched->timer_cache);
+    INIT_LIST_HEAD(&sched->timers);
+
+    lua_pushlightuserdata(L, sched);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_scheduler_key);
+
+    lua_newtable(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_co_key);
+
+    return 0;
+}
+
+static struct eco_scheduler *get_eco_scheduler(lua_State *L)
+{
+    struct eco_scheduler *sched;
+
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_scheduler_key);
+
+    sched = (struct eco_scheduler *)lua_topointer(L, -1);
+
+    lua_pop(L, 1);
+
+    return sched;
+}
+
+static void eco_resume(lua_State *L, lua_State *co, int narg)
+{
+    struct eco_scheduler *sched;
+    int nres, status;
+
+    status = lua_resume(co, L, narg, &nres);
+    switch (status) {
+    case LUA_OK:
+        lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_co_key);
+        lua_pushthread(co);
+        lua_xmove(co, L, 1);
+        lua_pushnil(L);
+        lua_rawset(L, -3);  /* t[co] = nil */
+        lua_pop(L, 1);
+        break;
+
+    case LUA_YIELD:
+        break;
+
+    default:
+        sched = get_eco_scheduler(L);
+
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+        luaL_traceback(L, L, NULL, 0);
+
+        if (sched->panic_hook != LUA_NOREF) {
+            lua_rawgeti(L, LUA_REGISTRYINDEX, sched->panic_hook);
+            lua_insert(L, -3);
+            lua_call(L, 2, 0);
+        } else {
+            printf("%s\n", lua_tostring(L, -2));
+            printf("%s\n", lua_tostring(L, -1));
+        }
+
+        exit(1);
+    }
+}
+
+static void eco_resume_io(lua_State *L, struct eco_io *io)
+{
+    lua_State *co = io->co;
+
+    if (!co)
+        return;
+
+    io->co = NULL;
+
+    eco_resume(L, co, 0);
+}
+
+static uint64_t eco_time_now()
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static void eco_timer_start(struct eco_scheduler *sched, lua_State *L,
+            struct eco_timer *timer, double seconds)
+{
+    struct list_head *h = &sched->timers;
+    struct eco_timer *pos;
+
+    timer->at = eco_time_now() + (uint64_t)(seconds * 1000);
+
+    list_for_each_entry(pos, &sched->timers, list) {
+        if (pos->at > timer->at) {
+            h = &pos->list;
+            break;
+        }
+    }
+
+    list_add_tail(&timer->list, h);
+
+    timer->co = L;
+}
+
+static void eco_timer_stop(struct eco_timer *timer)
+{
+    if (!timer->at)
+        return;
+
+    timer->at = 0;
+    timer->co = NULL;
+
+    list_del(&timer->list);
+}
+
+static struct eco_timer *eco_timer_alloc(struct eco_scheduler *sched)
+{
+    struct eco_timer *timer;
+
+    if (list_empty(&sched->timer_cache)) {
+        timer = malloc(sizeof(struct eco_timer));
+        if (!timer)
+            return NULL;
+    } else {
+        timer = (struct eco_timer *)list_first_entry(&sched->timer_cache, struct eco_timer, list);
+        list_del(&timer->list);
+        sched->timer_cache_size--;
+    }
+
+    timer->at = 0;
+    timer->co = NULL;
+
+    return timer;
+}
+
+static void eco_timer_free(struct eco_scheduler *sched, struct eco_timer *timer)
+{
+    eco_timer_stop(timer);
+
+    if (sched->timer_cache_size < MAX_TIMER_CACHE) {
+        list_add_tail(&timer->list, &sched->timer_cache);
+        sched->timer_cache_size++;
+    } else {
+        free(timer);
+    }
+}
+
+static int set_fd_nonblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL);
+    if (flags < 0)
+        return -1;
+
+    if (flags & O_NONBLOCK)
+        return 0;
+
+    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+static int epoll_ctl_io(lua_State *L, struct eco_io *io, int events, int op)
+{
+    struct eco_scheduler *sched = get_eco_scheduler(L);
+    struct eco_timer *timer = &io->timer;
+    struct epoll_event ev;
+    int ret;
+
+    if (op == EPOLL_CTL_DEL)
+        eco_timer_stop(timer);
+
+    ev.events = events | EPOLLERR | EPOLLHUP;
+    ev.data.ptr = io;
+
+    ret = epoll_ctl(sched->epoll_fd, op, io->fd, &ev);
+    if (ret < 0)
+        return -1;
+
+    if (op == EPOLL_CTL_ADD) {
+        io->co = L;
+        if (io->timeout > 0)
+            eco_timer_start(sched, NULL, timer, io->timeout);
+    }
+
+    return 0;
+}
+
+static inline int epoll_ctl_io_read(lua_State *L, struct eco_io *io)
+{
+    return epoll_ctl_io(L, io, EPOLLIN, EPOLL_CTL_ADD);
+}
+
+static inline int epoll_ctl_io_write(lua_State *L, struct eco_io *io)
+{
+    return epoll_ctl_io(L, io, EPOLLOUT, EPOLL_CTL_ADD);
+}
+
+static inline int epoll_ctl_io_del(lua_State *L, struct eco_io *io)
+{
+    return epoll_ctl_io(L, io, 0, EPOLL_CTL_DEL);
+}
+
+static int lua_io_readk(lua_State *L, struct eco_io *io, void *dst, size_t len, lua_KFunction k)
+{
+    int ret;
+
+    if (io->is_timeout) {
+        io->is_timeout = 0;
+        lua_pushnil(L);
+        lua_pushliteral(L, "timeout");
+        return -1;
+    }
+
+    if (io->is_canceled) {
+        io->is_canceled = 0;
+        epoll_ctl_io_del(L, io);
+        lua_pushnil(L);
+        lua_pushliteral(L, "canceled");
+        return -1;
+    }
+
+    ret = read(io->fd, dst, len);
+    if (ret < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            io->co = L;
+            return lua_yieldk(L, 0, (lua_KContext)io, k);
+        }
+        goto err;
+    }
+
+    epoll_ctl_io_del(L, io);
+
+    return ret;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    epoll_ctl_io_del(L, io);
+    return -1;
+}
+
+static int lua_io_read(lua_State *L, struct eco_io *io, void *dst, size_t len, lua_KFunction k)
+{
+    int ret = read(io->fd, dst, len);
+    if (ret < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            if (epoll_ctl_io_read(L, io) < 0)
+                goto err;
+            return lua_yieldk(L, 0, (lua_KContext)io, k);
+        }
+        goto err;
+    }
+
+    return ret;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return -1;
+}
+
+static int lua_io_waitk(lua_State *L, int status, lua_KContext ctx)
+{
+    struct eco_io *io = (struct eco_io *)ctx;
+
+    if (io->is_timeout) {
+        io->is_timeout = 0;
+        lua_pushnil(L);
+        lua_pushliteral(L, "timeout");
+        return 2;
+    }
+
+    if (io->is_canceled) {
+        io->is_canceled = 0;
+        epoll_ctl_io_del(L, io);
+        lua_pushnil(L);
+        lua_pushliteral(L, "canceled");
+        return 2;
+    }
+
+    epoll_ctl_io_del(L, io);
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+static int lua_io_wait(lua_State *L)
+{
+    struct eco_io *io = luaL_checkudata(L, 1, ECO_IO_MT);
+    int ev = luaL_checkinteger(L, 2);
+    double timeout = lua_tonumber(L, 3);
+
+    if (ev == 0 || (ev & ~(EPOLLIN | EPOLLOUT)))
+        return luaL_argerror(L, 2, "invalid");
+
+    if (io->co)
+        luaL_error(L, "another coroutine is already waiting for I/O on this file descriptor");
+
+    io->timeout = timeout;
+
+    if (epoll_ctl_io(L, io, ev, EPOLL_CTL_ADD)) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    return lua_yieldk(L, 0, (lua_KContext)io, lua_io_waitk);
+}
+
+static int lua_io_cancel(lua_State *L)
+{
+    struct eco_io *io = luaL_checkudata(L, 1, ECO_IO_MT);
+
+    io->is_canceled = 1;
+    eco_resume_io(L, io);
+
+    return 0;
+}
+
+static const struct luaL_Reg io_methods[] = {
+    {"wait", lua_io_wait},
+    {"cancel", lua_io_cancel},
+    {NULL, NULL}
+};
+
+static int lua_buffer_data(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    int top = lua_gettop(L);
+    int count = b->len;
+    int start = 0;
+
+    switch (top) {
+    case 3:
+        count = luaL_checkinteger(L, 3);
+        if (count > b->len)
+            count = b->len;
+    case 2:
+        start = luaL_checkinteger(L, 2);
+        break;
+    case 1:
+        break;
+    default:
+        return luaL_error(L, "invalid argument");
+    }
+
+    lua_pushlstring(L, (const char *)(b->buf + start), count);
+    return 1;
+}
+
+static void eco_buffer_consume(struct eco_buffer *b, size_t len)
+{
+    memmove(b->buf, b->buf + len, b->len - len);
+    b->len -= len;
+}
+
+static int lua_buffer_pull(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    int len = luaL_optinteger(L, 2, b->len);
+
+    if (len < 0 || len > b->len)
+        len = b->len;
+
+    lua_pushlstring(L, (const char *)b->buf, len);
+    eco_buffer_consume(b, len);
+
+    return 1;
+}
+
+static int lua_buffer_discard(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    int len = luaL_optinteger(L, 2, b->len);
+
+    if (len < 0 || len > b->len)
+        len = b->len;
+
+    eco_buffer_consume(b, len);
+
+    lua_pushinteger(L, len);
+    return 1;
+}
+
+static int lua_buffer_size(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    lua_pushinteger(L, b->size);
+    return 1;
+}
+
+static int lua_buffer_length(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    lua_pushinteger(L, b->len);
+    return 1;
+}
+
+static int lua_buffer_clear(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    b->len = 0;
+    return 1;
+}
+
+static int lua_buffer_index(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    int pos = luaL_checkinteger(L, 2);
+    const char *c = luaL_checkstring(L, 3);
+    int i;
+
+    if (pos < 0)
+        pos = 0;
+
+    if (pos > b->len)
+        goto done;
+
+    for (i = pos; i < b->len; i++) {
+        if (b->buf[i] == *c) {
+            lua_pushinteger(L, i);
+            return 1;
+        }
+    }
+
+done:
+    lua_pushnil(L);
+    return 1;
+}
+
+static int lua_buffer_find(lua_State *L)
+{
+    struct eco_buffer *b = luaL_checkudata(L, 1, ECO_BUFFER_MT);
+    int start = luaL_checkinteger(L, 2);
+    size_t needlelen;
+    const char *needle = luaL_checklstring(L, 3, &needlelen);
+    uint8_t *pos;
+
+    if (start < 0)
+        start = 0;
+
+    if (start > b->len)
+        goto done;
+
+    pos = memmem(b->buf + start, b->len - start, needle, needlelen);
+    if (pos) {
+        lua_pushinteger(L, pos - b->buf);
+        return 1;
+    }
+
+done:
+    lua_pushnil(L);
+    return 1;
+}
+
+static const struct luaL_Reg buffer_methods[] = {
+    {"data", lua_buffer_data},
+    {"pull", lua_buffer_pull},
+    {"discard", lua_buffer_discard},
+    {"size", lua_buffer_size},
+    {"len", lua_buffer_length},
+    {"clear", lua_buffer_clear},
+    {"index", lua_buffer_index},
+    {"find", lua_buffer_find},
+    {NULL, NULL}
+};
+
+static int lua_eco_read2bk(lua_State *L, int status, lua_KContext ctx)
+{
+    struct eco_reader *rd = (struct eco_reader *)ctx;
+    struct eco_buffer *b = rd->buf;
+    int ret;
+
+    if (rd->read) {
+        struct eco_io *io = &rd->io;
+        char *err = "";
+
+        if (io->is_timeout) {
+            io->is_timeout = 0;
+            lua_pushnil(L);
+            lua_pushliteral(L, "timeout");
+            return 2;
+        }
+
+        ret = rd->read(b->buf + b->len, rd->expected, rd->ctx, &err);
+        if (ret < 0) {
+            if (ret == -EAGAIN) {
+                io->co = L;
+                return lua_yieldk(L, 0, (lua_KContext)io, lua_eco_read2bk);
+            }
+
+            lua_pushnil(L);
+            lua_pushstring(L, err);
+            epoll_ctl_io_del(L, io);
+            return 2;
+        }
+        epoll_ctl_io_del(L, io);
+    } else {
+        ret = lua_io_readk(L, &rd->io, b->buf + b->len, rd->expected, lua_eco_read2bk);
+        if (ret < 0)
+            return 2;
+    }
+
+    if (ret == 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "eof");
+        return 2;
+    }
+
+    b->len += ret;
+    lua_pushinteger(L, ret);
+    return 1;
+}
+
+static int lua_eco_read2b(lua_State *L)
+{
+    struct eco_reader *rd = luaL_checkudata(L, 1, ECO_READER_MT);
+    struct eco_buffer *b = luaL_checkudata(L, 2, ECO_BUFFER_MT);
+    int expected = luaL_checkinteger(L, 3);
+    double timeout = lua_tonumber(L, 4);
+    size_t room = b->size - b->len;
+    int ret;
+
+    luaL_argcheck(L, expected != 0, 3, "expected size cannot be 0");
+
+    if (rd->io.co)
+        luaL_error(L, "another coroutine is already waiting for I/O on this file descriptor");
+
+    if (room == 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "buffer is full");
+        return 2;
+    }
+
+    if (expected < 0 || expected > room)
+        expected = room;
+
+    rd->io.timeout = timeout;
+    rd->expected = expected;
+    rd->buf = b;
+
+    if (rd->read) {
+        char *err = "";
+        ret = rd->read(b->buf + b->len, expected, rd->ctx, &err);
+        if (ret < 0) {
+            if (ret == -EAGAIN) {
+                if (epoll_ctl_io_read(L, &rd->io) < 0) {
+                    lua_pushnil(L);
+                    lua_pushstring(L, strerror(errno));
+                    return 2;
+                }
+                return lua_yieldk(L, 0, (lua_KContext)rd, lua_eco_read2bk);
+            }
+            lua_pushnil(L);
+            lua_pushstring(L, err);
+            return 2;
+        }
+    } else {
+        ret = lua_io_read(L, &rd->io, b->buf + b->len, expected, lua_eco_read2bk);
+        if (ret < 0)
+            return 2;
+    }
+
+    if (ret == 0) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "eof");
+        return 2;
+    }
+
+    b->len += ret;
+    lua_pushinteger(L, ret);
+    return 1;
+}
+
+static int lua_eco_readk(lua_State *L, int status, lua_KContext ctx)
+{
+    struct eco_reader *rd = (struct eco_reader *)ctx;
+    char *buf = rd->buf;
+    int ret;
+
+    ret = lua_io_readk(L, &rd->io, buf, rd->expected, lua_eco_readk);
+    if (ret < 0) {
+        free(buf);
+        return 2;
+    }
+
+    if (ret == 0) {
+        free(buf);
+        lua_pushnil(L);
+        lua_pushliteral(L, "eof");
+        return 2;
+    }
+
+    lua_pushlstring(L, buf, ret);
+    free(buf);
+
+    return 1;
+}
+
+static int lua_eco_read(lua_State *L)
+{
+    struct eco_reader *rd = luaL_checkudata(L, 1, ECO_READER_MT);
+    int expected = luaL_checkinteger(L, 2);
+    double timeout = lua_tonumber(L, 3);
+    char *buf;
+    int ret;
+
+    luaL_argcheck(L, expected > 0, 3, "expected size must be great than 0");
+
+    if (rd->io.co)
+        luaL_error(L, "another coroutine is already waiting for I/O on this file descriptor");
+
+    buf = malloc(expected);
+    if (!buf)
+        return luaL_error(L, "no mem");
+
+    rd->io.timeout = timeout;
+    rd->expected = expected;
+    rd->buf = buf;
+
+    ret = lua_io_read(L, &rd->io, buf, expected, lua_eco_readk);
+    if (ret < 0) {
+        free(buf);
+        return 2;
+    }
+
+    if (ret == 0) {
+        free(buf);
+        lua_pushnil(L);
+        lua_pushliteral(L, "eof");
+        return 2;
+    }
+
+    lua_pushlstring(L, buf, ret);
+    free(buf);
+
+    return 1;
+}
+
+static int lua_eco_cancel(lua_State *L)
+{
+    struct eco_reader *rd = luaL_checkudata(L, 1, ECO_READER_MT);
+
+    rd->io.is_canceled = 1;
+    eco_resume_io(L, &rd->io);
+
+    return 0;
+}
+
+static const struct luaL_Reg reader_methods[] = {
+    {"read2b", lua_eco_read2b},
+    {"read", lua_eco_read},
+    {"cancel", lua_eco_cancel},
+    {NULL, NULL}
+};
+
+static int lua_eco_writek(lua_State *L, int status, lua_KContext ctx)
+{
+    struct eco_writer *wr = (struct eco_writer *)ctx;
+    int ret;
+
+    if (wr->io.is_timeout) {
+        wr->io.is_timeout = 0;
+        luaL_unref(L, LUA_REGISTRYINDEX, wr->data.ref);
+        lua_pushnil(L);
+        lua_pushliteral(L, "timeout");
+        return 2;
+    }
+
+    if (wr->write) {
+        char *err = "";
+        ret = wr->write(wr->data.data + wr->written, wr->total - wr->written, wr->ctx, &err);
+        if (ret < 0) {
+            if (ret == -EAGAIN) {
+                ret = 0;
+            } else {
+                lua_pushnil(L);
+                lua_pushstring(L, err);
+                epoll_ctl_io_del(L, &wr->io);
+                luaL_unref(L, LUA_REGISTRYINDEX, wr->data.ref);
+                return 2;
+            }
+        }
+    } else {
+        ret = write(wr->io.fd, wr->data.data + wr->written, wr->total - wr->written);
+        if (ret < 0)
+            goto err;
+    }
+
+    wr->written += ret;
+
+    if (wr->written < wr->total) {
+        wr->io.co = L;
+        return lua_yieldk(L, 0, (lua_KContext)wr, lua_eco_writek);
+    }
+
+    epoll_ctl_io_del(L, &wr->io);
+
+    luaL_unref(L, LUA_REGISTRYINDEX, wr->data.ref);
+    lua_pushinteger(L, wr->total);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+
+    epoll_ctl_io_del(L, &wr->io);
+    luaL_unref(L, LUA_REGISTRYINDEX, wr->data.ref);
+
+    return 2;
+}
+
+static int lua_eco_write(lua_State *L)
+{
+    struct eco_writer *wr = luaL_checkudata(L, 1, ECO_WRITER_MT);
+    size_t size;
+    const char *data = luaL_checklstring(L, 2, &size);
+    double timeout = lua_tonumber(L, 3);
+    int ret;
+
+    if (wr->io.co)
+        luaL_error(L, "another coroutine is already waiting for I/O on this file descriptor");
+
+    if (wr->write) {
+        char *err = "";
+        ret = wr->write(data, size, wr->ctx, &err);
+        if (ret < 0) {
+            if (ret == -EAGAIN)
+                goto again;
+            lua_pushnil(L);
+            lua_pushstring(L, err);
+            return 2;
+        }
+    } else {
+        ret = write(wr->io.fd, data, size);
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                goto again;
+            goto err;
+        }
+    }
+
+    if (ret < size)
+        goto again;
+
+    lua_pushinteger(L, size);
+    return 1;
+
+again:
+    wr->io.timeout = timeout;
+
+    if (epoll_ctl_io_write(L, &wr->io) < 0)
+        goto err;
+
+    lua_pushvalue(L, 2);
+    wr->data.ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    wr->data.data = data;
+
+    wr->total = size;
+    wr->written = (ret > 0) ? ret : 0;
+
+    return lua_yieldk(L, 0, (lua_KContext)wr, lua_eco_writek);
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return 2;
+}
+
+static int lua_eco_sendfilek(lua_State *L, int status, lua_KContext ctx)
+{
+    struct eco_writer *wr = (struct eco_writer *)ctx;
+    int ret;
+
+    if (wr->io.is_timeout) {
+        wr->io.is_timeout = 0;
+        close(wr->file.fd);
+        lua_pushnil(L);
+        lua_pushliteral(L, "timeout");
+        return 2;
+    }
+
+    ret = sendfile(wr->io.fd, wr->file.fd, &wr->file.offset, wr->total - wr->written);
+    if (ret < 0)
+        goto err;
+
+    wr->written += ret;
+
+    if (wr->written < wr->total)
+        return lua_yieldk(L, 0, (lua_KContext)wr, lua_eco_writek);
+
+    epoll_ctl_io_del(L, &wr->io);
+
+    close(wr->file.fd);
+    lua_pushinteger(L, wr->total);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+
+    epoll_ctl_io_del(L, &wr->io);
+    close(wr->file.fd);
+
+    return 2;
+}
+
+static int lua_eco_sendfile(lua_State *L)
+{
+    struct eco_writer *wr = luaL_checkudata(L, 1, ECO_WRITER_MT);
+    const char *path = luaL_checkstring(L, 2);
+    off_t offset = luaL_checkinteger(L, 3);
+    int len = luaL_checkinteger(L, 4);
+    double timeout = lua_tonumber(L, 5);
+    int ret, fd;
+
+    if (wr->io.co)
+        luaL_error(L, "another coroutine is already waiting for I/O on this file descriptor");
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, strerror(errno));
+        return 2;
+    }
+
+    ret = sendfile(wr->io.fd, fd, &offset, len);
+    if (ret < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            goto again;
+        goto err;
+    }
+
+    if (ret < len)
+        goto again;
+
+    close(fd);
+    lua_pushinteger(L, len);
+    return 1;
+
+again:
+    wr->io.timeout = timeout;
+
+    if (epoll_ctl_io_write(L, &wr->io) < 0)
+        goto err;
+
+    wr->file.fd = fd;
+    wr->file.offset = offset;
+
+    wr->total = len;
+    wr->written = (ret > 0) ? ret : 0;
+
+    return lua_yieldk(L, 0, (lua_KContext)wr, lua_eco_sendfilek);
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    close(fd);
+    return 2;
+}
+
+static const struct luaL_Reg writer_methods[] = {
+    {"write", lua_eco_write},
+    {"sendfile", lua_eco_sendfile},
+    {NULL, NULL}
+};
+
+static void eco_io_init(struct eco_io *io, int fd)
+{
+    memset(io, 0, sizeof(struct eco_io));
+
+    io->fd = fd;
+}
+
+static int lua_eco_io(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    struct eco_io *io;
+
+    if (set_fd_nonblock(fd) < 0)
+        goto err;
+
+    io = lua_newuserdata(L, sizeof(struct eco_io));
+    eco_io_init(io, fd);
+    luaL_setmetatable(L, ECO_IO_MT);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return 2;
+}
+
+static int lua_eco_buffer(lua_State *L)
+{
+    int size = luaL_optinteger(L, 1, 4096);
+    struct eco_buffer *b;
+
+    luaL_argcheck(L, size > 0, 1, "size must be positive");
+
+    b = lua_newuserdata(L, sizeof(struct eco_buffer) + size);
+    b->size = size;
+    b->len = 0;
+    luaL_setmetatable(L, ECO_BUFFER_MT);
+
+    return 1;
+}
+
+static int lua_eco_reader(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    int narg = lua_gettop(L);
+    struct eco_reader *rd;
+
+    if (narg > 1) {
+        luaL_checktype(L, 2, LUA_TLIGHTUSERDATA);
+
+        if (narg > 2)
+            luaL_checktype(L, 3, LUA_TLIGHTUSERDATA);
+    }
+
+    if (set_fd_nonblock(fd) < 0)
+        goto err;
+
+    rd = lua_newuserdata(L, sizeof(struct eco_reader));
+    eco_io_init(&rd->io, fd);
+
+    rd->read = NULL;
+    rd->ctx = NULL;
+
+    if (narg > 1) {
+        rd->read = lua_topointer(L, 2);
+
+        if (narg > 2)
+            rd->ctx = (void *)lua_topointer(L, 3);
+    }
+
+    luaL_setmetatable(L, ECO_READER_MT);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return 2;
+}
+
+static int lua_eco_writer(lua_State *L)
+{
+    int fd = luaL_checkinteger(L, 1);
+    int narg = lua_gettop(L);
+    struct eco_writer *wr;
+
+    if (narg > 1) {
+        luaL_checktype(L, 2, LUA_TLIGHTUSERDATA);
+
+        if (narg > 2)
+            luaL_checktype(L, 3, LUA_TLIGHTUSERDATA);
+    }
+
+    if (set_fd_nonblock(fd) < 0)
+        goto err;
+
+    wr = lua_newuserdata(L, sizeof(struct eco_writer));
+    eco_io_init(&wr->io, fd);
+
+    wr->write = NULL;
+    wr->ctx = NULL;
+
+    if (narg > 1) {
+        wr->write = lua_topointer(L, 2);
+
+        if (narg > 2)
+            wr->ctx = (void *)lua_topointer(L, 3);
+    }
+
+    luaL_setmetatable(L, ECO_WRITER_MT);
+    return 1;
+
+err:
+    lua_pushnil(L);
+    lua_pushstring(L, strerror(errno));
+    return 2;
+}
+
+static int lua_eco_sleepk(lua_State *L, int status, lua_KContext ctx)
+{
+    struct eco_scheduler *sched = get_eco_scheduler(L);
+    struct eco_timer *timer = (struct eco_timer *)ctx;
+
+    eco_timer_free(sched, timer);
+
+    return 0;
+}
+
+static int lua_eco_sleep(lua_State *L)
+{
+    double delay = luaL_checknumber(L, 1);
+    struct eco_scheduler *sched = get_eco_scheduler(L);
+    struct eco_timer *timer = eco_timer_alloc(sched);
+
+    if (!timer)
+        return luaL_error(L, "failed to allocate timer");
+
+    eco_timer_start(sched, L, timer, delay);
+
+    return lua_yieldk(L, 0, (lua_KContext)timer, lua_eco_sleepk);
+}
+
+static int lua_eco_run(lua_State *L)
+{
+    int top = lua_gettop(L);
+    lua_State *co;
+
+    luaL_checktype(L, 1, LUA_TFUNCTION); /* func, a1, a2,... */
+
+    co = lua_newthread(L);  /* func, a1, a2,..., co */
+
+    lua_rotate(L, 1, 1);    /* co, func, a1, a2,... */
+    lua_xmove(L, co, top);  /* co */
+
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_co_key);
+    lua_pushthread(co);
+    lua_xmove(co, L, 1);
+    lua_pushboolean(L, true);
+    lua_rawset(L, -3); /* t[co] = true */
+    lua_pop(L, 1);
+
+    eco_resume(L, co, top - 1);
+
+    return 1;
+}
+
+static int lua_eco_resume(lua_State *L)
+{
+    lua_State *co = lua_tothread(L, 1);
+    eco_resume(L, co, 0);
+    return 0;
+}
+
+static int lua_eco_count(lua_State *L)
 {
     int count = 0;
 
-    lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_co_key);
 
     lua_pushnil(L);
+
     while (lua_next(L, -2) != 0) {
         count++;
         lua_pop(L, 1);
     }
+
     lua_pushinteger(L, count);
     return 1;
 }
 
-static int eco_all(lua_State *L)
+static int lua_eco_set_panic_hook(lua_State *L)
 {
-    int i = 1;
+    struct eco_scheduler *sched = get_eco_scheduler(L);
 
-    lua_newtable(L);
-
-    lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
-
-    lua_pushnil(L);
-
-    while (lua_next(L, -2) != 0) {
-        lua_State *co = (lua_State *)lua_topointer(L, -2);
-        lua_pushthread(co);
-        lua_xmove(co, L, 1);
-        lua_rawseti(L, -5, i++);
-        lua_pop(L, 1);
-    }
-
-    lua_pop(L, 1);
-
-    return 1;
-}
-
-static int eco_run(lua_State *L)
-{
-    int narg = lua_gettop(L);
-    lua_State *co;
+    if (lua_gettop(L) != 1)
+        return luaL_error(L, "invalid argument");
 
     luaL_checktype(L, 1, LUA_TFUNCTION);
 
-    co = lua_newthread(L); /* 1: func, 2: arg1, 3: arg2,...top: co */
-
-    lua_insert(L, 1); /* 1:co, 2: func, 3: arg1, 4: arg2,... */
-    lua_xmove(L, co, narg);
-
-    /* L   1: co */
-    /* co  1: func, 2: arg1, 3: arg2,... */
-
-    lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
-    lua_pushthread(co);
-    lua_xmove(co, L, 1);
-    lua_pushlightuserdata(L, NULL);
-    lua_rawset(L, -3); /* objs[co] = tmr_ptr(NULL) */
-    lua_pop(L, 1);
-
-    lua_getglobal(L, "debug");
-    lua_getfield(L, -1, "gethook");
-    lua_remove(L, -2);
-
-    lua_call(L, 0, 3);
-
-    lua_getglobal(L, "debug");
-    lua_getfield(L, -1, "sethook");
-    lua_remove(L, -2);
-
-    lua_pushthread(co);
-    lua_xmove(co, L, 1);
-
-    lua_rotate(L, -5, 2);
-
-    lua_call(L, 4, 0);
-
-    eco_resume(co, narg - 1);
+    sched->panic_hook = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 0;
 }
 
-static int eco_unloop(lua_State *L)
+static int get_next_timeout(struct eco_scheduler *sched, uint64_t now)
 {
-    ev_break(EV_DEFAULT, EVBREAK_ALL);
-    return 0;
+    struct eco_timer *timer;
+    int64_t diff;
+
+    if (list_empty(&sched->timers))
+        return -1;
+
+    timer = list_first_entry(&sched->timers, struct eco_timer, list);
+
+    diff = timer->at - now;
+
+    return diff > 0 ? diff : 0;
 }
 
-static void eco_watcher_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
+static void eco_process_timeouts(struct eco_scheduler *sched, lua_State *L, uint64_t now)
 {
-    struct eco_watcher *watcher = container_of(w, struct eco_watcher, tmr);
-    lua_State *co = watcher->co;
+    struct eco_timer *timer;
 
-    watcher->co = NULL;
-
-    switch (watcher->type) {
-    case ECO_WATCHER_TIMER:
-        lua_pushboolean(co, true);
-        eco_resume(co, 1);
+    if (list_empty(&sched->timers))
         return;
 
-    case ECO_WATCHER_IO:
-        ev_io_stop(loop, &watcher->w.io);
-        break;
+    while (!list_empty(&sched->timers)) {
+        timer = list_first_entry(&sched->timers, struct eco_timer, list);
+        lua_State *co = timer->co;
 
-    case ECO_WATCHER_ASYNC:
-        ev_async_stop(loop, &watcher->w.async);
-        break;
+        if (timer->at > now)
+            break;
 
-    case ECO_WATCHER_CHILD:
-        ev_child_stop(loop, &watcher->w.child);
-        break;
-
-    case ECO_WATCHER_SIGNAL:
-        ev_signal_stop(loop, &watcher->w.signal);
-        break;
-
-    default:
-        break;
+        if (co) {
+            eco_resume(L, co, 0);
+        } else {
+            struct eco_io *io = container_of(timer, struct eco_io, timer);
+            io->is_timeout = 1;
+            epoll_ctl_io_del(L, io);
+            eco_resume_io(L, io);
+        }
     }
-
-    lua_pushnil(co);
-    lua_pushliteral(co, "timeout");
-    eco_resume(co, 2);
 }
 
-static void eco_watcher_periodic_cb(struct ev_loop *loop, ev_periodic *w, int revents)
+static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
 {
-    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.periodic);
-    lua_State *co = watcher->co;
-
-    watcher->co = NULL;
-
-    lua_pushboolean(co, true);
-    eco_resume(co, 1);
-}
-
-static void eco_watcher_io_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.io);
-    lua_State *co = watcher->co;
-
-    watcher->co = NULL;
-
-    ev_io_stop(loop, w);
-    ev_timer_stop(loop, &watcher->tmr);
-
-    lua_pushinteger(co, revents);
-    eco_resume(co, 1);
-}
-
-static void eco_watcher_async_cb(struct ev_loop *loop, struct ev_async *w, int revents)
-{
-    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.async);
-    lua_State *co = watcher->co;
-
-    watcher->co = NULL;
-
-    ev_async_stop(loop, w);
-    ev_timer_stop(loop, &watcher->tmr);
-
-    lua_pushboolean(co, true);
-    eco_resume(co, 1);
-}
-
-static void eco_watcher_child_cb(struct ev_loop *loop, struct ev_child *w, int revents)
-{
-    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.child);
-    lua_State *co = watcher->co;
-    int status = w->rstatus;
-
-    watcher->co = NULL;
-
-    ev_child_stop(loop, w);
-    ev_timer_stop(loop, &watcher->tmr);
-
-    lua_pushinteger(co, w->rpid);
-
-    lua_newtable(co);
-
-    if (WIFEXITED(status)) {
-        lua_pushboolean(co, true);
-        lua_setfield(co, -2, "exited");
-
-        status = WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
-        lua_pushboolean(co, true);
-        lua_setfield(co, -2, "signaled");
-
-        status = WTERMSIG(status);
+    for (int i = 0; i < nfds; i++) {
+        struct eco_io *io = events[i].data.ptr;
+        eco_resume_io(L, io);
     }
-
-    lua_pushinteger(co, status);
-    lua_setfield(co, -2, "status");
-
-    eco_resume(co, 2);
 }
 
-static void eco_watcher_signal_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
+static int lua_eco_loop(lua_State *L)
 {
-    struct eco_watcher *watcher = container_of(w, struct eco_watcher, w.signal);
-    lua_State *co = watcher->co;
+    struct eco_scheduler *sched = get_eco_scheduler(L);
+    struct epoll_event events[MAX_EVENTS];
+    int next_time;
+    int nfds;
 
-    watcher->co = NULL;
+    while (!sched->quit) {
+        uint64_t now = eco_time_now();
 
-    ev_signal_stop(loop, w);
-    ev_timer_stop(loop, &watcher->tmr);
+        eco_process_timeouts(sched, L, now);
 
-    lua_pushboolean(co, true);
-    eco_resume(co, 1);
-}
+        next_time = get_next_timeout(sched, now);
 
-static int eco_watcher_active(lua_State *L, const char *tname)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, tname);
-    lua_pushboolean(L, !!w->co);
-    return 1;
-}
-
-static inline int eco_watcher_timer_active(lua_State *L)
-{
-    return eco_watcher_active(L, ECO_WATCHER_TIMER_MT);
-}
-
-static inline int eco_watcher_io_active(lua_State *L)
-{
-    return eco_watcher_active(L, ECO_WATCHER_IO_MT);
-}
-
-static inline int eco_watcher_async_active(lua_State *L)
-{
-    return eco_watcher_active(L, ECO_WATCHER_ASYNC_MT);
-}
-
-static inline int eco_watcher_child_active(lua_State *L)
-{
-    return eco_watcher_active(L, ECO_WATCHER_CHILD_MT);
-}
-
-static inline int eco_watcher_signal_active(lua_State *L)
-{
-    return eco_watcher_active(L, ECO_WATCHER_SIGNAL_MT);
-}
-
-static lua_CFunction eco_watcher_active_methods[] =  {
-    [ECO_WATCHER_TIMER] = eco_watcher_timer_active,
-    [ECO_WATCHER_IO] = eco_watcher_io_active,
-    [ECO_WATCHER_ASYNC] = eco_watcher_async_active,
-    [ECO_WATCHER_CHILD] = eco_watcher_child_active,
-    [ECO_WATCHER_SIGNAL] = eco_watcher_signal_active
-};
-
-static int eco_watcher_wait(lua_State *L, const char *tname)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, tname);
-    struct ev_loop *loop = EV_DEFAULT;
-    double timeout = lua_tonumber(L, 2);
-
-    if (w->co) {
-        lua_pushboolean(L, false);
-        lua_pushliteral(L, "busy");
-        return 2;
-    }
-
-    if (timeout <= 0 && w->type == ECO_WATCHER_TIMER) {
-        lua_pushboolean(L, true);
-        return 1;
-    }
-
-    switch (w->type) {
-    case ECO_WATCHER_IO:
-        if (fcntl(w->w.io.fd, F_GETFL) < 0) {
-            lua_pushboolean(L, false);
+        nfds = epoll_wait(sched->epoll_fd, events, MAX_EVENTS, next_time);
+        if (nfds < 0) {
+            lua_pushnil(L);
             lua_pushstring(L, strerror(errno));
             return 2;
         }
-        ev_io_start(loop, &w->w.io);
-        break;
 
-    case ECO_WATCHER_ASYNC:
-        ev_async_start(loop, &w->w.async);
-        break;
-
-    case ECO_WATCHER_CHILD:
-        ev_child_start(loop, &w->w.child);
-        break;
-
-    case ECO_WATCHER_SIGNAL:
-        ev_signal_start(loop, &w->w.signal);
-        break;
-
-    default:
-        break;
+        eco_process_io(L, nfds, events);
     }
 
-    w->co = L;
-
-    if (timeout > 0) {
-        if (w->flags & ECO_FLAG_TIMER_PERIODIC) {
-            ev_periodic_set(&w->w.periodic, timeout, 0, NULL);
-            ev_periodic_start(loop, &w->w.periodic);
-        } else {
-            ev_timer_set(&w->tmr, timeout, 0);
-            ev_timer_start(loop, &w->tmr);
-        }
-    }
-
-    return lua_yield(L, 0);
-}
-
-static inline int eco_watcher_timer_wait(lua_State *L)
-{
-    return eco_watcher_wait(L, ECO_WATCHER_TIMER_MT);
-}
-
-static inline int eco_watcher_io_wait(lua_State *L)
-{
-    return eco_watcher_wait(L, ECO_WATCHER_IO_MT);
-}
-
-static inline int eco_watcher_async_wait(lua_State *L)
-{
-    return eco_watcher_wait(L, ECO_WATCHER_ASYNC_MT);
-}
-
-static inline int eco_watcher_child_wait(lua_State *L)
-{
-    return eco_watcher_wait(L, ECO_WATCHER_CHILD_MT);
-}
-
-static inline int eco_watcher_signal_wait(lua_State *L)
-{
-    return eco_watcher_wait(L, ECO_WATCHER_SIGNAL_MT);
-}
-
-static lua_CFunction eco_watcher_wait_methods[] =  {
-    [ECO_WATCHER_TIMER] = eco_watcher_timer_wait,
-    [ECO_WATCHER_IO] = eco_watcher_io_wait,
-    [ECO_WATCHER_ASYNC] = eco_watcher_async_wait,
-    [ECO_WATCHER_CHILD] = eco_watcher_child_wait,
-    [ECO_WATCHER_SIGNAL] = eco_watcher_signal_wait
-};
-
-static int eco_watcher_cancel(lua_State *L, const char *tname)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, tname);
-    struct ev_loop *loop = EV_DEFAULT;
-    lua_State *co = w->co;
-
-    if (!co)
-        return 0;
-
-    switch (w->type) {
-    case ECO_WATCHER_IO:
-        ev_io_stop(loop, &w->w.io);
-        break;
-
-    case ECO_WATCHER_ASYNC:
-        ev_async_stop(loop, &w->w.async);
-        break;
-
-    case ECO_WATCHER_CHILD:
-        ev_child_stop(loop, &w->w.child);
-        break;
-
-    case ECO_WATCHER_SIGNAL:
-        ev_signal_stop(loop, &w->w.signal);
-        break;
-
-    default:
-        break;
-    }
-
-    w->co = NULL;
-
-    ev_timer_stop(loop, &w->tmr);
-
-    lua_pushboolean(co, false);
-    lua_pushliteral(co, "canceled");
-    eco_resume(co, 2);
-
-    return 0;
-}
-
-static inline int eco_watcher_timer_cancel(lua_State *L)
-{
-    return eco_watcher_cancel(L, ECO_WATCHER_TIMER_MT);
-}
-
-static inline int eco_watcher_io_cancel(lua_State *L)
-{
-    return eco_watcher_cancel(L, ECO_WATCHER_IO_MT);
-}
-
-static inline int eco_watcher_async_cancel(lua_State *L)
-{
-    return eco_watcher_cancel(L, ECO_WATCHER_ASYNC_MT);
-}
-
-static inline int eco_watcher_child_cancel(lua_State *L)
-{
-    return eco_watcher_cancel(L, ECO_WATCHER_CHILD_MT);
-}
-
-static inline int eco_watcher_signal_cancel(lua_State *L)
-{
-    return eco_watcher_cancel(L, ECO_WATCHER_SIGNAL_MT);
-}
-
-static lua_CFunction eco_watcher_cancel_methods[] =  {
-    [ECO_WATCHER_TIMER] = eco_watcher_timer_cancel,
-    [ECO_WATCHER_IO] = eco_watcher_io_cancel,
-    [ECO_WATCHER_ASYNC] = eco_watcher_async_cancel,
-    [ECO_WATCHER_CHILD] = eco_watcher_child_cancel,
-    [ECO_WATCHER_SIGNAL] = eco_watcher_signal_cancel
-};
-
-static int eco_watcher_async_send(lua_State *L)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_ASYNC_MT);
-    struct ev_loop *loop = EV_DEFAULT;
-
-    ev_async_send(loop, &w->w.async);
-
-    return 0;
-}
-
-static struct eco_watcher *eco_watcher_new(lua_State *L, const char *mt)
-{
-    struct eco_watcher *w = lua_newuserdata(L, sizeof(struct eco_watcher));
-
-    memset(w, 0, sizeof(struct eco_watcher));
-    eco_new_metatable(L, mt, NULL, NULL);
-
-    luaL_getsubtable(L, -1, "__index");
-
-    return w;
-}
-
-static struct eco_watcher *eco_watcher_timer(lua_State *L)
-{
-    bool periodic = lua_toboolean(L, 2);
-    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_TIMER_MT);
-
-    if (periodic) {
-        w->flags |= ECO_FLAG_TIMER_PERIODIC;
-        ev_init(&w->w.periodic, eco_watcher_periodic_cb);
-    }
-
-    return w;
-}
-
-static int eco_watcher_io_modify(lua_State *L)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_IO_MT);
-    int ev = luaL_checkinteger(L, 2);
-
-    if (ev & ~(EV_READ | EV_WRITE))
-        luaL_argerror(L, 3, "must be eco.READ or eco.WRITE or both them");
-
-    ev_io_modify(&w->w.io, ev);
-
-    return 0;
-}
-
-static int eco_watcher_io_getfd(lua_State *L)
-{
-    struct eco_watcher *w = luaL_checkudata(L, 1, ECO_WATCHER_IO_MT);
-
-    lua_pushinteger(L, w->w.io.fd);
+    lua_pushboolean(L, true);
 
     return 1;
 }
 
-static struct eco_watcher *eco_watcher_io(lua_State *L)
+static int lua_eco_unloop(lua_State *L)
 {
-    int fd = luaL_checkinteger(L, 2);
-    int ev = luaL_optinteger(L, 3, EV_READ);
-    struct eco_watcher *w;
-
-    if (fcntl(fd, F_GETFL) < 0) {
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return NULL;
-    }
-
-    if (ev & ~(EV_READ | EV_WRITE))
-        luaL_argerror(L, 3, "must be eco.READ or eco.WRITE or both them");
-
-    w = eco_watcher_new(L, ECO_WATCHER_IO_MT);
-    ev_io_init(&w->w.io, eco_watcher_io_cb, fd, ev);
-
-    lua_pushcfunction(L, eco_watcher_io_modify);
-    lua_setfield(L, -2, "modify");
-
-    lua_pushcfunction(L, eco_watcher_io_getfd);
-    lua_setfield(L, -2, "getfd");
-
-    return w;
+    struct eco_scheduler *sched = get_eco_scheduler(L);
+    sched->quit = true;
+    return 0;
 }
 
-static struct eco_watcher *eco_watcher_async(lua_State *L)
-{
-    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_ASYNC_MT);
-
-    ev_async_init(&w->w.async, eco_watcher_async_cb);
-
-    lua_pushcfunction(L, eco_watcher_async_send);
-    lua_setfield(L, -2, "send");
-
-    return w;
-}
-
-static struct eco_watcher *eco_watcher_child(lua_State *L)
-{
-    int pid = luaL_checkinteger(L, 2);
-    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_CHILD_MT);
-
-    ev_child_init(&w->w.child, eco_watcher_child_cb, pid, 0);
-
-    return w;
-}
-
-static struct eco_watcher *eco_watcher_signal(lua_State *L)
-{
-    int signal = luaL_checkinteger(L, 2);
-    struct eco_watcher *w = eco_watcher_new(L, ECO_WATCHER_SIGNAL_MT);
-
-    ev_signal_init(&w->w.signal, eco_watcher_signal_cb, signal);
-
-    return w;
-}
-
-static int eco_watcher(lua_State *L)
-{
-    int type = luaL_checkinteger(L, 1);
-    struct eco_watcher *w;
-
-    switch (type) {
-    case ECO_WATCHER_TIMER:
-        w = eco_watcher_timer(L);
-        break;
-
-    case ECO_WATCHER_IO:
-        w = eco_watcher_io(L);
-        break;
-
-    case ECO_WATCHER_ASYNC:
-        w = eco_watcher_async(L);
-        break;
-
-    case ECO_WATCHER_CHILD:
-        w = eco_watcher_child(L);
-        break;
-
-    case ECO_WATCHER_SIGNAL:
-        w = eco_watcher_signal(L);
-        break;
-
-    default:
-        luaL_argerror(L, 1, "invalid type");
-        return 0;
-    }
-
-    if (!w)
-        return 2;
-
-    w->type = type;
-
-    ev_init(&w->tmr, eco_watcher_timeout_cb);
-
-    w->co = NULL;
-
-    lua_pushcfunction(L, eco_watcher_active_methods[type]);
-    lua_setfield(L, -2, "active");
-
-    lua_pushcfunction(L, eco_watcher_wait_methods[type]);
-    lua_setfield(L, -2, "wait");
-
-    lua_pushcfunction(L, eco_watcher_cancel_methods[type]);
-    lua_setfield(L, -2, "cancel");
-
-    lua_pop(L, 1);
-    lua_setmetatable(L, -2);
-
-    return 1;
-}
-
-static void eco_sleep_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
-{
-    lua_State *co = w->data;
-    eco_resume(co, 0);
-}
-
-/*
- * pauses the current coroutine for at least the delay seconds.
- * A negative or zero delay causes sleep to return immediately.
- */
-static int eco_sleep(lua_State *L)
-{
-    double delay = luaL_checknumber(L, 1);
-    struct ev_loop *loop = EV_DEFAULT;
-    struct ev_timer *tmr;
-
-    lua_rawgetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
-    lua_pushlightuserdata(L, L);
-    lua_rawget(L, -2); /* objs, tmr_ptr */
-
-    tmr = (struct ev_timer *)lua_topointer(L, -1);
-    if (!tmr) {
-        tmr = calloc(1, sizeof(struct ev_timer));
-        if (!tmr)
-            return luaL_error(L, "no mem");
-
-        ev_init(tmr, eco_sleep_cb);
-        tmr->data = L;
-
-        lua_pop(L, 1);
-        lua_pushlightuserdata(L, L);
-        lua_pushlightuserdata(L, tmr);
-        lua_rawset(L, -3);  /* objs[co] = tmr_ptr */
-        lua_pop(L, 1);
-    } else {
-        lua_pop(L, 2);
-    }
-
-    ev_timer_set(tmr, delay, 0.0);
-    ev_timer_start(loop, tmr);
-
-    return lua_yield(L, 0);
-}
-
-static const luaL_Reg funcs[] = {
-    {"watcher", eco_watcher},
-    {"count", eco_count},
-    {"all", eco_all},
-    {"unloop", eco_unloop},
-    {"run", eco_run},
-    {"sleep", eco_sleep},
+static const struct luaL_Reg funcs[] = {
+    {"io", lua_eco_io},
+    {"buffer", lua_eco_buffer},
+    {"reader", lua_eco_reader},
+    {"writer", lua_eco_writer},
+    {"sleep", lua_eco_sleep},
+    {"run", lua_eco_run},
+    {"resume", lua_eco_resume},
+    {"count", lua_eco_count},
+    {"set_panic_hook", lua_eco_set_panic_hook},
+    {"loop", lua_eco_loop},
+    {"unloop", lua_eco_unloop},
     {NULL, NULL}
 };
 
-static int luaopen_eco(lua_State *L)
+int luaopen_eco(lua_State *L)
 {
-    lua_newtable(L);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, eco_get_obj_registry());
+    eco_scheduler_init(L);
+
+    creat_metatable(L, ECO_IO_MT, NULL, io_methods);
+    creat_metatable(L, ECO_BUFFER_MT, NULL, buffer_methods);
+    creat_metatable(L, ECO_READER_MT, NULL, reader_methods);
+    creat_metatable(L, ECO_WRITER_MT, NULL, writer_methods);
 
     luaL_newlib(L, funcs);
 
@@ -702,163 +1284,8 @@ static int luaopen_eco(lua_State *L)
     lua_pushliteral(L, ECO_VERSION_STRING);
     lua_setfield(L, -2, "VERSION");
 
-    lua_add_constant(L, "IO", ECO_WATCHER_IO);
-    lua_add_constant(L, "ASYNC", ECO_WATCHER_ASYNC);
-    lua_add_constant(L, "TIMER", ECO_WATCHER_TIMER);
-    lua_add_constant(L, "CHILD", ECO_WATCHER_CHILD);
-    lua_add_constant(L, "SIGNAL", ECO_WATCHER_SIGNAL);
-
-    lua_add_constant(L, "READ", EV_READ);
-    lua_add_constant(L, "WRITE", EV_WRITE);
+    lua_add_constant(L, "READ", EPOLLIN);
+    lua_add_constant(L, "WRITE", EPOLLOUT);
 
     return 1;
-}
-
-
-/*
-** Create the 'arg' table, which stores all arguments from the
-** command line ('argv'). It should be aligned so that, at index 0,
-** it has 'argv[script]', which is the script name. The arguments
-** to the script (everything after 'script') go to positive indices;
-** other arguments (before the script name) go to negative indices.
-** If there is no script name, assume interpreter's name as base.
-*/
-static void createargtable(lua_State *L, int argc, char *const argv[])
-{
-    int i;
-
-    lua_createtable(L, argc - 2, 2);
-
-    for (i = 0; i < argc; i++) {
-        lua_pushstring(L, argv[i]);
-        lua_rawseti(L, -2, i - 1);
-    }
-
-    lua_setglobal(L, "arg");
-}
-
-static void show_usage(const char *progname)
-{
-    fprintf(stderr,
-        "usage: %s [options] [script [args]].\n"
-        "Available options are:\n"
-        "  -e stat  execute string 'stat'\n"
-        "  -v       show version information\n"
-        , progname);
-}
-
-static int parse_args(int argc, char *const argv[], bool *has_v, bool *has_e)
-{
-    *has_v = false;
-    *has_e = false;
-
-    if (argc < 2)
-        return 0;
-
-    if (argv[1][0] != '-')
-        return 1;
-
-    if (!strcmp(argv[1], "-v")) {
-        *has_v = true;
-        return 0;
-    }
-
-    if (!strcmp(argv[1], "-e")) {
-        if (argc < 3)
-            return -1;
-        *has_e = true;
-        return 2;
-    }
-
-    return -1;
-}
-
-static void set_random_seed()
-{
-    struct timeval t;
-
-    gettimeofday(&t, NULL);
-    srandom(t.tv_usec * t.tv_sec);
-}
-
-int main(int argc, char *const argv[])
-{
-    struct ev_loop *loop = EV_DEFAULT;
-    bool has_v, has_e;
-    int error = 0;
-    int script;
-    lua_State *L;
-
-    script = parse_args(argc, argv, &has_v, &has_e);
-    if (script < 0) {
-        show_usage(argv[0]);
-        return 1;
-    }
-
-    if (has_v) {
-        fprintf(stderr, LUA_RELEASE"\n");
-        fprintf(stderr, "Lua-eco "ECO_VERSION_STRING"\n");
-        return 0;
-    }
-
-    if (script == 0)
-        return 0;
-
-    signal(SIGPIPE, SIG_IGN);
-
-    set_random_seed();
-
-    L = luaL_newstate();
-
-    luaL_openlibs(L);
-
-    lua_gc(L, LUA_GCRESTART);   /* start GC... */
-    lua_gc(L, LUA_GCGEN, 0, 0); /* in generational mode */
-
-    luaL_loadstring(L,
-        "table.keys = function(t)"
-        "local keys = {}"
-        "for key in pairs(t) do "
-        "keys[#keys + 1] = key "
-        "end "
-        "return keys "
-        "end"
-    );
-    lua_pcall(L, 0, 0, 0);
-
-    ev_set_userdata(loop, L);
-
-    luaopen_eco(L);
-    lua_setglobal(L, "eco");
-
-    lua_getglobal(L, "eco");
-    lua_getfield(L, -1, "run");
-    lua_remove(L, -2);
-
-    if (has_e) {
-         error = luaL_loadstring(L, argv[script]) || lua_pcall(L, 1, 0, 0);
-        if (error) {
-            fprintf(stderr, "%s\n", lua_tostring(L, -1));
-            goto err;
-        }
-        goto run;
-    }
-
-    createargtable(L, argc, argv);
-
-    error = luaL_loadfile(L, argv[script]) || lua_pcall(L, 1, 0, 0);
-    if (error) {
-        fprintf(stderr, "%s\n", lua_tostring(L, -1));
-        goto err;
-    }
-
-run:
-    ev_run(loop, 0);
-
-err:
-    lua_close(L);
-
-    ev_default_destroy();
-
-    return error;
 }

@@ -6,10 +6,9 @@
 #ifndef __ECO_H
 #define __ECO_H
 
-#include <string.h>
 #include <lauxlib.h>
+#include <lualib.h>
 #include <lua.h>
-#include <ev.h>
 
 #include "helper.h"
 
@@ -36,15 +35,23 @@
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #endif
 
-#ifndef ev_io_modify
-#define ev_io_modify(ev,events_) do { (ev)->events = ((ev)->events & EV__IOFDSET) | (events_); } while (0)
-#endif
 
-const char **eco_get_obj_registry();
+static inline void creat_metatable(lua_State *L, const char *name,
+    const struct luaL_Reg *metatable, const struct luaL_Reg *methods)
+{
+    if (!luaL_newmetatable(L, name))
+        return;
 
-void eco_resume(lua_State *co, int narg);
+    if (metatable)
+        luaL_setfuncs(L, metatable, 0);
 
-void eco_new_metatable(lua_State *L, const char *name,
-    const struct luaL_Reg *metatable, const struct luaL_Reg *methods);
+    if (methods) {
+        lua_newtable(L);
+        luaL_setfuncs(L, methods, 0);
+        lua_setfield(L, -2, "__index");
+    }
+
+    lua_pop(L, 1);
+}
 
 #endif

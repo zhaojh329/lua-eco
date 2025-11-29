@@ -1,6 +1,9 @@
-#!/usr/bin/env eco
+#!/usr/bin/env lua5.4
 
 local time = require 'eco.time'
+local eco = require 'eco'
+
+print('now', time.now())
 
 -- Set a timer to execute the callback function after 0.5 seconds
 time.at(0.5, function(tmr, start)
@@ -26,3 +29,5 @@ end)
 time.on(time.now() + 1.5, function()
     print('absolute timer:', time.now())
 end)
+
+eco.loop()

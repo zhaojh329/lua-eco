@@ -1,11 +1,12 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+local ssh = require 'eco.internal.ssh'
 local socket = require 'eco.socket'
-local ssh = require 'eco.core.ssh'
 local file = require 'eco.file'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
+local eco = require 'eco'
 
 local M = {}
 
@@ -21,9 +22,7 @@ local function waitsocket(session, timeout)
         ev = ev | eco.WRITE
     end
 
-    session.iow:modify(ev)
-
-    return session.iow:wait(timeout)
+    return session.io:wait(ev, timeout)
 end
 
 local function open_channel(session)
@@ -433,7 +432,7 @@ function M.new(ipaddr, port, username, password)
     local session = ssh.new()
     local fd = sock:getfd()
 
-    local obj = { session = session, sock = sock, iow = eco.watcher(eco.IO, fd) }
+    local obj = { session = session, sock = sock, io = eco.io(fd) }
 
     local ok
 

@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local file = require 'eco.core.file'
+local file = require 'eco.internal.file'
 local socket = require 'eco.socket'
 local url = require 'eco.http.url'
 local log = require 'eco.log'

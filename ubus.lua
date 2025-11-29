@@ -1,125 +1,223 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local ubus = require 'eco.core.ubus'
+local ubus = require 'eco.internal.ubus'
+local eco = require 'eco'
 
 local M = {}
 
-local methods = {}
+local ms = {}
 
-local global_conn
-
-function methods:close()
+function ms:close()
     return self.con:close()
 end
 
-function methods:call(object, method, params)
-    return self.con:call(object, method, params)
+function ms:call(object, method, params, timeout)
+    local co = coroutine.running()
+    local con = self.con
+    local datas = {}
+    local status
+
+    local req, err = con:call(object, method, params,
+        function(data)
+            datas[#datas + 1] = data
+        end, function(ret)
+            status = ret
+            eco.resume(co)
+        end)
+    if not req then
+        return nil, err
+    end
+
+    if timeout and timeout > 0 then
+        eco.sleep(timeout)
+    else
+        coroutine.yield()
+    end
+
+    if not status then
+        print(req)
+        con:abort_request(req)
+        return nil, 'timeout'
+    end
+
+    if status ~= ubus.STATUS_OK then
+        return nil, ubus.strerror(status)
+    end
+
+    if #datas == 0 then
+        return {}
+    end
+
+    return table.unpack(datas)
 end
 
-function methods:reply(req, params)
-    return self.con:reply(req, params)
-end
-
-function methods:send(event, params)
+function ms:send(event, params)
     return self.con:send(event, params)
 end
 
-function methods:notify(object, method, params)
+function ms:reply(req, msg)
+    return self.con:reply(req, msg)
+end
+
+function ms:listen(event, cb)
+    local obj, err = self.con:listen(event)
+    if not obj then
+        return nil, err
+    end
+
+    self.__objs[obj] = cb
+
+    return true
+end
+
+function ms:add(object, methods)
+    local policies = {}
+    local cbs = {}
+
+    for name, method in pairs(methods) do
+        local cb, p = method[1], method[2]
+
+        assert(type(cb) == 'function')
+        assert(p == nil or type(p) == 'table')
+
+        cbs[name] = cb
+        policies[name] = p or {}
+    end
+
+    local function handler(name, req, msg)
+        eco.run(function()
+            local cb = cbs[name]
+            local rc = cb(req, msg)
+            if type(rc) ~= 'number' then rc = 0 end
+            self.con:complete_deferred_request(req, rc)
+        end)
+    end
+
+    local o, err = self.con:add(object, policies)
+    if not o then
+        return nil, err
+    end
+
+    self.__objs[o] = handler
+
+    return o
+end
+
+function ms:subscribe(path, cb)
+    local s, err = self.con:subscribe(path)
+    if not s then
+        return nil, err
+    end
+
+    self.__objs[s] = cb
+
+    return true
+end
+
+function ms:notify(object, method, params)
     return self.con:notify(object, method, params)
 end
 
-function methods:objects()
+function ms:objects()
     return self.con:objects()
 end
 
-function methods:signatures(object)
+function ms:signatures(object)
     return self.con:signatures(object)
 end
 
-function methods:settimeout(timeout)
-    return self.con:settimeout(timeout)
-end
-
-function methods:auto_reconnect()
-    return self.con:auto_reconnect()
-end
-
-function methods:add(object, ms)
-    local con = self.con
-
-    for _, m in pairs(ms) do
-        local cb = m[1]
-
-        assert(type(cb) == 'function')
-
-        m[1] = function(req, msg)
-            eco.run(function()
-                local rc = cb(req, msg)
-                if type(rc) ~= 'number' then rc = 0 end
-                con:complete_deferred_request(req, rc)
-            end)
-        end
-    end
-
-    return con:add(object, ms)
-end
-
-function methods:subscribe(path, cb)
-    local s, err = self.con:subscribe(path, function(...)
-        eco.run(cb, ...)
-    end)
-    if not s then
-        return false, err
-    end
-
-    return true
-end
-
-function methods:listen(event, cb)
-    local e, err = self.con:listen(event, function(...)
-        eco.run(cb, ...)
-    end)
-    if not e then
-        return false, err
-    end
-
-    return true
-end
-
 local metatable = {
-    __index = methods,
-    __close = methods.close
+    __index = ms,
+    __close = ms.close
 }
 
-function M.connect(path)
-    local con, err = ubus.connect(path)
+local function handle_event(ctx, auto_reconnect)
+    local con = ctx.con
+    local io = eco.io(con:getfd())
 
+    while true do
+        io:wait(eco.READ)
+
+        con:handle_event()
+
+        if ctx.connection_lost then
+            if not auto_reconnect then
+                return
+            end
+
+            while true do
+                local fd = con:reconnect()
+                if fd then
+                    io = eco.io(fd)
+                end
+                eco.sleep(3)
+            end
+        end
+    end
+end
+
+function M.connect(path, auto_reconnect)
+    local ctx = {
+        connection_lost = false,
+        __objs = {}
+    }
+
+    local cbs = {
+        on_connection_lost = function() ctx.connection_lost = true end,
+
+        on_data = function(obj, ...)
+            local cb = ctx.__objs[obj]
+            if not cb then
+                return
+            end
+
+            cb(...)
+        end
+    }
+
+    local con, err = ubus.connect(path, cbs)
     if not con then
         return nil, err
     end
 
-    return setmetatable({
-        con = con,
-    }, metatable)
+    ctx.con = con
+
+    eco.run(handle_event, ctx, auto_reconnect)
+
+    return setmetatable(ctx, metatable)
 end
 
 function M.call(object, method, params)
-    return global_conn:call(object, method, params)
+    local con<close>, err = M.connect()
+    if not con then
+        return nil, err
+    end
+    return con:call(object, method, params)
 end
 
 function M.send(event, params)
-    return global_conn:send(event, params)
+    local con<close>, err = M.connect()
+    if not con then
+        return nil, err
+    end
+    return con:send(event, params)
 end
 
 function M.objects()
-    return global_conn:objects()
+    local con<close>, err = M.connect()
+    if not con then
+        return nil, err
+    end
+    return con:objects()
 end
 
 function M.signatures(object)
-    return global_conn:signatures(object)
+    local con<close>, err = M.connect()
+    if not con then
+        return nil, err
+    end
+    return con:signatures(object)
 end
-
-global_conn = ubus.connect()
 
 return setmetatable(M, { __index = ubus })

@@ -5,11 +5,12 @@
 
 #include <stdbool.h>
 #include <termios.h>
+#include <string.h>
 #include <errno.h>
 
 #include "eco.h"
 
-#define ECO_TERMIOS_ATTR_MT "eco{termios}"
+#define ECO_TERMIOS_ATTR_MT "struct termios *"
 
 
 static int lua_termios_change_flag(lua_State *L, bool set)
@@ -120,8 +121,7 @@ static int lua_termios_attr_clone(lua_State *L)
     struct termios *attr = luaL_checkudata(L, 1, ECO_TERMIOS_ATTR_MT);
     struct termios *nattr = lua_newuserdata(L, sizeof(struct termios));
 
-    luaL_getmetatable(L, ECO_TERMIOS_ATTR_MT);
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, ECO_TERMIOS_ATTR_MT);
 
     memcpy(nattr, attr, sizeof(struct termios));
 
@@ -152,7 +152,7 @@ static int lua_tcgetattr(lua_State *L)
         return 2;
     }
 
-    eco_new_metatable(L, ECO_TERMIOS_ATTR_MT, NULL, termios_methods);
+    
     lua_setmetatable(L, -2);
 
     return 1;
@@ -214,6 +214,8 @@ static const luaL_Reg funcs[] = {
 
 int luaopen_eco_termios(lua_State *L)
 {
+    creat_metatable(L, ECO_TERMIOS_ATTR_MT, NULL, termios_methods);
+
     luaL_newlib(L, funcs);
 
     /* actions for tcsetattr */

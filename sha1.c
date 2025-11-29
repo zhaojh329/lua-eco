@@ -6,10 +6,11 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "eco.h"
 
-#define SHA1_MT "eco{sha1}"
+#define SHA1_MT "struct sha1_ctx *"
 
 struct sha1_ctx {
     uint32_t state[5];
@@ -260,8 +261,7 @@ static int lua_sha1_new(lua_State *L)
 {
     struct sha1_ctx *ctx = lua_newuserdata(L, sizeof(struct sha1_ctx));
 
-    lua_pushvalue(L, lua_upvalueindex(1));
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, SHA1_MT);
 
     sha1_init(ctx);
 
@@ -270,6 +270,8 @@ static int lua_sha1_new(lua_State *L)
 
 int luaopen_eco_hash_sha1(lua_State *L)
 {
+    creat_metatable(L, SHA1_MT, NULL, sha1_methods);
+
     lua_newtable(L);
 
     lua_pushstring(L, SHA1_MT);
@@ -278,8 +280,7 @@ int luaopen_eco_hash_sha1(lua_State *L)
     lua_pushcfunction(L, lua_sha1_sum);
     lua_setfield(L, -2, "sum");
 
-    eco_new_metatable(L, SHA1_MT, NULL, sha1_methods);
-    lua_pushcclosure(L, lua_sha1_new, 1);
+    lua_pushcfunction(L, lua_sha1_new);
     lua_setfield(L, -2, "new");
 
     return 1;

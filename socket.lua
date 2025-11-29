@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local socket = require 'eco.core.socket'
-local bufio = require 'eco.bufio'
+local socket = require 'eco.internal.socket'
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local M = {}
 
@@ -14,10 +14,6 @@ function methods:getfd()
 end
 
 function methods:close()
-    if self.b then
-        self.b:close()
-    end
-
     self.sock:close()
 end
 
@@ -38,8 +34,8 @@ function methods:getpeername()
 end
 
 function methods:bind(...)
-    local sock, err = self.sock:bind(...)
-    if not sock then
+    local ok, err = self.sock:bind(...)
+    if not ok then
         return nil, err
     end
 
@@ -47,8 +43,8 @@ function methods:bind(...)
 end
 
 function methods:listen(backlog)
-    local sock, err = self.sock:listen(backlog)
-    if not sock then
+    local ok, err = self.sock:listen(backlog)
+    if not ok then
         return nil, err
     end
 
@@ -56,8 +52,22 @@ function methods:listen(backlog)
 end
 
 function methods:connect(...)
-    local sock, err = self.sock:connect(...)
-    if not sock then
+    local ok, err = self.sock:connect(...)
+    if not ok then
+        if ok == false then
+            ok, err = self.io:wait(eco.WRITE, 5.0)
+            if not ok then
+                return nil, err
+            end
+
+            err = self.sock:getoption('error')
+            if err then
+                return nil, err
+            end
+
+            return self
+        end
+
         return nil, err
     end
 
@@ -70,21 +80,33 @@ local metatable = {
 }
 
 function methods:accept()
+    local ok, err = self.io:wait(eco.READ)
+    if not ok then
+        return nil, err
+    end
+
     local sock, perr = self.sock:accept()
     if not sock then
         return nil, perr
     end
 
-    local b = bufio.new(sock:getfd(), { eof_error = 'closed' })
+    local fd = sock:getfd()
 
-    return setmetatable({ sock = sock, domain = self.domain, b = b, mutex = sync.mutex() }, metatable), perr
+    return setmetatable({
+        sock = sock,
+        domain = self.domain,
+        mutex = sync.mutex(),
+        rd = eco.reader(fd),
+        wr = eco.writer(fd),
+        io = eco.io(fd)
+    }, metatable), perr
 end
 
 function methods:send(data)
     local mutex = self.mutex
 
     mutex:lock()
-    local sent, err = self.sock:send(data)
+    local sent, err = self.wr:write(data)
     mutex:unlock()
 
     if sent then
@@ -99,87 +121,72 @@ function methods:write(data)
 end
 
 function methods:sendto(data, ...)
-    return self.sock:sendto(data, ...)
+    local mutex = self.mutex
+    local total = #data
+
+    mutex:lock()
+
+    while #data > 0 do
+        self.io:wait(eco.WRITE)
+
+        local sent, err = self.sock:sendto(data, ...)
+        if not sent then
+            return nil, err
+        end
+
+        data = data:sub(sent + 1)
+    end
+
+    mutex:unlock()
+
+    return total
 end
 
 function methods:sendfile(path, len, offset)
     local mutex = self.mutex
 
     mutex:lock()
-    local sent, err = self.sock:sendfile(path, len, offset)
+    local sent, err = self.wr:sendfile(path, offset or 0, len)
     mutex:unlock()
 
     if sent then
         return sent
-    else
-        return nil, err
     end
+
+    return nil, err
 end
 
---[[
-  Reads according to the given pattern, which specify what to read.
-
-  In case of success, it returns the data received; in case of error, it returns
-  nil with a string describing the error and the partial data received so far.
-
-  The available pattern are:
-    'a': reads the whole file or reads from socket until the connection closed.
-    'l': reads the next line skipping the end of line character.
-    'L': reads the next line keeping the end-of-line character (if present).
-    number: reads a string with up to this number of bytes.
-
-  Note: Only `number` is supported for SOCK_DGRAM.
---]]
-function methods:recv(pattern, timeout)
-    if self.domain == socket.SOCK_STREAM then
-        return self.b:read(pattern, timeout)
-    else
-        return self.sock:recv(pattern, timeout)
-    end
+function methods:recv(n, timeout)
+    return self:read(n, timeout)
 end
 
-function methods:read(pattern, timeout)
-    return self:recv(pattern, timeout)
+function methods:read(n, timeout)
+    return self.rd:read(n, timeout)
 end
 
-function methods:recvfull(n, timeout)
-    assert(self.domain == socket.SOCK_STREAM)
-    return self.b:readfull(n, timeout)
-end
-
-function methods:readfull(n, timeout)
-    return self:recvfull(n, timeout)
-end
-
-function methods:peek(n, timeout)
-    assert(self.domain == socket.SOCK_STREAM)
-    return self.b:peek(n, timeout)
-end
-
-function methods:recvuntil(pattern, timeout)
-    assert(self.domain == socket.SOCK_STREAM)
-    return self.b:readuntil(pattern, timeout)
-end
-
-function methods:readuntil(pattern, timeout)
-    return self:recvuntil(pattern, timeout)
-end
-
-function methods:discard(n, timeout)
-    assert(self.domain == socket.SOCK_STREAM)
-    return self.b:discard(n, timeout)
+function methods:read2b(b, n, timeout)
+    return self.rd:read2b(b, n, timeout)
 end
 
 function methods:recvfrom(n, timeout)
-    return self.sock:recvfrom(n, timeout)
+    local ok, err = self.io:wait(eco.READ, timeout)
+    if not ok then
+        return nil, err
+    end
+
+    return self.sock:recvfrom(n)
 end
 
 local function socket_init(sock, domain, options)
-    local o = { sock = sock, domain = domain, mutex = sync.mutex() }
-
-    if domain == socket.SOCK_STREAM then
-        o.b = bufio.new(sock:getfd(), { eof_error = 'closed' })
-    end
+    local fd = sock:getfd()
+    local o = {
+        sock = sock,
+        domain = domain,
+        mutex = sync.mutex(),
+        io = eco.io(fd),
+        rd = eco.reader(fd),
+        wr = eco.writer(fd)
+    }
 
     options = options or {}
 
@@ -299,8 +306,8 @@ function M.listen_tcp(ipaddr, port, options)
         sock:setoption('tcp_fastopen', options.tcp_fastopen)
     end
 
-    local ok, err = sock:bind(ipaddr, port)
-    if not ok then
+    _, err = sock:bind(ipaddr, port)
+    if err then
         return nil, err
     end
 
@@ -368,8 +375,8 @@ function M.listen_unix(path, options)
 
     options = options or {}
 
-    local ok, err = sock:bind(path)
-    if not ok then
+    _, err = sock:bind(path)
+    if err then
         return nil, err
     end
 
@@ -383,8 +390,8 @@ function M.connect_unix(server_path, local_path)
     end
 
     if local_path then
-        local ok, err = sock:bind(local_path)
-        if not ok then
+        _, err = sock:bind(local_path)
+        if err then
             return nil, err
         end
     end
