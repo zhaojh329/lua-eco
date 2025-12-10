@@ -63,9 +63,19 @@ local M = {
 
     -- Element IDs (IEEE Std 802.11-2020, 9.4.2.1, Table 9-92)
     WLAN_EID_SSID = 0,
+    WLAN_EID_HT_CAPA = 45,
     WLAN_EID_RSN = 48,
+    WLAN_EID_HT_OPERATION = 61,
     WLAN_EID_MESH_ID = 114,
+    WLAN_EID_VHT_CAPA = 191,
+    WLAN_EID_VHT_OPERATION = 192,
     WLAN_EID_VENDOR_SPECIFIC = 221,
+    WLAN_EID_EXT = 255,
+}
+
+local EXT_ID = {
+    HE_CAPA = 35,
+    EHT_CAPA = 108,
 }
 
 local ftypes = {
@@ -636,6 +646,24 @@ local function parse_vendor_specific_ie(info, data)
     end
 end
 
+local function set_wifi_phymode(info, phy_mode)
+    local phy_priority = { HT = 1, VHT = 2, HE = 3, EHT = 4 }
+
+    if not phy_mode then return end
+
+    local cur = info.phy_mode
+
+    if not cur then
+        info.phy_mode = phy_mode
+        return
+    end
+
+    if (phy_priority[phy_mode] or 0) > (phy_priority[cur] or 0) then
+        info.phy_mode = phy_mode
+    end
+
+end
+
 local function parse_bss_ie(info, data, keep_elems)
     local elems = {}
 
@@ -651,6 +679,18 @@ local function parse_bss_ie(info, data, keep_elems)
             info.rsn = parse_rsn(elem_data, 'CCMP', '8021x')
         elseif typ == M.WLAN_EID_VENDOR_SPECIFIC then
             parse_vendor_specific_ie(info, elem_data)
+        -- Wi-Fi phy mode Detection
+        elseif typ == M.WLAN_EID_HT_CAPA or typ == M.WLAN_EID_HT_OPERATION then
+            set_wifi_phymode(info, "HT")
+        elseif typ == M.WLAN_EID_VHT_CAPA or typ == M.WLAN_EID_VHT_OPERATION then
+            set_wifi_phymode(info, "VHT")
+        elseif typ == M.WLAN_EID_EXT then
+            local ext_id = string.byte(elem_data, 1)
+            if ext_id == EXT_ID.EHT_CAPA then
+                set_wifi_phymode(info, "EHT")
+            elseif ext_id == EXT_ID.HE_CAPA then
+                set_wifi_phymode(info, "HE")
+            end
         end
 
         if keep_elems then
@@ -1491,7 +1531,7 @@ function M.get_freqlist(phy)
     return get_freqlist(sock, msg, phyid)
 end
 
-local function get_link_bss(sock, msg, ifname)
+local function get_link_bss(sock, msg, ifname, keep_elems)
     local ifidx = socket.if_nametoindex(ifname)
     if not ifidx then
         return nil, 'no dev'
@@ -1527,7 +1567,7 @@ local function get_link_bss(sock, msg, ifname)
 
             local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
             if attrs[nl80211.ATTR_BSS] then
-                local bss = parse_bss(attrs[nl80211.ATTR_BSS])
+                local bss = parse_bss(attrs[nl80211.ATTR_BSS], keep_elems)
                 if bss then
                     if bss.status == 'associated' or bss.status == 'ibss_joined' then
                         return bss
@@ -1538,7 +1578,7 @@ local function get_link_bss(sock, msg, ifname)
     end
 end
 
-function M.get_link(ifname)
+function M.get_link(ifname, keep_elems)
     if type(ifname) ~= 'string' then
         error('invalid ifname')
     end
@@ -1548,7 +1588,7 @@ function M.get_link(ifname)
         return nil, msg
     end
 
-    local bss = get_link_bss(sock, msg, ifname)
+    local bss = get_link_bss(sock, msg, ifname, keep_elems)
     if not bss then
         return nil, 'not connected'
     end
