@@ -318,6 +318,7 @@ int luaopen_eco_core_nl80211(lua_State *L)
     lua_add_constant(L, "CHAN_WIDTH_160", NL80211_CHAN_WIDTH_160);
     lua_add_constant(L, "CHAN_WIDTH_5", NL80211_CHAN_WIDTH_5);
     lua_add_constant(L, "CHAN_WIDTH_10", NL80211_CHAN_WIDTH_10);
+    lua_add_constant(L, "CHAN_WIDTH_320", NL80211_CHAN_WIDTH_320);
 
     lua_add_constant(L, "CHAN_NO_HT", NL80211_CHAN_NO_HT);
     lua_add_constant(L, "CHAN_HT20", NL80211_CHAN_HT20);

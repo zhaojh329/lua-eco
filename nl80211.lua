@@ -136,7 +136,8 @@ local width_name = {
     [nl80211.CHAN_WIDTH_40] = '40 MHz',
     [nl80211.CHAN_WIDTH_80] = '80 MHz',
     [nl80211.CHAN_WIDTH_80P80] = '80+80 MHz',
-    [nl80211.CHAN_WIDTH_160] = '160 MHz'
+    [nl80211.CHAN_WIDTH_160] = '160 MHz',
+    [nl80211.CHAN_WIDTH_320] = '320 MHz'
 }
 
 local channel_type_name = {
