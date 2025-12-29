@@ -550,6 +550,10 @@ local function parse_cipher(data)
 end
 
 local function parse_rsn(data, defcipher, defauth)
+    if #data < 2 then
+        return
+    end
+
     local res = {
         version = str_byte(data, 1) | str_byte(data, 2) << 8,
         group_cipher = defcipher,
