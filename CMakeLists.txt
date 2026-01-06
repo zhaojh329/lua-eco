@@ -68,18 +68,23 @@ add_library(termios MODULE termios.c)
 set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
 
 add_library(log MODULE log.c log/log.c)
+target_link_libraries(log PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(log PROPERTIES OUTPUT_NAME log PREFIX "")
 
 add_library(base64 MODULE base64.c)
+target_link_libraries(base64 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(base64 PROPERTIES OUTPUT_NAME base64 PREFIX "")
 
 add_library(sha1 MODULE sha1.c)
+target_link_libraries(sha1 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(sha1 PROPERTIES OUTPUT_NAME sha1 PREFIX "")
 
 add_library(sha256 MODULE sha256.c)
+target_link_libraries(sha256 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(sha256 PROPERTIES OUTPUT_NAME sha256 PREFIX "")
 
 add_library(md5 MODULE md5.c)
+target_link_libraries(md5 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(md5 PROPERTIES OUTPUT_NAME md5 PREFIX "")
 
 add_library(nl MODULE nl.c)
