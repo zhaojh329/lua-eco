@@ -112,6 +112,14 @@ local function recv_http_headers(sock, timeout)
     return headers
 end
 
+local function handle_body_to_file(body_to_file, data)
+    if type(body_to_file) == 'userdata' then
+        body_to_file:write(data)
+    else
+        body_to_file(data)
+    end
+end
+
 local function receive_body_until_closed(resp, sock, timeout, body_to_file)
     local body = {}
 
@@ -122,7 +130,7 @@ local function receive_body_until_closed(resp, sock, timeout, body_to_file)
         end
 
         if body_to_file then
-            body_to_file:write(data)
+            handle_body_to_file(body_to_file, data)
         else
             body[#body+1] = data
         end
@@ -147,7 +155,7 @@ local function receive_body(resp, sock, timeout, length, body_to_file)
         length = length - #data
 
         if body_to_file then
-            body_to_file:write(data)
+            handle_body_to_file(body_to_file, data)
         else
             body[#body+1] = data
         end
@@ -192,7 +200,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
         end
 
         if body_to_file then
-            body_to_file:write(data)
+            handle_body_to_file(body_to_file, data)
         else
             body[#body + 1] = data
         end
@@ -240,7 +248,11 @@ local function do_http_request(self, method, path, headers, body, opts)
 
     local body_to_file = opts.body_to_file
 
-    if body_to_file then
+    if body_to_file ~= nil then
+        assert(type(body_to_file) == 'string' or type(body_to_file) == 'function')
+    end
+
+    if type(body_to_file) == 'string' then
         local f, err = io.open(body_to_file, 'w')
         if not f then
             return false, 'create "' .. body_to_file .. '" fail: ' .. err
@@ -257,7 +269,7 @@ local function do_http_request(self, method, path, headers, body, opts)
         ok, err = receive_body_until_closed(resp, sock, timeout, body_to_file)
     end
 
-    if body_to_file then
+    if type(body_to_file) == 'userdata' then
         body_to_file:close()
     end
 
@@ -449,7 +461,10 @@ end
         timeout: A number, defaults to 30s.
         insecure: A boolean, SSL connecting with insecure.
         ipv6: A boolean, parse ipv6 address for host.
-        body_to_file: A string indicates that the body is to be written to the file.
+        body_to_file:
+            If a string, response body will be written to the specified file path.
+            If a function, it will be called repeatedly with the downloaded data
+            (as a string) as its argument during the transfer.
         mark: a number used to set SO_MARK to socket
         device: a string used to set SO_BINDTODEVICE to socket
         nameservers: see dns.query
