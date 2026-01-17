@@ -50,21 +50,27 @@ target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA54_LIBRARIES})
 target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(time MODULE time.c)
+target_link_libraries(time PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY})
 set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
 
 add_library(bufio MODULE bufio.c)
+target_link_libraries(bufio PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
 set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
 
 add_library(sys MODULE sys.c)
+target_link_libraries(sys PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY})
 set_target_properties(sys PROPERTIES OUTPUT_NAME sys PREFIX "")
 
 add_library(file MODULE file.c)
+target_link_libraries(file PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
 set_target_properties(file PROPERTIES OUTPUT_NAME file PREFIX "")
 
 add_library(socket MODULE socket.c)
+target_link_libraries(socket PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
 set_target_properties(socket PROPERTIES OUTPUT_NAME socket PREFIX "")
 
 add_library(termios MODULE termios.c)
+target_link_libraries(termios PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
 
 add_library(log MODULE log.c log/log.c)
@@ -76,27 +82,31 @@ target_link_libraries(base64 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(base64 PROPERTIES OUTPUT_NAME base64 PREFIX "")
 
 add_library(sha1 MODULE sha1.c)
-target_link_libraries(sha1 PRIVATE ${LUA54_LIBRARIES})
+target_link_libraries(sha1 PRIVATE ${LUA54_LIBRARIES} libeco)
 set_target_properties(sha1 PROPERTIES OUTPUT_NAME sha1 PREFIX "")
 
 add_library(sha256 MODULE sha256.c)
-target_link_libraries(sha256 PRIVATE ${LUA54_LIBRARIES})
+target_link_libraries(sha256 PRIVATE ${LUA54_LIBRARIES} libeco)
 set_target_properties(sha256 PROPERTIES OUTPUT_NAME sha256 PREFIX "")
 
 add_library(md5 MODULE md5.c)
-target_link_libraries(md5 PRIVATE ${LUA54_LIBRARIES})
+target_link_libraries(md5 PRIVATE ${LUA54_LIBRARIES} libeco)
 set_target_properties(md5 PROPERTIES OUTPUT_NAME md5 PREFIX "")
 
 add_library(nl MODULE nl.c)
+target_link_libraries(nl PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(nl PROPERTIES OUTPUT_NAME nl PREFIX "")
 
 add_library(rtnl MODULE rtnl.c)
+target_link_libraries(rtnl PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(rtnl PROPERTIES OUTPUT_NAME rtnl PREFIX "")
 
 add_library(genl MODULE genl.c)
+target_link_libraries(genl PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(genl PROPERTIES OUTPUT_NAME genl PREFIX "")
 
 add_library(nl80211 MODULE nl80211.c)
+target_link_libraries(nl80211 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(nl80211 PROPERTIES OUTPUT_NAME nl80211 PREFIX "")
 
 if (ECO_SSL_SUPPORT)
@@ -145,7 +155,7 @@ if (ECO_UCI_SUPPORT)
     find_library(UCI NAMES uci)
     if (UCI)
         add_library(luci MODULE uci.c)
-        target_link_libraries(luci PRIVATE uci)
+        target_link_libraries(luci PRIVATE ${LUA54_LIBRARIES} uci libeco)
         set_target_properties(luci PROPERTIES OUTPUT_NAME uci PREFIX "")
 
         install(
