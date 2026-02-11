@@ -1558,18 +1558,16 @@ function M.get_link(ifname)
         return nil, 'not connected'
     end
 
-    if bss then
-        local sta = M.get_station(ifname, bss.bssid)
-        if sta then
-            bss.rx_bytes = sta.rx_bytes
-            bss.rx_packets = sta.rx_packets
-            bss.tx_bytes = sta.tx_bytes
-            bss.tx_packets = sta.tx_packets
-            bss.tx_rate = sta.tx_rate
-            bss.rx_rate = sta.rx_rate
-            bss.signal = sta.signal
-            bss.ack_signal_avg = sta.ack_signal_avg
-        end
+    local sta = M.get_station(ifname, bss.bssid)
+    if sta then
+        bss.rx_bytes = sta.rx_bytes
+        bss.rx_packets = sta.rx_packets
+        bss.tx_bytes = sta.tx_bytes
+        bss.tx_packets = sta.tx_packets
+        bss.tx_rate = sta.tx_rate
+        bss.rx_rate = sta.rx_rate
+        bss.signal = sta.signal
+        bss.ack_signal_avg = sta.ack_signal_avg
     end
 
     return bss
