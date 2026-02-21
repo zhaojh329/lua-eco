@@ -519,7 +519,7 @@ function methods:read_formdata(req, timeout)
         if line == '\r' then
             form.state = 'body'
         else
-            local name, value = line:match('([%w%p]+) *: *(.+)\r?$')
+            local name, value = line:match('([%w%p]+) *: *(.-)\r?$')
             if not name or not value then
                 return nil, 'invalid http header'
             end
@@ -672,8 +672,10 @@ local function handle_connection(con, handler)
             return false
         end
 
+        data = data:gsub('\r$', '')
+
         if #data > 0 then
-            method, raw_path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)\r?$')
+            method, raw_path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)$')
             if not method or not raw_path or not major_version or not minor_version then
                 log.err(log_prefix .. 'not a vaild http request start line')
                 return false
@@ -697,11 +699,13 @@ local function handle_connection(con, handler)
             return false
         end
 
-        if data == '\r' or data == '' then
+        data = data:gsub('\r$', '')
+
+        if data == '' then
             break
         end
 
-        local name, value = data:match('([%w%p]+) *: *(.+)\r?$')
+        local name, value = data:match('([%w%p]+) *: *(.*)$')
         if not name or not value then
             log.err(log_prefix .. 'not a vaild http header: ' .. data)
             return false
