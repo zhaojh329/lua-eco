@@ -44,17 +44,20 @@ void eco_resume(lua_State *co, int narg)
         break;
 
     default:
-        lua_xmove(co, L, 1);
+        luaL_traceback(L, co, lua_tostring(co, -1), 0);
+        luaL_traceback(L, L, NULL, 0);
 
         lua_getglobal(L, "eco");
         lua_getfield(L, -1, "panic_hook");
         lua_remove(L, -2);
 
         if (lua_isfunction(L, -1)) {
-            lua_pushvalue(L, -2);
-            lua_call(L, 1, 0);
+            lua_insert(L, -3);
+            lua_call(L, 2, 0);
         } else {
-            fprintf(stderr, "%s\n", lua_tostring(L, -2));
+            lua_pop(L, 1);
+            printf("%s\n", lua_tostring(L, -2));
+            printf("%s\n", lua_tostring(L, -1));
         }
 
         exit(1);
