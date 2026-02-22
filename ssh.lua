@@ -285,7 +285,7 @@ local function scp_send_data(session, channel, data)
         local n, err = channel:write(data:sub(written + 1))
         if not n then
             if err ~= ssh.ERROR_EAGAIN then
-                return nil, session:last_error()
+                return nil, session.session:last_error()
             end
 
             if not waitsocket(session, 3.0) then
