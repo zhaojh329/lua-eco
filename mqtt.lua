@@ -336,12 +336,8 @@ local function handle_packet(self)
         self.wait_for_pubcomp[mid] = nil
     elseif pt == PKT_PUBREL then
         local mid = string.unpack('>I2', data)
-        local w = self.wait_for_pubrel[mid]
-        if not w then
-            return true
-        end
         self.wait_for_pubrel[mid] = nil
-        data = mqtt_packet(PKT_PUBCOMP, 0x02, 2):add_u16(mid):data()
+        data = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid):data()
         return send_pkt(self, data)
     elseif pt == PKT_PUBLISH then
         local topic_len = string.unpack('>I2', data)
@@ -356,7 +352,7 @@ local function handle_packet(self)
             local mid = string.unpack('>I2', data)
 
             if qos == M.QOS1 then
-                local ok, err = send_pkt(self, mqtt_packet(PKT_PUBACK, 0x02, 2):add_u16(mid):data())
+                local ok, err = send_pkt(self, mqtt_packet(PKT_PUBACK, 0x00, 2):add_u16(mid):data())
                 if not ok then
                     return false, err
                 end
@@ -366,7 +362,7 @@ local function handle_packet(self)
                 if w then
                     return true
                 else
-                    local pkt = mqtt_packet(PKT_PUBREC, 0x02, 2):add_u16(mid)
+                    local pkt = mqtt_packet(PKT_PUBREC, 0x00, 2):add_u16(mid)
                     self.wait_for_pubrel[mid] = { data = pkt:data() }
                     local ok, err = send_pkt(self, pkt:data())
                     if not ok then
