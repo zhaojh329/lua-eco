@@ -195,7 +195,7 @@ local function handle_retransmit(tmr, self)
     tmr:set(retransmit_interval)
 end
 
-local max_mult = 128 * 128 * 128
+local max_mult = 128 * 128 * 128 * 128
 
 local function read_packet(sock)
     local byte, err = sock:read(1)
