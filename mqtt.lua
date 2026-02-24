@@ -72,7 +72,7 @@ local function check_option(name, value)
     elseif name == 'id' then
         assert(value == nil or type(value) == 'string', 'expecting id to be a string')
     elseif name == 'keepalive' then
-        assert(value == nil or type(value) == 'number', 'expecting keepalive to be a number')
+        assert(value == nil or math.type(value) == 'integer', 'expecting keepalive to be an integer')
         assert(value == nil or value >= 5, 'keepalive cannot be less than 5')
     elseif name == 'clean_session' then
         assert(value == nil or type(value) == 'boolean', 'expecting clean_session to be a boolean')
@@ -403,7 +403,7 @@ local function mqtt_connect(self)
     end
 
     opts.id = opts.id or string.format('lua-eco-%07x', math.random(1, 0xfffffff))
-    opts.keepalive = opts.keepalive or 30.0
+    opts.keepalive = opts.keepalive or 30
 
     local remlen = 10 + #opts.id + 2
     local will = opts.will
