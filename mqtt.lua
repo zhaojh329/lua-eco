@@ -606,9 +606,10 @@ function methods:disconnect()
     return send_pkt(self, pkt:data())
 end
 
-
 function methods:close()
-    self.sock:close()
+    if self.sock then
+        self.sock:close()
+    end
 end
 
 -- Add functions as handlers of given events
