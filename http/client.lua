@@ -270,7 +270,11 @@ local function do_http_request(self, method, path, headers, body, opts)
         ok, err = receive_chunked_body(resp, sock, timeout, body_to_file)
     elseif headers['content-length'] then
         local content_length = tonumber(headers['content-length'])
-        ok, err = receive_body(resp, sock, timeout, content_length, body_to_file)
+        if not content_length or content_length < 0 then
+            return nil, 'invalid content-length'
+        else
+            ok, err = receive_body(resp, sock, timeout, content_length, body_to_file)
+        end
     else
         ok, err = receive_body_until_closed(resp, sock, timeout, body_to_file)
     end
