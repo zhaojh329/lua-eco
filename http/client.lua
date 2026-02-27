@@ -69,6 +69,10 @@ local function send_http_request(sock, method, path, headers, body)
 
             if err then break end
         end
+
+        if not err then
+            _, err = sock:send(body.tail)
+        end
     end
 
     if err then
@@ -373,12 +377,9 @@ function methods:request(method, url, body, opts)
 
     if body then
         if body_is_form(body) then
-            local contents = body.contents
-            contents[#contents + 1] = '--' .. body.boundary .. '--\r\n'
-            body.length = body.length + #contents[#contents]
-
             headers['content-type'] = 'multipart/form-data; boundary=' .. body.boundary
             headers["content-length"] = body.length
+            headers["content-length"] = body.length + #body.tail
         else
             headers['content-type'] = 'text/plain'
             headers["content-length"] = type(body) == 'string' and #body or body.size
@@ -606,7 +607,13 @@ end
 
 function M.form()
     local boundary = generate_boundary()
-    return setmetatable({ boundary = boundary, length = 0, contents = {} }, form_metatable)
+    local tail = '--' .. boundary .. '--\r\n'
+    return setmetatable({
+        boundary = boundary,
+        length = 0,
+        contents = {},
+        tail = tail
+    }, form_metatable)
 end
 
 return M
