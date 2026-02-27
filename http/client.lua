@@ -14,11 +14,13 @@ local BODY_FILE_MT = 'eco-http-body-file'
 local BODY_FORM_MT = 'eco-http-body-form'
 
 local function body_is_file(body)
-    return type(body) == 'table' and getmetatable(body).name == BODY_FILE_MT
+    local mt = getmetatable(body)
+    return type(body) == 'table' and mt and mt.name == BODY_FILE_MT
 end
 
 local function body_is_form(body)
-    return type(body) == 'table' and getmetatable(body).name == BODY_FORM_MT
+    local mt = getmetatable(body)
+    return type(body) == 'table' and mt and mt.name == BODY_FORM_MT
 end
 
 local function build_http_headers(data, headers)
