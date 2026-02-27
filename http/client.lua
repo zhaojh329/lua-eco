@@ -107,8 +107,17 @@ local function recv_http_headers(sock, timeout)
 
         if data == '\r' or data == '' then break end
 
-        local name, value = data:match('([%w%p]+) *: *([%w%p ]+)\r?$')
-        if not name or not value then
+        data = data:gsub('\r$', '')
+
+        local pos = data:find(':', 1, true)
+        if not pos then
+            return nil, 'invalid http header'
+        end
+
+        local name = data:sub(1, pos - 1):match('^%s*(.-)%s*$')
+        local value = data:sub(pos + 1):match('^%s*(.-)%s*$')
+
+        if name == '' then
             return nil, 'invalid http header'
         end
 
