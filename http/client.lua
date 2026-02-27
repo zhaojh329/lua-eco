@@ -296,7 +296,7 @@ function methods:close()
     end
 
     sock:close()
-    self.sock = nil
+    self.__sock = nil
 end
 
 function methods:sock()
