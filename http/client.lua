@@ -191,12 +191,12 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
         -- first read chunk size
         local data, err = sock:recv('l', timeout)
         if not data then
-            return nil, err
+            return false, err
         end
 
         data = data:match('^%x+\r?')
         if not data then
-            return nil, 'not a vaild http chunked body'
+            return false, 'not a vaild http chunked body'
         end
 
         chunk_size = tonumber(data, 16)
@@ -211,7 +211,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
         -- second read chunk data
         data, err = sock:readfull(chunk_size, timeout)
         if not data then
-            return nil, err
+            return false, err
         end
 
         if body_to_file then
@@ -222,7 +222,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
 
         data, err = sock:recv('l', timeout)
         if not data then
-            return nil, err
+            return false, err
         end
     end
 end
@@ -270,7 +270,7 @@ local function do_http_request(self, method, path, headers, body, opts)
     if type(body_to_file) == 'string' then
         local f, err = io.open(body_to_file, 'w')
         if not f then
-            return false, 'create "' .. body_to_file .. '" fail: ' .. err
+            return nil, 'create "' .. body_to_file .. '" fail: ' .. err
         end
         body_to_file = f
     end
