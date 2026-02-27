@@ -52,12 +52,29 @@ static int lua_save_obj_to_ubus_ctx(lua_State *L, void *obj)
     return 1;
 }
 
-static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool is_array)
+static void lua_table_to_blob_impl(lua_State *L, int index, struct blob_buf *b,
+                   bool is_array, int visited)
 {
     void *c;
 
+    index = lua_absindex(L, index);
+    visited = lua_absindex(L, visited);
+
     if (!lua_istable(L, index))
         return;
+
+    lua_pushvalue(L, index);
+    lua_rawget(L, visited);
+    if (!lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        luaL_error(L, "circular reference in table");
+        return;
+    }
+    lua_pop(L, 1);
+
+    lua_pushvalue(L, index);
+    lua_pushboolean(L, 1);
+    lua_rawset(L, visited);
 
     for (lua_pushnil(L); lua_next(L, index); lua_pop(L, 2)) {
         const char *key;
@@ -103,16 +120,32 @@ static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool 
         case LUA_TTABLE:
             if (lua_table_is_array(L, -1)) {
                 c = blobmsg_open_array(b, key);
-                lua_table_to_blob(L, lua_gettop(L), b, true);
+                lua_table_to_blob_impl(L, lua_gettop(L), b, true, visited);
                 blobmsg_close_array(b, c);
             } else {
                 c = blobmsg_open_table(b, key);
-                lua_table_to_blob(L, lua_gettop(L), b, false);
+                lua_table_to_blob_impl(L, lua_gettop(L), b, false, visited);
                 blobmsg_close_table(b, c);
             }
             break;
         }
     }
+
+    lua_pushvalue(L, index);
+    lua_pushnil(L);
+    lua_rawset(L, visited);
+}
+
+static void lua_table_to_blob(lua_State *L, int index, struct blob_buf *b, bool is_array)
+{
+    int visited;
+
+    lua_newtable(L);
+    visited = lua_gettop(L);
+
+    lua_table_to_blob_impl(L, index, b, is_array, visited);
+
+    lua_pop(L, 1);
 }
 
 static void blob_to_lua_table(lua_State *L, struct blob_attr *attr, size_t len, bool is_array);
