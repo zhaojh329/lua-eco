@@ -641,8 +641,13 @@ static int lua_uci_foreach(lua_State *L)
         uci_push_section(L, s, i - 1);
         if (lua_pcall(L, 1, 1, 0) == 0) {
             ret = true;
-            if (lua_isboolean(L, -1) && !lua_toboolean(L, -1))
+
+            if (lua_isboolean(L, -1) && !lua_toboolean(L, -1)) {
+                lua_pop(L, 1);
                 break;
+            }
+
+            lua_pop(L, 1);
         } else {
             lua_error(L);
             break;
