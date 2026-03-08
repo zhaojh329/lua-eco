@@ -283,7 +283,7 @@ static int lua_statvfs(lua_State *L)
 static int eco_file_dir_iter(lua_State *L)
 {
     const char *path = lua_tostring(L, lua_upvalueindex(1));
-    DIR **d = (DIR **)lua_touserdata(L, 1);
+    DIR **d = (DIR **)luaL_checkudata(L, 1, ECO_FILE_DIR_MT);
     char fullpath[PATH_MAX];
     struct dirent *e;
 
@@ -300,7 +300,14 @@ again:
         lua_pushstring(L, e->d_name);
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, e->d_name);
 
-        stat(fullpath, &st);
+        if (stat(fullpath, &st)) {
+            /*
+             * Keep historical "follow symlink" behavior, but if target is
+             * missing (dangling symlink) fall back to lstat for entry metadata.
+             */
+            if (lstat(fullpath, &st))
+                goto again;
+        }
         __lua_file_stat(L, &st);
 
         return 2;
@@ -334,6 +341,8 @@ static int lua_file_dir(lua_State *L)
     lua_setmetatable(L, -2);
 
     *d = opendir(path);
+    if (!*d)
+        return luaL_error(L, "%s", strerror(errno));
 
     lua_rotate(L, 1, 1);
 
