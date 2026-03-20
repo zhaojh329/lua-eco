@@ -32,6 +32,8 @@ struct eco_ubus_object {
     struct ubus_method methods[0];
 };
 
+#define UBUS_MAX_MSGLEN 1048576
+
 #define ECO_UBUS_CTX_MT "eco{ubus-ctx}"
 
 static const char *obj_registry = "eco.ubus{obj}";
@@ -50,6 +52,17 @@ static int lua_save_obj_to_ubus_ctx(lua_State *L, void *obj)
     lua_settop(L, -2);
 
     return 1;
+}
+
+static int check_msg_len(lua_State *L, const struct blob_buf *b)
+{
+    if (blob_pad_len(b->head) > UBUS_MAX_MSGLEN) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "msg too long");
+        return -1;
+    }
+
+    return 0;
 }
 
 static void lua_table_to_blob_impl(lua_State *L, int index, struct blob_buf *b,
@@ -384,8 +397,15 @@ static int lua_ubus_call(lua_State *L)
 
     lua_table_to_blob(L, 4, &buf, false);
 
+    if (check_msg_len(L, &buf)) {
+        free(req);
+        blob_buf_free(&buf);
+        return 2;
+    }
+
     ret = ubus_invoke_async(&ctx->ctx, id, func, buf.head, &req->req);
     if (ret) {
+        free(req);
         blob_buf_free(&buf);
         lua_pushnil(L);
         lua_pushstring(L, ubus_strerror(ret));
@@ -420,6 +440,11 @@ static int lua_ubus_send(lua_State *L)
     blob_buf_init(&buf, 0);
 
     lua_table_to_blob(L, 3, &buf, false);
+
+    if (check_msg_len(L, &buf)) {
+        blob_buf_free(&buf);
+        return 2;
+    }
 
     ubus_send_event(&ctx->ctx, event, buf.head);
 
@@ -662,6 +687,11 @@ static int lua_ubus_reply(lua_State *L)
 
     lua_table_to_blob(L, 3, &buf, false);
 
+    if (check_msg_len(L, &buf)) {
+        blob_buf_free(&buf);
+        return 2;
+    }
+
     ubus_send_reply(&ctx->ctx, req, buf.head);
 
     blob_buf_free(&buf);
@@ -756,6 +786,11 @@ static int lua_ubus_notify(lua_State *L)
     blob_buf_init(&buf, 0);
 
     lua_table_to_blob(L, 4, &buf, false);
+
+    if (check_msg_len(L, &buf)) {
+        blob_buf_free(&buf);
+        return 2;
+    }
 
     ubus_notify(&ctx->ctx, &obj->object, method, buf.head, -1);
 
