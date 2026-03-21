@@ -69,8 +69,8 @@ local metatable = {
     __close = methods.close
 }
 
-function methods:accept()
-    local sock, perr = self.sock:accept()
+function methods:accept(timeout)
+    local sock, perr = self.sock:accept(timeout)
     if not sock then
         return nil, perr
     end
