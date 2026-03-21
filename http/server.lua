@@ -764,7 +764,23 @@ local function handle_connection(con, handler)
         end
     end
 
-    con.body_remain = tonumber(headers['content-length'] or 0)
+    local content_length = headers['content-length']
+    local parsed_length
+
+    if content_length then
+        if not content_length:match('^%d+$') then
+            log.err(log_prefix .. 'invalid content-length: ' .. content_length)
+            return false
+        end
+
+        parsed_length = math.tointeger(content_length)
+        if not parsed_length then
+            log.err(log_prefix .. 'invalid content-length: ' .. content_length)
+            return false
+        end
+    end
+
+    con.body_remain = parsed_length
 
     local resp = {
         major_version = major_version,
