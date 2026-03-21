@@ -321,6 +321,13 @@ static int lua_acceptk(lua_State *L, int status, lua_KContext ctx)
         return 2;
     }
 
+    if (sock->flag.overtime) {
+        sock->flag.overtime = 0;
+        lua_pushnil(L);
+        lua_pushliteral(L, "timeout");
+        return 2;
+    }
+
 again:
     fd = accept4(sock->fd, (struct sockaddr *)&addr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (fd < 0) {
@@ -329,6 +336,12 @@ again:
 
         if (errno == EAGAIN) {
             sock->rcv.co = L;
+
+            if (sock->rcv.timeout > 0) {
+                ev_timer_set(&sock->tmr, sock->rcv.timeout, 0);
+                ev_timer_start(loop, &sock->tmr);
+            }
+
             ev_io_start(loop, &sock->rcv.io);
             return lua_yieldk(L, 0, ctx, lua_acceptk);
         }
@@ -347,6 +360,8 @@ again:
 static int lua_accept(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
+
+    sock->rcv.timeout = lua_tonumber(L, 2);
 
     return lua_acceptk(L, 0, (lua_KContext)sock);
 }
