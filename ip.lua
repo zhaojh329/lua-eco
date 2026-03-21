@@ -126,7 +126,7 @@ function link.set(dev, attrs)
     end
 
     if attrs.allmulticast ~= nil then
-        change = change | rtnl.IFF_MULTICAST
+        change = change | rtnl.IFF_ALLMULTI
 
         if attrs.allmulticast then
             flags = flags | rtnl.IFF_ALLMULTI
