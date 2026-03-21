@@ -44,10 +44,17 @@ function M.parse(url)
         return ''
     end)
 
-    url = string.gsub(url, '^[^:/?#]+', function(s)
-        parsed.host = s
-        return ''
-    end)
+    if url:sub(1, 1) == '[' then
+        url = string.gsub(url, '^%[([^%]]+)%]', function(s)
+            parsed.host = s
+            return ''
+        end)
+    else
+        url = string.gsub(url, '^[^:/?#]+', function(s)
+            parsed.host = s
+            return ''
+        end)
+    end
 
     if not parsed.host then
         return nil, 'invalid url'
