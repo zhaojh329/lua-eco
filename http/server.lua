@@ -570,9 +570,34 @@ function methods:discard_body()
     return true
 end
 
+local function normalize_request_path(path)
+    if type(path) ~= 'string' or path == '' then
+        return nil
+    end
+
+    local normalized = {}
+
+    for part in path:gmatch('[^/]+') do
+        if part == '..' then
+            if #normalized == 0 then
+                return nil
+            end
+            normalized[#normalized] = nil
+        elseif part ~= '.' and part ~= '' then
+            normalized[#normalized + 1] = part
+        end
+    end
+
+    return '/' .. concat(normalized, '/')
+end
+
 function methods:serve_file(req)
     local options = self.options
-    local path = req.path
+    local path = normalize_request_path(req.path)
+
+    if not path then
+        return self:send_error(M.STATUS_FORBIDDEN)
+    end
 
     if path == '/' then
         path = '/' .. options.index
