@@ -1084,10 +1084,16 @@ static int lua_inet_pton(lua_State *L)
     const void *src = luaL_checkstring(L, 2);
     char dst[sizeof(struct in6_addr)];
 
-    if (inet_pton(family, src, dst))
-        lua_pushlstring(L, dst, sizeof(dst));
-    else
+    luaL_argcheck(L, family == AF_INET || family == AF_INET6, 1,
+                "family must be AF_INET or AF_INET6");
+
+    if (inet_pton(family, src, dst)) {
+        size_t size = (family == AF_INET) ?
+                sizeof(struct in_addr) : sizeof(struct in6_addr);
+        lua_pushlstring(L, dst, size);
+    } else {
         lua_pushnil(L);
+    }
 
     return 1;
 }
