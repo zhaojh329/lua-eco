@@ -185,7 +185,7 @@ static int lua_args_to_sockaddr(struct eco_socket *sock, lua_State *L, struct so
         ip = lua_tostring(L, 2 + offset);
 
         if (ip && inet_pton(AF_INET6, ip, &addr.in6.sin6_addr) != 1)
-            luaL_argerror(L, 2 + offset, "not a valid IPv6 address");\
+            luaL_argerror(L, 2 + offset, "not a valid IPv6 address");
 
         addr.in6.sin6_port = htons(luaL_checkinteger(L, 3 + offset));
         addrlen = sizeof(struct sockaddr_in6);
