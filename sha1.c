@@ -13,7 +13,7 @@
 
 struct sha1_ctx {
     uint32_t state[5];
-    size_t count[2];
+    uint32_t count[2];
     uint8_t buffer[64];
 };
 
@@ -165,15 +165,16 @@ static void sha1_init(struct sha1_ctx *ctx)
 
 static void sha1_update(struct sha1_ctx *ctx, const void *data, size_t len)
 {
-    size_t i, j;
+    size_t i;
+    uint32_t j;
 
     j = ctx->count[0];
-    ctx->count[0] += len << 3;
+    ctx->count[0] += (uint32_t)(len << 3);
 
     if (ctx->count[0] < j)
         ctx->count[1]++;
 
-    ctx->count[1] += (len >> 29);
+    ctx->count[1] += (uint32_t)(len >> 29);
     j = (j >> 3) & 63;
 
     if ((j + len) > 63) {
