@@ -780,7 +780,7 @@ local function handle_connection(con, handler)
         end
     end
 
-    con.body_remain = parsed_length
+    con.body_remain = parsed_length or 0
 
     local resp = {
         major_version = major_version,
