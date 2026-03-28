@@ -1017,7 +1017,7 @@ local function parse_bitrate(attrs)
     if attrs[nl80211.RATE_INFO_BITRATE32] then
         rate = nl.attr_get_u32(attrs[nl80211.RATE_INFO_BITRATE32])
     elseif attrs[nl80211.RATE_INFO_BITRATE] then
-        rate = nl.attr_get_u16(attrs[nl80211.RATE_INFO_BITRATE32])
+        rate = nl.attr_get_u16(attrs[nl80211.RATE_INFO_BITRATE])
     end
 
     r.rate = rate / 10
