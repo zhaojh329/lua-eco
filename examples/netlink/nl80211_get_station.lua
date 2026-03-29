@@ -2,12 +2,6 @@
 
 local nl80211 = require 'eco.nl80211'
 
-local sta, err = nl80211.get_station('wlan0', '00:15:5d:10:a6:c9')
-if not sta then
-    print(err)
-    return
-end
-
 local function format_rate(r)
     local s = {}
 
@@ -39,32 +33,42 @@ local function format_rate(r)
     return table.concat(s, ', ')
 end
 
-print('mac:', sta.mac)
-print('inactive time:', sta.inactive_time .. ' ms')
-print('rx bytes:', sta.rx_bytes)
-print('rx packets:', sta.rx_packets)
-print('tx bytes:', sta.tx_bytes)
-print('tx packets:', sta.tx_packets)
-print('tx retries:', sta.tx_retries)
-print('tx failed:', sta.tx_failed)
-print('signal:', sta.signal .. ' dBm')
-print('signal avg:', sta.signal_avg .. ' dBm')
-print('avg ack signal:', sta.ack_signal_avg .. ' dBm')
-print('tx bitrate:', format_rate(sta.tx_rate))
-print('rx bitrate:', format_rate(sta.rx_rate))
-print('authorized:', sta.authorized)
-print('authenticated:', sta.authenticated)
-print('associated:', sta.associated)
-print('preamble:', sta.preamble)
-print('WMM/WME:', sta.wme)
-print('MFP:', sta.mfp)
+local function print_sta(sta)
+    print('mac:', sta.mac)
+    print('inactive time:', sta.inactive_time .. ' ms')
+    print('rx bytes:', sta.rx_bytes)
+    print('rx packets:', sta.rx_packets)
+    print('tx bytes:', sta.tx_bytes)
+    print('tx packets:', sta.tx_packets)
+    print('tx retries:', sta.tx_retries)
+    print('tx failed:', sta.tx_failed)
+    print('signal:', sta.signal .. ' dBm')
+    print('signal avg:', sta.signal_avg .. ' dBm')
+    print('avg ack signal:', sta.ack_signal_avg .. ' dBm')
+    print('tx bitrate:', format_rate(sta.tx_rate))
+    print('rx bitrate:', format_rate(sta.rx_rate))
+    print('authorized:', sta.authorized)
+    print('authenticated:', sta.authenticated)
+    print('associated:', sta.associated)
+    print('preamble:', sta.preamble)
+    print('WMM/WME:', sta.wme)
+    print('MFP:', sta.mfp)
 
-if sta.beacon_loss then
-    print('beacon loss:', sta.beacon_loss)
+    if sta.beacon_loss then
+        print('beacon loss:', sta.beacon_loss)
+    end
+
+    if sta.beacon_rx then
+        print('beacon interval:', sta.beacon_rx)
+    end
+
+    print('connected time:', sta.connected_time .. ' seconds')
 end
 
-if sta.beacon_rx then
-    print('beacon interval:', sta.beacon_rx)
+local sta, err = nl80211.get_station('wlan0', '00:15:5d:10:a6:c9')
+if not sta then
+    print(err)
+    return
 end
 
-print('connected time:', sta.connected_time .. ' seconds')
+print_sta(sta)

@@ -1,6 +1,19 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+--- Packet encoding and decoding helpers.
+--
+-- This module provides:
+--
+-- - decoders for common L2/L3/L4 packets (Ethernet, IPv4/IPv6, ARP, ICMP,
+--   TCP, UDP, and selected 802.11 radiotap frames)
+-- - encoders for raw packets used with raw sockets
+--
+-- Most `from_*` functions return a packet object that supports `pkt:next()` to
+-- decode the next protocol layer.
+--
+-- @module eco.packet
+
 local hex = require 'eco.encoding.hex'
 local nl80211 = require 'eco.nl80211'
 local socket = require 'eco.socket'
@@ -364,6 +377,25 @@ function mtable_decap:__tostring()
     return ''
 end
 
+--- Decoded packet object returned by parser helpers.
+--
+-- Common fields:
+--
+-- - `name`: protocol name, for example `"ETHER"`, `"IP"`, `"TCP"`.
+-- - `proto` (optional): next L3 ethertype, usually present on L2 packets.
+-- - `protocol` (optional): next L4 protocol number, usually present on IP packets.
+-- - `data` (optional): remaining payload bytes.
+-- - `source` (optional): source address or source port depending on packet layer.
+-- - `dest` (optional): destination address or destination port depending on packet layer.
+--
+-- @type ParsedPacket
+
+--- Decode the next protocol layer from current packet payload.
+--
+-- @function ParsedPacket:next
+-- @treturn ParsedPacket next_pkt Decoded upper-layer packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function methods_decap:next()
     local data = self.data
 
@@ -386,22 +418,55 @@ function methods_decap:next()
     return nil, 'no upper protocol layer'
 end
 
+--- End of `ParsedPacket` type section.
+-- @section end
+
+--- Decode a raw ICMP packet.
+-- @function from_icmp
+-- @tparam string data Raw ICMP bytes.
+-- @treturn ParsedPacket Decoded ICMP packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.from_icmp(data)
     return protocols[socket.IPPROTO_ICMP].next(data)
 end
 
+--- Decode a raw ICMPv6 packet.
+-- @function from_icmp6
+-- @tparam string data Raw ICMPv6 bytes.
+-- @treturn ParsedPacket Decoded ICMPv6 packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.from_icmp6(data)
     return protocols[socket.IPPROTO_ICMPV6].next(data)
 end
 
+--- Decode a raw IPv4 packet.
+-- @function from_ip
+-- @tparam string data Raw IPv4 bytes.
+-- @treturn ParsedPacket Decoded IPv4 packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.from_ip(data)
     return protos[socket.ETH_P_IP].next(data)
 end
 
+--- Decode a raw IPv6 packet.
+-- @function from_ip6
+-- @tparam string data Raw IPv6 bytes.
+-- @treturn ParsedPacket Decoded IPv6 packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.from_ip6(data)
     return protos[socket.ETH_P_IPV6].next(data)
 end
 
+--- Decode an Ethernet frame.
+-- @function from_ether
+-- @tparam string data Raw Ethernet frame bytes.
+-- @treturn ParsedPacket Decoded Ethernet packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.from_ether(data)
     assert(type(data) == 'string')
 
@@ -437,6 +502,16 @@ local function parse_80211_ie(pkt, data)
     end
 end
 
+--- Decode an IEEE 802.11 frame from a radiotap packet.
+--
+-- This parser extracts commonly used management/data fields and selected
+-- information elements (for example SSID in beacon/probe frames).
+--
+-- @function from_radiotap
+-- @tparam string data Raw radiotap packet bytes.
+-- @treturn ParsedPacket Decoded 802.11 packet.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function M.from_radiotap(data)
     assert(type(data) == 'string')
 
@@ -517,6 +592,18 @@ local function csum_icmp(data)
     return ~sum & 0xffff
 end
 
+--- Build an ICMP echo or echo-reply packet.
+--
+-- `typ` must be one of `socket.ICMP_ECHO` or `socket.ICMP_ECHOREPLY`.
+--
+-- @function icmp
+-- @tparam number typ ICMP type.
+-- @tparam number code ICMP code.
+-- @tparam number id Identifier.
+-- @tparam number sequence Sequence number.
+-- @tparam[opt=""] string data Payload.
+-- @tparam[opt=false] boolean checksum Whether to compute and fill checksum.
+-- @treturn string Raw ICMP packet bytes.
 function M.icmp(typ, code, id, sequence, data, checksum)
     assert(typ == socket.ICMP_ECHO or typ == socket.ICMP_ECHOREPLY)
 
@@ -540,6 +627,19 @@ function M.icmp(typ, code, id, sequence, data, checksum)
     return table.concat(buf)
 end
 
+--- Build an ICMPv6 echo request or echo reply packet.
+--
+-- `typ` must be one of `socket.ICMPV6_ECHO_REQUEST` or
+-- `socket.ICMPV6_ECHO_REPLY`.
+--
+-- @function icmp6
+-- @tparam number typ ICMPv6 type.
+-- @tparam number code ICMPv6 code.
+-- @tparam number id Identifier.
+-- @tparam number sequence Sequence number.
+-- @tparam[opt=""] string data Payload.
+-- @tparam[opt=false] boolean checksum Whether to compute and fill checksum.
+-- @treturn string Raw ICMPv6 packet bytes.
 function M.icmp6(typ, code, id, sequence, data, checksum)
     assert(typ == socket.ICMPV6_ECHO_REQUEST or typ == socket.ICMPV6_ECHO_REPLY)
 
@@ -599,6 +699,18 @@ local function csum_tcpudp(saddr, daddr, protocol, pkt)
     return ~sum & 0xffff
 end
 
+--- Build a UDP packet.
+--
+-- If both `saddr` and `daddr` are provided, UDP checksum is computed with an
+-- IPv4 pseudo-header.
+--
+-- @function udp
+-- @tparam number source Source port.
+-- @tparam number dest Destination port.
+-- @tparam[opt=""] string data UDP payload.
+-- @tparam[opt] string saddr IPv4 source address used for checksum.
+-- @tparam[opt] string daddr IPv4 destination address used for checksum.
+-- @treturn string Raw UDP packet bytes.
 function M.udp(source, dest, data, saddr, daddr)
     data = data or ''
 
@@ -621,6 +733,30 @@ function M.udp(source, dest, data, saddr, daddr)
     return table.concat(buf)
 end
 
+--- Build a TCP packet (without options).
+--
+-- The header length is fixed to 20 bytes (`doff = 5`), i.e. TCP options are
+-- not included.
+--
+-- @function tcp
+-- @tparam number source Source port.
+-- @tparam number dest Destination port.
+-- @tparam number seq Sequence number.
+-- @tparam number ack_seq Acknowledgment number.
+-- @tparam[opt] table flags TCP flags table.
+-- @tparam[opt=false] boolean flags.cwr Congestion Window Reduced.
+-- @tparam[opt=false] boolean flags.ece ECN-Echo.
+-- @tparam[opt=false] boolean flags.urg Urgent pointer significant.
+-- @tparam[opt=false] boolean flags.ack Acknowledgment valid.
+-- @tparam[opt=false] boolean flags.psh Push function.
+-- @tparam[opt=false] boolean flags.rst Reset connection.
+-- @tparam[opt=false] boolean flags.syn Synchronize sequence numbers.
+-- @tparam[opt=false] boolean flags.fin No more data from sender.
+-- @tparam number window Window size.
+-- @tparam string saddr IPv4 source address used for checksum.
+-- @tparam string daddr IPv4 destination address used for checksum.
+-- @tparam[opt=""] string data TCP payload.
+-- @treturn string Raw TCP packet bytes.
 function M.tcp(source, dest, seq, ack_seq, flags, window, saddr, daddr, data)
     flags = flags or {}
     data = data or ''
@@ -658,6 +794,17 @@ function M.tcp(source, dest, seq, ack_seq, flags, window, saddr, daddr, data)
     return table.concat(buf)
 end
 
+--- Build an IPv4 packet.
+--
+-- This creates a minimal IPv4 header (no options) and computes header
+-- checksum automatically.
+--
+-- @function ip
+-- @tparam string saddr Source IPv4 address.
+-- @tparam string daddr Destination IPv4 address.
+-- @tparam number protocol IP protocol number, e.g. `socket.IPPROTO_UDP`.
+-- @tparam[opt=""] string data IPv4 payload.
+-- @treturn string Raw IPv4 packet bytes.
 function M.ip(saddr, daddr, protocol, data)
     data = data or ''
 
@@ -697,6 +844,17 @@ function M.ip(saddr, daddr, protocol, data)
     return table.concat(header) .. data
 end
 
+--- Build an ARP packet.
+--
+-- Common operations are `socket.ARPOP_REQUEST` and `socket.ARPOP_REPLY`.
+--
+-- @function arp
+-- @tparam number op ARP operation.
+-- @tparam[opt="00:00:00:00:00:00"] string sha Sender MAC address.
+-- @tparam[opt="0.0.0.0"] string sip Sender IPv4 address.
+-- @tparam[opt="00:00:00:00:00:00"] string tha Target MAC address.
+-- @tparam[opt="0.0.0.0"] string tip Target IPv4 address.
+-- @treturn string Raw ARP packet bytes.
 function M.arp(op, sha, sip, tha, tip)
     sha = sha or '00:00:00:00:00:00'
     sip = sip or '0.0.0.0'
@@ -717,6 +875,13 @@ function M.arp(op, sha, sip, tha, tip)
     return table.concat(buf)
 end
 
+--- Build an Ethernet frame.
+-- @function ether
+-- @tparam string source Source MAC address, format `xx:xx:xx:xx:xx:xx`.
+-- @tparam string dest Destination MAC address, format `xx:xx:xx:xx:xx:xx`.
+-- @tparam number proto EtherType, e.g. `socket.ETH_P_IP`.
+-- @tparam[opt=""] string data Ethernet payload.
+-- @treturn string Raw Ethernet frame bytes.
 function M.ether(source, dest, proto, data)
     data = data or ''
 

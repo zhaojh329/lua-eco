@@ -15,4 +15,4 @@ print(dst)
 print(hex.encode(dst))
 
 print('dump:')
-print(hex.dump('Lua-eco is a Lua interpreter with a built-in libev event loop.'))
+print(hex.dump('Lua-eco is a coroutine-first runtime environment for Lua 5.4.'))

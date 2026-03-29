@@ -3,6 +3,23 @@
 
 -- Referenced from https://github.com/openresty/lua-resty-websocket
 
+--- WebSocket client/server helpers.
+--
+-- This module implements basic WebSocket framing and the HTTP upgrade
+-- handshake.
+--
+-- It can be used in two ways:
+--
+-- - Server side: call @{websocket.upgrade} from an @{eco.http.server} request handler.
+-- - Client side: call @{websocket.connect} to perform the upgrade handshake and obtain a
+--   WebSocket connection.
+--
+-- The returned @{connection} object supports sending and receiving individual
+-- WebSocket frames. Fragmented messages are not automatically reassembled; see
+-- @{connection:recv_frame} for the `err == 'again'` convention.
+--
+-- @module eco.websocket
+
 local base64 = require 'eco.encoding.base64'
 local http = require 'eco.http.client'
 local sha1 = require 'eco.hash.sha1'
@@ -27,8 +44,48 @@ local types = {
     [0xa] = 'pong',
 }
 
+--- Options table for WebSocket connections.
+-- @table WebSocketOptions
+-- @tfield[opt=65535] integer max_payload_len Maximum payload length accepted/sent.
+
+--- Options table for @{websocket.connect}.
+-- @table ConnectOptions
+-- @tfield[opt] table headers Extra HTTP headers to send during handshake.
+-- @tfield[opt] string|table protocols `Sec-WebSocket-Protocol` value.
+--   If a table is provided, it will be joined using commas.
+-- @tfield[opt] string origin `Origin` header value.
+-- @tfield[opt] boolean insecure Passed to @{eco.http.client} (TLS verify control).
+-- @tfield[opt] number timeout Request timeout in seconds (passed to HTTP client).
+-- @tfield[opt=65535] integer max_payload_len Maximum payload length accepted/sent.
+
+--- WebSocket connection returned by @{websocket.upgrade} or @{websocket.connect}.
+--
+-- @type connection
 local methods = {}
 
+--- Receive a single WebSocket frame.
+--
+-- Return convention:
+--
+-- - On success: `data, typ, err`
+-- - On failure: `nil, nil, err`
+--
+-- `typ` is one of: `'text'`, `'binary'`, `'continuation'`, `'close'`, `'ping'`, `'pong'`.
+--
+-- For `typ == 'close'`, `err` carries the close status code (number) when
+-- present, and `data` carries the close reason string.
+--
+-- For fragmented messages, `err == 'again'` indicates that more frames are
+-- expected to complete the message.
+--
+-- @function connection:recv_frame
+-- @tparam[opt] number timeout Timeout in seconds.
+-- @treturn string data Frame payload.
+-- @treturn string typ Frame type.
+-- @treturn[opt] any err Extra information (`'again'` for fragmentation, or close code).
+-- @treturn[2] nil On failure.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
 function  methods:recv_frame(timeout)
     local opts = self.opts
     local sock = self.sock
@@ -219,6 +276,23 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
     return str_char(fst, snd) .. extra_len_bytes .. masking_key .. payload
 end
 
+--- Send a raw WebSocket frame.
+--
+-- `opcode` values follow RFC 6455:
+--
+-- - `0x1` text
+-- - `0x2` binary
+-- - `0x8` close
+-- - `0x9` ping
+-- - `0xA` pong
+--
+-- @function connection:send_frame
+-- @tparam boolean fin Whether this is the final fragment.
+-- @tparam integer opcode Frame opcode.
+-- @tparam[opt] string payload Frame payload (will be converted to string if not already).
+-- @treturn integer bytes Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_frame(fin, opcode, payload)
     local sock = self.sock
     local opts = self.opts
@@ -258,14 +332,34 @@ function methods:send_frame(fin, opcode, payload)
     return bytes
 end
 
+--- Send a text frame.
+-- @function connection:send_text
+-- @tparam[opt] string data Text payload.
+-- @treturn integer bytes Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_text(data)
     return self:send_frame(true, 0x1, data)
 end
 
+--- Send a binary frame.
+-- @function connection:send_binary
+-- @tparam[opt] string data Binary payload.
+-- @treturn integer bytes Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_binary(data)
     return self:send_frame(true, 0x2, data)
 end
 
+--- Send a close frame.
+--
+-- @function connection:send_close
+-- @tparam[opt] integer code Close status code.
+-- @tparam[opt] string msg Close reason.
+-- @treturn integer bytes Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_close(code, msg)
     local payload
     if code then
@@ -277,17 +371,63 @@ function methods:send_close(code, msg)
     return self:send_frame(true, 0x8, payload)
 end
 
+--- Send a ping frame.
+-- @function connection:send_ping
+-- @tparam[opt] string data Payload.
+-- @treturn integer bytes Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_ping(data)
     return self:send_frame(true, 0x9, data)
 end
 
 
+--- Send a pong frame.
+-- @function connection:send_pong
+-- @tparam[opt] string data Payload.
+-- @treturn integer bytes Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_pong(data)
     return self:send_frame(true, 0xa, data)
 end
 
+--- End of `connection` class section.
+-- @section end
+
 local metatable = { __index = methods }
 
+--- Upgrade an @{eco.http.server} connection to WebSocket.
+--
+-- This performs server-side validation of the WebSocket handshake and sends the
+-- `101 Switching Protocols` response.
+--
+-- @function upgrade
+-- @tparam connection con HTTP server connection (from @{eco.http.server}).
+-- @tparam table req HTTP request table (from @{eco.http.server}).
+-- @tparam[opt] WebSocketOptions opts Options.
+-- @treturn connection ws WebSocket connection.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+-- @usage
+-- local websocket = require 'eco.websocket'
+-- local http = require 'eco.http.server'
+-- local eco = require 'eco'
+--
+-- local function handler(con, req)
+--   if req.path == '/ws' then
+--     local ws, err = websocket.upgrade(con, req, { max_payload_len = 65535 })
+--     if not ws then return nil, err end
+--     local data, typ = ws:recv_frame()
+--     if typ == 'ping' then ws:send_pong(data) end
+--   end
+-- end
+--
+-- eco.run(function()
+--     assert(http.listen(nil, 8080, { reuseaddr = true }, handler))
+-- end)
+--
+-- eco.loop()
 function M.upgrade(con, req, opts)
     local resp = con.resp
 
@@ -310,7 +450,7 @@ function M.upgrade(con, req, opts)
     if not val then
         return nil, 'not found "upgrade" request header'
     elseif str_lower(val) ~= 'websocket' then
-        return nil, 'bad "upgrade" request header: ' .. val
+        return nil, 'bad "upgrade" request header:' .. val
     end
 
     val = headers.connection
@@ -360,6 +500,28 @@ function M.upgrade(con, req, opts)
     }, metatable)
 end
 
+--- Connect to a WebSocket server.
+--
+-- This performs an HTTP upgrade handshake for `ws://` or `wss://` URIs and
+-- returns a WebSocket connection on success.
+--
+-- @function connect
+-- @tparam string uri WebSocket URI.
+-- @tparam[opt] ConnectOptions opts Options.
+-- @treturn connection ws WebSocket connection.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string err Error message.
+-- @usage
+-- local websocket = require 'eco.websocket'
+-- local eco = require 'eco'
+--
+-- eco.run(function()
+--     local ws, err = websocket.connect('ws://127.0.0.1:8080/ws')
+--     assert(ws, err)
+--     ws:send_text('hello')
+-- end)
+--
+-- eco.loop()
 function M.connect(uri, opts)
     opts = opts or {}
 
@@ -398,10 +560,12 @@ function M.connect(uri, opts)
 
     opts.max_payload_len = opts.max_payload_len or 65535
 
+    local sock = hc:sock()
+
     return setmetatable({
         masking = true,
         hc = hc,
-        sock = hc:sock(),
+        sock = sock,
         opts = opts
     }, metatable)
 end

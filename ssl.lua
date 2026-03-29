@@ -1,11 +1,18 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+--- SSL/TLS support.
+--
+-- This module provides TLS-enabled stream connections on top of
+-- @{eco.socket} TCP sockets.
+--
+-- @module eco.ssl
+
 local socket = require 'eco.socket'
-local ssl = require 'eco.core.ssl'
-local bufio = require 'eco.bufio'
+local ssl = require 'eco.internal.ssl'
 local file = require 'eco.file'
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local M = {}
 
@@ -29,13 +36,26 @@ local function set_ssl_opt(ctx, options)
     return true
 end
 
+--- SSL client object.
+--
+-- Instances are returned by @{connect} or @{ssl_server:accept}.
+--
+-- @type ssl_client
 local cli_methods = {}
 
-function cli_methods:send(data)
+--- Send data.
+--
+-- @function ssl_client:send
+-- @tparam string data Data to send.
+-- @tparam[opt] number timeout Timeout in seconds
+-- @treturn int Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function cli_methods:send(data, timeout)
     local mutex = self.mutex
 
     mutex:lock()
-    local sent, err = self.ssock:send(data)
+    local sent, err = self.wr:write(data, timeout)
     mutex:unlock()
 
     if sent then
@@ -45,33 +65,46 @@ function cli_methods:send(data)
     end
 end
 
-function cli_methods:write(data)
-    return self:send(data)
+--- Alias of @{ssl_client:send}.
+-- @function ssl_client:write
+function cli_methods:write(data, timeout)
+    return self:send(data, timeout)
 end
 
-function cli_methods:sendfile(path, len, offset)
-    local fd, err = file.open(path)
-    if not fd then
+--- Send file content.
+--
+-- This is a convenience helper that reads from a file and sends exactly
+-- `len` bytes (unless EOF/error occurs).
+--
+-- @function ssl_client:sendfile
+-- @tparam string path File path.
+-- @tparam int len Bytes to send.
+-- @tparam[opt] int offset Start offset in file.
+-- @tparam[opt] number timeout Timeout in seconds
+-- @treturn int Bytes sent.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function cli_methods:sendfile(path, len, offset, timeout)
+    local f<close>, err = file.open(path)
+    if not f then
         return nil, err
     end
 
     if offset then
-        file.lseek(fd, offset, file.SEEK_SET)
+        f:lseek(offset, file.SEEK_SET)
     end
-
-    local b = bufio.new(fd)
 
     local chunk = 4096
     local sent = 0
     local data
 
     while len > 0 do
-        data, err = b:read(chunk > len and len or chunk)
+        data, err = f:read(chunk > len and len or chunk)
         if not data then
             break
         end
 
-        _, err = self:send(data)
+        _, err = self:send(data, timeout)
         if err then
             break
         end
@@ -80,8 +113,6 @@ function cli_methods:sendfile(path, len, offset)
         len = len - #data
     end
 
-    file.close(fd)
-
     if not err or err == 'eof' then
         return sent
     end
@@ -89,60 +120,56 @@ function cli_methods:sendfile(path, len, offset)
     return nil, err
 end
 
---[[
-  Reads according to the given pattern, which specify what to read.
-
-  In case of success, it returns the data received; in case of error, it returns
-  nil with a string describing the error.
-
-  The available pattern are:
-    'a': reads the whole file or reads from socket until the connection closed.
-    'l': reads the next line skipping the end of line character.
-    'L': reads the next line keeping the end-of-line character (if present).
-    number: reads a string with up to this number of bytes.
---]]
-function cli_methods:recv(pattern, timeout)
-    return self.b:read(pattern, timeout)
+--- Alias of @{ssl_client:read}.
+-- @function ssl_client:recv
+function cli_methods:recv(n, timeout)
+    return self:read(n, timeout)
 end
 
-function cli_methods:read(pattern, timeout)
-    return self:recv(pattern, timeout)
+--- See @{eco.reader:read}
+-- @function ssl_client:read
+function cli_methods:read(format, timeout)
+    return self.rd:read(format, timeout)
 end
 
-function cli_methods:recvfull(n, timeout)
-    return self.b:readfull(n, timeout)
+--- See @{eco.reader:readfull}
+-- @function ssl_client:readfull
+function cli_methods:readfull(format, timeout)
+    return self.rd:readfull(format, timeout)
 end
 
-function cli_methods:readfull(n, timeout)
-    return self:recvfull(n, timeout)
+--- See @{eco.reader:readuntil}
+-- @function ssl_client:readuntil
+function cli_methods:readuntil(format, timeout)
+    return self.rd:readuntil(format, timeout)
 end
 
-function cli_methods:peek(n, timeout)
-    return self.b:peek(n, timeout)
-end
-
-function cli_methods:recvuntil(pattern, timeout)
-    return self.b:readuntil(pattern, timeout)
-end
-
-function cli_methods:readuntil(pattern, timeout)
-    return self:recvuntil(pattern, timeout)
-end
-
-function cli_methods:discard(n, timeout)
-    return self.b:discard(n, timeout)
-end
-
+--- Close the TLS connection.
+--
+-- Frees internal TLS state and closes the underlying TCP socket.
+--
+-- @function ssl_client:close
 function cli_methods:close()
-    self.b:close()
+    if self.closed then
+        return
+    end
+
+    self.closed = true
+
+    -- Wake any blocked read/write coroutine before releasing ssl session.
+    self.rd:cancel()
+    self.wr:cancel()
+
+    self.sock:close()
     self.ssock:free()
 
     if not self.keep_ctx and self.ctx then
         self.ctx:free()
     end
-
-    self.sock:close()
 end
+
+--- End of `ssl_client` class section.
+-- @section end
 
 local cli_metatable = {
     __index = cli_methods,
@@ -150,39 +177,92 @@ local cli_metatable = {
     __close = cli_methods.close
 }
 
+--- SSL server listener.
+--
+-- Instances are returned by @{listen}.
+--
+-- @type ssl_server
 local srv_methods = {}
 
+--- Close the server and free its TLS context.
+--
+-- @function ssl_server:close
 function srv_methods:close()
+    if self.closed then
+        return
+    end
+
+    self.closed = true
+
     self.ctx:free()
     self.sock:close()
 end
 
+local function ssl_handshake(ssock, sock)
+    local timeout = 15.0
+
+    while true do
+        local ret, err = ssock:handshake()
+        if not ret then
+            return nil, err
+        end
+
+        if ret == true then
+            return true
+        end
+
+        if ret == ssl.SSL_WANT_READ then
+            ret, err = sock.rd:wait(timeout)
+        else
+            ret, err = sock.wr:wait(timeout)
+        end
+        if not ret then
+            return nil, err
+        end
+    end
+end
+
 local function create_ssl_client(sock, ssock, ctx, keep_ctx)
-    local b = bufio.new(
-        sock:getfd(), {
-        eof_error = 'closed',
-        fill = ssl.bufio_fill,
-        ctx = ssock:pointer()
-    })
+    local ssock_ptr = ssock:pointer()
+    local fd = sock:getfd()
+
+    local rd = eco.reader(fd, ssl.read, ssock_ptr)
+    local wr = eco.writer(fd, ssl.write, ssock_ptr)
+
     return setmetatable({
         ctx = ctx,
         sock = sock,
         ssock = ssock,
-        b = b,
+        rd = rd,
+        wr = wr,
         keep_ctx = keep_ctx,
         mutex = sync.mutex()
     }, cli_metatable)
 end
 
+--- Accept a TLS client.
+--
+-- This accepts an incoming TCP connection and then performs a TLS handshake.
+--
+-- @function ssl_server:accept
+-- @treturn ssl_client Accepted TLS client.
+-- @treturn table Peer address table.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function srv_methods:accept()
     local sock, peer = self.sock:accept()
     if not sock then
         return nil, peer
     end
 
-    local ssock = self.ctx:new(sock:getfd(), self.insecure)
+    local ssock, err = self.ctx:new(sock:getfd(), self.insecure)
+    if not ssock then
+        sock:close()
+        return nil, err
+    end
 
-    local ok, err = ssock:handshake()
+    local ok
+    ok, err = ssl_handshake(ssock, sock)
     if not ok then
         ssock:free()
         sock:close()
@@ -192,12 +272,36 @@ function srv_methods:accept()
     return create_ssl_client(sock, ssock, nil), peer
 end
 
+--- End of `ssl_server` class section.
+-- @section end
+
 local srv_metatable = {
     __index = srv_methods,
     __gc = srv_methods.close,
     __close = srv_methods.close
 }
 
+--- Create a TLS server listener.
+--
+-- Internally this calls @{eco.socket.listen_tcp} and wraps accepted sockets
+-- with TLS using a server context.
+--
+-- `options` fields used by TLS:
+--
+-- - `ca`: Path to CA certificate file.
+-- - `cert`: Path to server certificate file.
+-- - `key`: Path to server private key file.
+-- - `insecure`: When true, disables/relaxes peer verification (backend dependent).
+--
+-- Other fields are passed to @{eco.socket.listen_tcp}.
+--
+-- @function listen
+-- @tparam string ipaddr Listen address.
+-- @tparam int port Listen port.
+-- @tparam[opt] table options Options table.
+-- @treturn ssl_server
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.listen(ipaddr, port, options)
     options = options or {}
 
@@ -205,8 +309,6 @@ function M.listen(ipaddr, port, options)
     if not sock then
         return nil, err
     end
-
-    sock.b = nil
 
     local ctx = ssl.context(true)
 
@@ -220,6 +322,31 @@ function M.listen(ipaddr, port, options)
     return setmetatable({ ctx = ctx, sock = sock, insecure = options.insecure }, srv_metatable)
 end
 
+--- Create a TLS client connection.
+--
+-- Internally this calls @{eco.socket.connect_tcp} and performs a TLS handshake.
+--
+-- `options` fields used by TLS:
+--
+-- - `ca`: Path to CA certificate file.
+-- - `cert`: Path to client certificate file (optional, for mTLS).
+-- - `key`: Path to client private key file (optional, for mTLS).
+-- - `insecure`: When true, disables/relaxes peer verification (backend dependent).
+-- - `server_name`: SNI server name.
+-- - `ctx`: An existing ssl context object to reuse.
+--
+-- Other fields are passed to @{eco.socket.connect_tcp}.
+--
+-- If `options.ctx` is provided, it is reused and will NOT be freed when the
+-- returned client is closed.
+--
+-- @function connect
+-- @tparam string ipaddr Remote address.
+-- @tparam int port Remote port.
+-- @tparam[opt] table options Options table.
+-- @treturn ssl_client
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.connect(ipaddr, port, options)
     options = options or {}
 
@@ -227,8 +354,6 @@ function M.connect(ipaddr, port, options)
     if not sock then
         return nil, err
     end
-
-    sock.b = nil
 
     local ctx = options.ctx
     local keep_ctx = false
@@ -245,13 +370,21 @@ function M.connect(ipaddr, port, options)
         keep_ctx = true
     end
 
-    local ssock = ctx:new(sock:getfd(), options.insecure)
+    local ssock
+    ssock, err = ctx:new(sock:getfd(), options.insecure)
+    if not ssock then
+        if not keep_ctx then
+            ctx:free()
+        end
+        sock:close()
+        return nil, err
+    end
 
     if options.server_name then
         ssock:set_server_name(options.server_name)
     end
 
-    local ok, err = ssock:handshake()
+    local ok, err = ssl_handshake(ssock, sock)
     if not ok then
         ssock:free()
         if not keep_ctx then

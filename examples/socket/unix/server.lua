@@ -1,12 +1,7 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
-local sys = require 'eco.sys'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
+local eco = require 'eco'
 
 local function handle_client(c)
     while true do

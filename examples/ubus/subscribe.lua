@@ -3,7 +3,7 @@
 local ubus = require 'eco.ubus'
 local time = require 'eco.time'
 
-eco.run(function()
+local function notify()
     local con, err = ubus.connect()
     if not con then
         error(err)
@@ -17,21 +17,25 @@ eco.run(function()
         print('notify...', ts)
         con:notify(obj, 'time', { ts = ts })
     end
-end)
+end
 
-eco.run(function()
+local function subscribe()
     local con, err = ubus.connect()
     if not con then
         error(err)
     end
 
-    con:subscribe('eco', function(method, msg)
+    local sub = con:subscribe('eco', function(method, msg)
         if method == 'time' then
             print('recv:', msg.ts)
         end
     end, true)
 
-    while true do
-        time.sleep(1000)
-    end
-end)
+    time.at(3, function()
+        con:unsubscribe(sub)
+        print('unsubscribed')
+    end)
+end
+
+subscribe()
+notify()

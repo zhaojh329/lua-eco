@@ -1,31 +1,24 @@
 #!/usr/bin/env eco
 
-local bufio = require 'eco.bufio'
-local file = require 'eco.file'
-local sys = require 'eco.sys'
 local ssl = require 'eco.ssl'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
+local eco = require 'eco'
 
 local s, err = ssl.connect('127.0.0.1', 8080, { insecure = true })
 if not s then
     error(err)
 end
 
-local b = bufio.new(0)
+local stdin = eco.reader(0)
 
 while true do
-    file.write(1, 'Please input: ')
+    print('Please input: ')
 
-    local data = b:read('L')
+    local data = stdin:read('L')
 
     if data ~= '\n' then
         s:send(data)
 
-        local data, err = s:recv('l')
+        data, err = s:recv(1024)
         if not data then
             print(err)
             break

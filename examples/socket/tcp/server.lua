@@ -1,12 +1,19 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
-local sys = require 'eco.sys'
+local eco = require 'eco'
 
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
+local function handle_connection(c)
+    while true do
+        local data, err = c:read('l')
+        if not data then
+            print(err)
+            break
+        end
+        print('read:', data)
+        c:send('I am eco:' .. data .. '\n')
+    end
+end
 
 local s, err = socket.listen_tcp(nil, 8080, { reuseaddr = true })
 if not s then
@@ -24,15 +31,5 @@ while true do
 
     print('new connection:', peer.ipaddr, peer.port)
 
-    eco.run(function()
-        while true do
-            local data, err = c:recv('l')
-            if not data then
-                print(err)
-                break
-            end
-            print('read:', data)
-            c:send('I am eco:' .. data .. '\n')
-        end
-    end)
+    eco.run(handle_connection, c)
 end

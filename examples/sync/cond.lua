@@ -2,6 +2,7 @@
 
 local time = require 'eco.time'
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local cond = sync.cond()
 

@@ -3,12 +3,6 @@
 local socket = require 'eco.socket'
 local packet = require 'eco.packet'
 local link = require 'eco.ip'.link
-local sys = require 'eco.sys'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
 
 local function usage()
     print('usage: ' .. arg[0], '[options]')

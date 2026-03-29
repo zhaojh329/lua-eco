@@ -1,17 +1,35 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
-local file = require 'eco.core.file'
+--- HTTP/HTTPS server.
+--
+-- This module implements a simple HTTP/1.1 server (with optional TLS when
+-- `options.cert` and `options.key` are provided).
+--
+-- The main entry point is @{listen}, which accepts connections and invokes a
+-- user handler with a @{connection} object and a request table.
+--
+-- @module eco.http.server
+
+local file = require 'eco.internal.file'
 local socket = require 'eco.socket'
 local url = require 'eco.http.url'
 local log = require 'eco.log'
+local eco = require 'eco'
 
+local str_format = string.format
 local str_lower = string.lower
 local str_upper = string.upper
+local str_find = string.find
 local concat = table.concat
-local tonumber = tonumber
+local os_date = os.date
+local os_time = os.time
+local tointeger = math.tointeger
+
 local tostring = tostring
+local tonumber = tonumber
 local assert = assert
+local select = select
 local pairs = pairs
 local type = type
 
@@ -232,12 +250,73 @@ local header_name_map = {
     ['if-modified-since'] = 'If-Modified-Since'
 }
 
+local server_header_value = 'Lua-eco/' .. eco.VERSION
+local cached_date_epoch = 0
+local cached_date_value = ''
+local header_format_cache = {}
+
+local function get_http_date()
+    local now = os_time()
+
+    if now ~= cached_date_epoch then
+        cached_date_epoch = now
+        local date = os_date('!%a, %d %b %Y %H:%M:%S GMT', now)
+        if type(date) == 'string' then
+            cached_date_value = date
+        end
+    end
+
+    return cached_date_value
+end
+
+local function format_header_name(name)
+    local formatted_name = header_name_map[name]
+    if formatted_name then
+        return formatted_name
+    end
+
+    formatted_name = header_format_cache[name]
+    if formatted_name then
+        return formatted_name
+    end
+
+    formatted_name = name:gsub('^%l', str_upper):gsub('%-+%l', str_upper)
+    header_format_cache[name] = formatted_name
+
+    return formatted_name
+end
+
+local function maybe_unescape(s)
+    if str_find(s, '%', 1, true) then
+        return url.unescape(s)
+    end
+
+    return s
+end
+
+--- Connection object.
+--
+-- A `connection` is passed to the handler provided to @{listen}. It contains
+-- helper methods to build and send the HTTP response.
+--
+-- @type connection
 local methods = {}
 
+--- Get peer address.
+--
+-- @function connection:remote_addr
+-- @treturn table Peer address table (e.g. `{ ipaddr=..., port=... }`).
 function methods:remote_addr()
     return self.peer
 end
 
+--- Add/override a response header.
+--
+-- Must be called before the response head is sent.
+--
+-- @function connection:add_header
+-- @tparam string name Header name.
+-- @tparam string value Header value.
 function methods:add_header(name, value)
     local resp = self.resp
 
@@ -248,6 +327,14 @@ function methods:add_header(name, value)
     resp.headers[name:lower()] = value
 end
 
+--- Set response status code.
+--
+-- Must be called before the response head is sent.
+--
+-- @function connection:set_status
+-- @tparam int code Status code.
+-- @tparam[opt] string status Reason phrase.
+-- @treturn boolean true
 function methods:set_status(code, status)
     local resp = self.resp
 
@@ -266,13 +353,17 @@ end
 
 local function build_headers(data, headers)
     for name, value in pairs(headers) do
-        local formatted_name = header_name_map[name] or name:gsub('^%l', str_upper):gsub('%-+%l', str_upper)
+        local formatted_name = format_header_name(name)
 
         data[#data + 1] = formatted_name
         data[#data + 1] = ': '
         data[#data + 1] = value
         data[#data + 1] = '\r\n'
     end
+end
+
+local function response_must_not_have_body(code)
+    return (code >= 100 and code < 200) or code == M.STATUS_NO_CONTENT or code == M.STATUS_NOT_MODIFIED
 end
 
 local function send_http_head(resp)
@@ -300,8 +391,21 @@ local function send_http_head(resp)
 
     data[#data + 1] = '\r\n'
 
-    if not headers['content-length'] then
-        headers['transfer-encoding'] = 'chunked'
+    if response_must_not_have_body(code) then
+        headers['transfer-encoding'] = nil
+        if code ~= M.STATUS_SWITCHING_PROTOCOLS and not headers['content-length'] then
+            headers['content-length'] = '0'
+        end
+        resp.chunked = false
+    else
+        if headers['transfer-encoding'] then
+            resp.chunked = str_lower(headers['transfer-encoding']) == 'chunked'
+        elseif not headers['content-length'] then
+            headers['transfer-encoding'] = 'chunked'
+            resp.chunked = true
+        else
+            resp.chunked = false
+        end
     end
 
     build_headers(data, headers)
@@ -311,6 +415,15 @@ local function send_http_head(resp)
     resp.head_sent = true
 end
 
+--- Send an error response.
+--
+-- If `content` is omitted, sends an empty body.
+--
+-- @function connection:send_error
+-- @tparam int code Status code.
+-- @tparam[opt] string status Reason phrase.
+-- @tparam[opt] string content Response body.
+-- @treturn boolean true
 function methods:send_error(code, status, content)
     if type(code) ~= 'number' then
         error('invalid code: ' .. tostring(code))
@@ -329,41 +442,87 @@ function methods:send_error(code, status, content)
     return true
 end
 
+--- Redirect to another location.
+--
+-- @function connection:redirect
+-- @tparam int code Redirect status code (3xx).
+-- @tparam string location Location header value.
+-- @treturn boolean true
 function methods:redirect(code, location)
     assert(code >= M.STATUS_MULTIPLE_CHOICES and code <= M.STATUS_PERMANENT_REDIRECT)
     self:add_header('location', location)
     return self:send_error(code)
 end
 
+local function append_body_data(rdata, chunked, args, len)
+    if chunked then
+        rdata[#rdata + 1] = str_format('%x\r\n', len)
+    end
+
+    if type(args) == 'string' then
+        rdata[#rdata + 1] = args
+    else
+        for i = 1, #args do
+            rdata[#rdata + 1] = args[i]
+        end
+    end
+
+    if chunked then
+        rdata[#rdata + 1] = '\r\n'
+    end
+end
+
+-- @function connection:send
+-- @param ... Values will be converted to strings and sent.
+-- @treturn boolean true
 function methods:send(...)
     local resp = self.resp
     local rdata = resp.data
-
-    local args = {...}
-    local nargs = #args
-    local len = 0
-
-    for i = 1, nargs do
-        args[i] = tostring(args[i])
-        len = len + #args[i]
-    end
-
-    if len == 0 then
-        return true
-    end
 
     if not resp.head_sent then
         send_http_head(resp)
     end
 
-    rdata[#rdata + 1] = string.format('%x', len)
-    rdata[#rdata + 1] = '\r\n'
+    local chunked = resp.chunked
+    local nargs = select('#', ...)
 
-    for i = 1, nargs do
-        rdata[#rdata + 1] = args[i]
+    if nargs == 0 then
+        return true
     end
 
-    rdata[#rdata + 1] = '\r\n'
+    local len
+
+    if nargs == 1 then
+        local data = ...
+
+        if type(data) ~= 'string' then
+            data = tostring(data)
+        end
+
+        len = #data
+        if len == 0 then
+            return true
+        end
+
+        append_body_data(rdata, chunked, data, len)
+    else
+        local args = { ... }
+        len = 0
+
+        for i = 1, nargs do
+            if type(args[i]) ~= 'string' then
+                args[i] = tostring(args[i])
+            end
+
+            len = len + #args[i]
+        end
+
+        if len == 0 then
+            return true
+        end
+
+        append_body_data(rdata, chunked, args, len)
+    end
 
     return true
 end
@@ -378,7 +537,7 @@ local function http_send_file(self, path, size, count, offset)
 
     local ok, err = self:flush()
     if not ok then
-        return false, err
+        return nil, err
     end
 
     if offset and offset > -1 then
@@ -391,7 +550,18 @@ local function http_send_file(self, path, size, count, offset)
         count = size
     end
 
-    local header = string.format('%x\r\n', count)
+    if not resp.chunked then
+        local ret
+
+        ret, err = sock:sendfile(path, count, offset)
+        if not ret then
+            return nil, err
+        end
+
+        return true
+    end
+
+    local header = str_format('%x\r\n', count)
     _, err = sock:send(header)
     if err then
         return nil, err
@@ -412,19 +582,36 @@ local function http_send_file(self, path, size, count, offset)
     return true
 end
 
+--- Send a file as chunked response body.
+--
+-- This is a helper for serving static files and uses chunked encoding.
+--
+-- @function connection:send_file
+-- @tparam string path File path.
+-- @tparam[opt] int count Bytes to send.
+-- @tparam[opt] int offset Start offset.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:send_file(path, count, offset)
     local st, err = file.stat(path)
     if not st then
-        return false, err
+        return nil, err
     end
 
     if st.type ~= 'REG' then
-        return false, 'forbidden'
+        return nil, 'forbidden'
     end
 
     return http_send_file(self, path, st.size, count, offset)
 end
 
+--- Flush pending response data.
+--
+-- @function connection:flush
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:flush()
     local resp = self.resp
     local sock = self.sock
@@ -440,7 +627,7 @@ function methods:flush()
 
     local _, err = sock:send(concat(data))
     if err then
-        return false, err
+        return nil, err
     end
 
     for i = 1, #data do
@@ -450,6 +637,17 @@ function methods:flush()
     return true
 end
 
+--- Read request body data.
+--
+-- Reads up to `count` bytes from the request body. Returns an empty string
+-- when the body is fully consumed.
+--
+-- @function connection:read_body
+-- @tparam[opt] int count Bytes to read (defaults to remaining).
+-- @tparam[opt] number timeout Timeout in seconds.
+-- @treturn string data
+-- @treturn[2] nil On error.
+-- @treturn[2] string Error message.
 function methods:read_body(count, timeout)
     local body_remain = self.body_remain
     local sock = self.sock
@@ -473,6 +671,42 @@ function methods:read_body(count, timeout)
     return data
 end
 
+local function parse_multipart_boundary(content_type)
+    if type(content_type) ~= 'string' then
+        return nil
+    end
+
+    local prefix = '[Mm][Uu][Ll][Tt][Ii][Pp][Aa][Rr][Tt]/[Ff][Oo][Rr][Mm]%-[Dd][Aa][Tt][Aa]%s*;%s*boundary='
+
+    local boundary = content_type:match(prefix .. '"([^"]+)"')
+    if boundary then
+        return boundary
+    end
+
+    boundary = content_type:match(prefix .. '([^;]+)')
+    if boundary then
+        boundary = boundary:match('^%s*(.-)%s*$')
+    end
+
+    return boundary
+end
+
+--- Incrementally parse multipart/form-data.
+--
+-- This helper parses multipart formdata from the request body and returns
+-- events:
+--
+-- - `"header"`, `{ name, value }`
+-- - `"body"`, `{ data, done }` where `done` indicates end of part
+-- - `"end"` when finished
+--
+-- @function connection:read_formdata
+-- @tparam table req Request table passed to handler.
+-- @tparam[opt] number timeout Timeout in seconds.
+-- @treturn string event
+-- @treturn[opt] table data
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:read_formdata(req, timeout)
     local sock = self.sock
 
@@ -483,8 +717,8 @@ function methods:read_formdata(req, timeout)
             return nil, 'not allowed method'
         end
 
-        local content_type = req.headers['content-type'] or ''
-        local boundary = content_type:match('multipart/form%-data; *boundary=(----[%w%p]+)')
+        local content_type = req.headers['content-type']
+        local boundary = parse_multipart_boundary(content_type)
         if not boundary then
             return nil, 'bad request'
         end
@@ -495,78 +729,90 @@ function methods:read_formdata(req, timeout)
         self.formed = true
     end
 
-    if form.state == 'init' then
-        local line, err = sock:recv('l', timeout)
-        if not line then
-            return nil, err
-        end
-
-        if line ~= form.boundary .. '\r' then
-            return nil, 'bad request'
-        end
-
-        form.boundary = '\r\n' .. form.boundary
-
-        form.state = 'header'
-    end
-
-    if form.state == 'header' then
-        local line, err = sock:recv('l', timeout)
-        if not line then
-            return nil, err
-        end
-
-        if line == '\r' then
-            form.state = 'body'
-        else
-            local name, value = line:match('([%w%p]+) *: *(.-)\r?$')
-            if not name or not value then
-                return nil, 'invalid http header'
-            end
-
-            return 'header', { name:lower(), value }
-        end
-    end
-
-    if form.state == 'body' then
-        local data, found = sock:readuntil(form.boundary, timeout)
-        if not data then
-            return nil, found
-        end
-
-        if found then
-            local x, err = sock:peek(2)
-            if not x then
+    while true do
+        if form.state == 'init' then
+            local line, err = sock:read('l', timeout)
+            if not line then
                 return nil, err
             end
 
-            if x == '--' then
-                form.state = 'end'
+            if line ~= form.boundary then
+                return nil, 'bad request'
+            end
+
+            form.boundary = '\r\n' .. form.boundary
+            form.state = 'header'
+
+        elseif form.state == 'header' then
+            local line, err = sock:read('l', timeout)
+            if not line then
+                return nil, err
+            end
+
+            if line == '' then
+                form.state = 'body'
             else
-                if x ~= '\r\n' then
-                    return nil, 'bad request'
+                local name, value = line:match('([%w%p]+) *: *(.-)$')
+                if not name or not value then
+                    return nil, 'invalid http header'
                 end
 
-                sock:recv(2)
-
-                form.state = 'header'
+                return 'header', { name:lower(), value }
             end
+
+        elseif form.state == 'body' then
+            local data, found = sock:readuntil(form.boundary, timeout)
+            if not data then
+                return nil, found
+            end
+
+            if found then
+                local suffix, err = sock:readfull(2, timeout)
+                if not suffix then
+                    return nil, err
+                end
+
+                if suffix == '--' then
+                    form.state = 'end'
+                elseif suffix == '\r\n' then
+                    form.state = 'header'
+                else
+                    return nil, 'bad request'
+                end
+            end
+
+            return 'body', { data, found }
+
+        else
+            return 'end'
         end
-
-        return 'body', { data, found }
     end
-
-    return 'end'
 end
 
+--- Discard remaining request body bytes.
+--
+-- @function connection:discard_body
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function methods:discard_body()
-    local ok, err = self.sock:discard(self.body_remain)
-    if not ok then
-        return nil, err
+    local remaining = self.body_remain
+
+    while remaining > 0 do
+        local n = remaining
+        if n > 4096 then
+            n = 4096
+        end
+
+        local data, err = self.sock:read(n)
+        if not data then
+            return nil, err
+        end
+
+        remaining = remaining - #data
     end
 
     self.body_remain = 0
-
     return true
 end
 
@@ -591,6 +837,15 @@ local function normalize_request_path(path)
     return '/' .. concat(normalized, '/')
 end
 
+--- Serve a static file from `options.docroot`.
+--
+-- This helper implements basic file serving with `etag` and
+-- `if-modified-since` handling.
+--
+-- @function connection:serve_file
+-- @tparam table req Request table.
+-- @treturn boolean true When handled (including errors written).
+-- @treturn[2] nil When handler should close the connection.
 function methods:serve_file(req)
     local options = self.options
     local path = normalize_request_path(req.path)
@@ -666,6 +921,7 @@ function methods:serve_file(req)
     end
 
     self:add_header('content-type', mime_map[suffix] or 'application/octet-stream')
+    self:add_header('content-length', tostring(st.size))
 
     if gzip then
         self:add_header('content-encoding', 'gzip')
@@ -678,9 +934,12 @@ function methods:serve_file(req)
     return http_send_file(self, phy_path, st.size)
 end
 
+--- End of `connection` class section.
+-- @section end
+
 local function handle_connection(con, handler)
-    local sock = con.sock
     local peer = con.peer
+    local sock = con.sock
 
     local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
     local http_keepalive = con.options.http_keepalive
@@ -689,7 +948,7 @@ local function handle_connection(con, handler)
     local method, raw_path, major_version, minor_version
 
     while true do
-        local data, err = sock:recv('l', http_keepalive > 0 and http_keepalive or read_timeout)
+        local data, err = sock:read('l', http_keepalive > 0 and http_keepalive or read_timeout)
         if not data then
             if err ~= 'timeout' then
                 log.err(log_prefix .. err)
@@ -697,10 +956,8 @@ local function handle_connection(con, handler)
             return false
         end
 
-        data = data:gsub('\r$', '')
-
         if #data > 0 then
-            method, raw_path, major_version, minor_version = data:match('^(%u+) +([%w%p]+) +HTTP/(%d+)%.(%d+)$')
+            method, raw_path, major_version, minor_version = data:match('^(%u+) +([^ ]+) +HTTP/(%d+)%.(%d+)$')
             if not method or not raw_path or not major_version or not minor_version then
                 log.err(log_prefix .. 'not a vaild http request start line')
                 return false
@@ -718,19 +975,17 @@ local function handle_connection(con, handler)
     local headers = {}
 
     while true do
-        local data, err = sock:recv('l', read_timeout)
+        local data, err = sock:read('l', read_timeout)
         if not data then
             log.err(log_prefix .. 'not a complete http request: ' .. err)
             return false
         end
 
-        data = data:gsub('\r$', '')
-
         if data == '' then
             break
         end
 
-        local name, value = data:match('([%w%p]+) *: *(.*)$')
+        local name, value = data:match('([%w%p]+) *: *(.-)$')
         if not name or not value then
             log.err(log_prefix .. 'not a vaild http header: ' .. data)
             return false
@@ -757,9 +1012,12 @@ local function handle_connection(con, handler)
 
     if query_string ~= '' then
         for q in query_string:gmatch('[^&]+') do
-            local name, value = q:match('(.+)=(.+)')
-            if name then
-                query[name] = url.unescape(value)
+            local eq = str_find(q, '=', 1, true)
+            if eq and eq > 1 then
+                local name = q:sub(1, eq - 1)
+                local value = q:sub(eq + 1)
+
+                query[name] = maybe_unescape(value)
             end
         end
     end
@@ -787,8 +1045,8 @@ local function handle_connection(con, handler)
         minor_version = minor_version,
         code = 200,
         headers = {
-            server = 'Lua-eco/' .. eco.VERSION,
-            date = os.date('!%a, %d %b %Y %H:%M:%S GMT')
+            server = server_header_value,
+            date = get_http_date()
         },
         data = {}
     }
@@ -802,7 +1060,7 @@ local function handle_connection(con, handler)
     local req = {
         method = method,
         raw_path = raw_path,
-        path = url.unescape(path),
+        path = maybe_unescape(path),
         major_version = major_version,
         minor_version = minor_version,
         headers = headers,
@@ -825,8 +1083,10 @@ local function handle_connection(con, handler)
 
     -- append chunk end
     local rdata = resp.data
-    rdata[#rdata + 1] = '0\r\n'
-    rdata[#rdata + 1] = '\r\n'
+    if resp.chunked then
+        rdata[#rdata + 1] = '0\r\n'
+        rdata[#rdata + 1] = '\r\n'
+    end
 
     local ok, err = con:flush()
     if not ok then
@@ -860,6 +1120,38 @@ end
 
 local metatable = { __index = methods }
 
+--- Listen and serve HTTP requests.
+--
+-- This function creates a listening socket and enters an accept loop.
+--
+-- The `handler` is called as `handler(con, req)` for each request.
+-- Returning `false` from the handler closes the connection.
+--
+-- `req` is a plain table with common fields:
+--
+-- - `method`, `raw_path`, `path`
+-- - `major_version`, `minor_version`
+-- - `headers` (lowercased keys)
+-- - `query` (table) and `query_string`
+-- - `form` (table) used by @{connection:read_formdata}
+--
+-- `options` commonly used:
+--
+-- - `docroot` (string) document root (default `.`).
+-- - `index` (string) index file name (default `index.html`).
+-- - `http_keepalive` (number) keepalive timeout seconds (default 30).
+-- - `gzip` (boolean) serve `.gz` when available.
+-- - TLS: set `cert` and `key` to enable TLS via @{eco.ssl.listen}.
+--
+-- Other fields are passed to @{eco.socket.listen_tcp} / @{eco.ssl.listen}.
+--
+-- @function listen
+-- @tparam[opt] string ipaddr Listen address.
+-- @tparam int port Listen port.
+-- @tparam[opt] table options Server options.
+-- @tparam function handler Request handler.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.listen(ipaddr, port, options, handler)
     options = options or {}
 
@@ -898,7 +1190,7 @@ function M.listen(ipaddr, port, options, handler)
                 resp = {
                     code = 200,
                     headers = {
-                        server = 'Lua-eco/' .. eco.VERSION
+                        server = server_header_value
                     },
                     data = {}
                 },

@@ -3,6 +3,14 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/**
+ * Base64 encoding/decoding.
+ *
+ * This module provides simple Base64 helpers.
+ *
+ * @module eco.encoding.base64
+ */
+
 #include <lauxlib.h>
 #include <stdint.h>
 
@@ -10,6 +18,13 @@
 #define BASE64DE_FIRST '+'
 #define BASE64DE_LAST 'z'
 
+/**
+ * Encode data to Base64.
+ *
+ * @function encode
+ * @tparam string data Input bytes.
+ * @treturn string Base64 string.
+ */
 static int lua_b64_encode(lua_State *L)
 {
     static const char *Base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
@@ -51,6 +66,17 @@ static int lua_b64_encode(lua_State *L)
     return 1;
 }
 
+/**
+ * Decode a Base64 string.
+ *
+ * On malformed input, returns `nil, "input is malformed"`.
+ *
+ * @function decode
+ * @tparam string data Base64 string.
+ * @treturn string out Decoded bytes.
+ * @treturn[2] nil On malformed input.
+ * @treturn[2] string Error message.
+ */
 static int lua_b64_decode(lua_State *L)
 {
     static const uint8_t Base64[] = {

@@ -1,12 +1,6 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
-local sys = require 'eco.sys'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
 
 local multicast_addr = '224.0.0.2'
 local multicast_port = 8080

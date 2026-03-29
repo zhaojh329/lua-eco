@@ -14,7 +14,7 @@ sys.spawn(function()
 
     print('child pid', sys.getpid())
 
-    local data = sock1:read('l')
+    local data = sock1:read(100)
     print('child recv:', data)
 end)
 
@@ -22,6 +22,6 @@ sock1:close()
 
 print('parent pid', sys.getpid())
 
-sock2:send('I am parent\n')
-
 time.sleep(1)
+
+sock2:send('I am parent\n')

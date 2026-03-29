@@ -1,14 +1,7 @@
 #!/usr/bin/env eco
 
 local socket = require 'eco.socket'
-local bufio = require 'eco.bufio'
-local file = require 'eco.file'
-local sys = require 'eco.sys'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
+local eco = require 'eco'
 
 local s, err = socket.unix_dgram()
 if not s then
@@ -22,16 +15,16 @@ if not ok then
     error(err)
 end
 
-local b = bufio.new(0)
+local stdin = eco.reader(0)
 
 while true do
-    file.write(0, 'Please input: ')
+    print('Please input:')
 
-    local data = b:read('l')
+    local data = stdin:read('l')
 
     if data ~= '' then
         s:send(data)
-        local data = s:recv(100)
+        data = s:recv(100)
         print('recv:', data)
     end
 end

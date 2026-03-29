@@ -5,12 +5,7 @@ local packet = require 'eco.packet'
 local link = require 'eco.ip'.link
 local sync = require 'eco.sync'
 local time = require 'eco.time'
-local sys = require 'eco.sys'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
+local eco = require 'eco'
 
 local function usage()
     print('Usage:', arg[0], 'eth0', '192.168.1.1/24')
@@ -69,7 +64,7 @@ local sender_mac = get_dev_mac(device)
 
 local ips, cnt = generate_ips(destination)
 if not ips or cnt < 1 then
-    usage()
+    return usage()
 end
 
 local wg = sync.waitgroup()
@@ -109,4 +104,4 @@ eco.run(function()
 end)
 
 wg:wait(5)
-os.exit(0)
+eco.unloop()

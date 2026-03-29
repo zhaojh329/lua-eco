@@ -1,13 +1,34 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+--- SSH support (libssh2).
+--
+-- This module provides a coroutine-friendly SSH client session with helpers for:
+--
+-- - executing a remote command
+-- - SCP receive/send (string or file)
+--
+-- The underlying implementation uses non-blocking libssh2 calls. When libssh2
+-- returns `EAGAIN`, the current coroutine yields until the socket becomes
+-- readable/writable.
+--
+-- Note: currently only **password authentication** is attempted (when the
+-- server advertises it). Other auth methods (public key, agent, keyboard-
+-- interactive) are not handled by this Lua wrapper.
+--
+-- @module eco.ssh
+
+local ssh = require 'eco.internal.ssh'
 local socket = require 'eco.socket'
-local ssh = require 'eco.core.ssh'
 local file = require 'eco.file'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
+local eco = require 'eco'
 
 local M = {}
+
+local COOPERATIVE_SLEEP_EVERY_LOOPS = 20
+local COOPERATIVE_SLEEP_DELAY = 0.001
 
 local function waitsocket(session, timeout)
     local dir = session.session:block_directions()
@@ -21,9 +42,57 @@ local function waitsocket(session, timeout)
         ev = ev | eco.WRITE
     end
 
-    session.iow:modify(ev)
+    return session.io:wait(ev, timeout)
+end
 
-    return session.iow:wait(timeout)
+local function channel_xfer_loop(session, deadline, wait_timeout, step, on_value)
+    local loops = 0
+
+    while true do
+        if deadline and sys.uptime() >= deadline then
+            return nil, 'timeout'
+        end
+
+        local value, err = step()
+        if value == nil then
+            if err ~= ssh.ERROR_EAGAIN then
+                return nil, session.session:last_error()
+            end
+
+            local wt
+
+            if deadline then
+                wt = deadline - sys.uptime()
+                if wt <= 0 then
+                    return nil, 'timeout'
+                end
+            else
+                wt = wait_timeout
+            end
+
+            if not waitsocket(session, wt) then
+                return nil, 'timeout'
+            end
+
+            loops = 0
+        else
+            local done, on_err = on_value(value)
+            if done == nil then
+                return nil, on_err
+            end
+
+            if done then
+                return true
+            end
+
+            loops = loops + 1
+
+            if loops > COOPERATIVE_SLEEP_EVERY_LOOPS then
+                loops = 0
+                time.sleep(COOPERATIVE_SLEEP_DELAY)
+            end
+        end
+    end
 end
 
 local function open_channel(session)
@@ -137,31 +206,56 @@ local function channel_exec_read_data(session, channel, stream_id, data, timeout
 
     local deadtime = sys.uptime() + timeout
 
-    while sys.uptime() < deadtime do
-        local chunk, err = channel:read(stream_id)
-        if not chunk then
-            if err ~= ssh.ERROR_EAGAIN then
-                return nil, session.session:last_error()
+    return channel_xfer_loop(session, deadtime, nil,
+        function()
+            return channel:read(stream_id)
+        end,
+        function(chunk)
+            if #chunk == 0 then
+                return true
             end
-
-            if not waitsocket(session, deadtime - sys.uptime()) then
-                return nil, 'timeout'
-            end
-        else
-            if #chunk == 0 then return true end
 
             data[#data + 1] = chunk
-
-            -- Avoid blocking for too long while receive too much
-            time.sleep(0.0001)
+            return false
         end
-    end
-
-    return nil, 'timeout'
+    )
 end
 
+--- SSH session object.
+--
+-- Instances are returned by @{ssh.new}. The object supports the Lua 5.4 `<close>`
+-- attribute (calls @{session:free} automatically).
+--
+-- @type session
 local session_methods = {}
 
+--- Execute a command on the remote host.
+--
+-- The returned output is a concatenation of stdout and stderr.
+--
+-- @function session:exec
+-- @tparam string cmd Command string.
+-- @tparam[opt] number timeout Timeout in seconds for reading output.
+-- @treturn string Command output (stdout+stderr).
+-- @treturn int Exit status code.
+-- @treturn string Exit signal name (or nil).
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+-- @usage
+-- local ssh = require 'eco.ssh'
+-- local eco = require 'eco'
+--
+-- eco.run(function()
+--     local session<close>, err = ssh.new('127.0.0.1', 22, 'root', 'password')
+--     assert(session, err)
+--
+--     local out, code, signal = session:exec('uptime')
+--     assert(out, code)
+--     print('exit:', code, 'signal:', signal)
+--     print(out)
+-- end)
+--
+-- eco.loop()
 function session_methods:exec(cmd, timeout)
     local channel, err = open_channel(self)
     if not channel then
@@ -185,7 +279,7 @@ function session_methods:exec(cmd, timeout)
 
     channel_exec_read_data(self, channel, ssh.EXTENDED_DATA_STDERR, data, timeout)
 
-    local ok, err = channel_close(self, channel)
+    ok, err = channel_close(self, channel)
     if not ok then
         channel_free(self, channel)
         return nil, err
@@ -213,17 +307,11 @@ end
 local function scp_recv(session, channel, size, f, data)
     local got = 0
 
-    while got < size do
-        local chunk, err = channel:read(0)
-        if not chunk then
-            if err ~= ssh.ERROR_EAGAIN then
-                return nil, session.session:last_error()
-            end
-
-            if not waitsocket(session, 3.0) then
-                return nil, 'timeout'
-            end
-        else
+    local ok, err = channel_xfer_loop(session, nil, 3.0,
+        function()
+            return channel:read(0)
+        end,
+        function(chunk)
             if f then
                 local ok, err = f:write(chunk)
                 if not ok then
@@ -234,15 +322,43 @@ local function scp_recv(session, channel, size, f, data)
             end
 
             got = got + #chunk
-
-            -- Avoid blocking for too long while receive large file
-            time.sleep(0.0001)
+            return got >= size
         end
+    )
+
+    if not ok then
+        return nil, err
     end
 
     return got
 end
 
+--- Receive a remote file via SCP.
+--
+-- If `dest` is provided, the remote file will be stored to that local path and
+-- this method returns the number of bytes written.
+--
+-- If `dest` is omitted, the whole file content is returned as a Lua string.
+--
+-- @function session:scp_recv
+-- @tparam string source Remote file path.
+-- @tparam[opt] string dest Local destination file path.
+-- @treturn any result When `dest` is not provided: file content (string).
+-- When `dest` is provided: bytes written (int).
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+-- @usage
+-- local ssh = require 'eco.ssh'
+-- local eco = require 'eco'
+--
+-- eco.run(function()
+--     local session<close> = assert(ssh.new('127.0.0.1', 22, 'root', 'password'))
+--     local data = assert(session:scp_recv('/etc/os-release'))
+--     print(data)
+--     assert(session:scp_recv('/etc/os-release', '/tmp/os-release'))
+-- end)
+--
+-- eco.loop()
 function session_methods:scp_recv(source, dest)
     local channel, size = channel_scp_recv(self, source)
     if not channel then
@@ -281,28 +397,33 @@ local function scp_send_data(session, channel, data)
     local total = #data
     local written = 0
 
-    while written < total do
-        local n, err = channel:write(data:sub(written + 1))
-        if not n then
-            if err ~= ssh.ERROR_EAGAIN then
-                return nil, session.session:last_error()
-            end
-
-            if not waitsocket(session, 3.0) then
-                return nil, 'timeout'
-            end
-        else
+    return channel_xfer_loop(session, nil, 3.0,
+        function()
+            return channel:write(data:sub(written + 1))
+        end,
+        function(n)
             written = written + n
-            -- Avoid blocking for too long while receive large file
-            time.sleep(0.0001)
+            return written >= total
         end
-    end
-
-    return true
+    )
 end
 
+--- Send data to the remote host via SCP.
+--
+-- Creates/overwrites `dest` on the remote host.
+--
+-- @function session:scp_send
+-- @tparam string data Content to send.
+-- @tparam string dest Remote destination file path.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+-- @usage
+-- local ok, err = session:scp_send('hello\n', '/tmp/hello')
+-- assert(ok, err)
 function session_methods:scp_send(data, dest)
-    local channel, size = channel_scp_send(self, dest, file.S_IRUSR | file.S_IWUSR | file.S_IRGRP | file.S_IROTH, #data)
+    local channel, size = channel_scp_send(self, dest,
+            file.S_IRUSR | file.S_IWUSR | file.S_IRGRP | file.S_IROTH, #data)
     if not channel then
         return nil, size
     end
@@ -321,6 +442,14 @@ function session_methods:scp_send(data, dest)
     return true
 end
 
+--- Send a local file to the remote host via SCP.
+--
+-- @function session:scp_sendfile
+-- @tparam string source Local file path.
+-- @tparam string dest Remote destination file path.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function session_methods:scp_sendfile(source, dest)
     local st, err = file.stat(source)
     if not st then
@@ -367,6 +496,14 @@ function session_methods:scp_sendfile(source, dest)
     return true
 end
 
+--- Disconnect the SSH session.
+--
+-- @function session:disconnect
+-- @tparam[opt] int reaason Disconnect reason code (libssh2 constant).
+-- @tparam[opt] string description Disconnect description.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function session_methods:disconnect(reaason, description)
     self.disconnected = true
 
@@ -391,6 +528,11 @@ function session_methods:disconnect(reaason, description)
     return nil, 'timeout'
 end
 
+--- Close and free the session.
+--
+-- This is also used as the `__gc` and `__close` metamethod.
+--
+-- @function session:free
 function session_methods:free()
     if not self.disconnected then
         self:disconnect()
@@ -414,12 +556,31 @@ function session_methods:free()
     self.sock:close()
 end
 
+--- End of `session` class section.
+-- @section end
+
 local session_metatable = {
     __index = session_methods,
     __gc = session_methods.free,
     __close = session_methods.free
 }
 
+--- Create a new SSH session.
+--
+-- This call:
+--
+-- 1. connects to the remote TCP endpoint
+-- 2. performs SSH handshake
+-- 3. attempts password authentication if the server advertises it
+--
+-- @function new
+-- @tparam string ipaddr Remote IP address (IPv4/IPv6).
+-- @tparam int port Remote port.
+-- @tparam string username Username.
+-- @tparam[opt] string password Password (used when password auth is supported).
+-- @treturn session Session object.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
 function M.new(ipaddr, port, username, password)
     if not socket.is_ipv4_address(ipaddr) and not socket.is_ipv6_address(ipaddr) then
         return nil, 'invalid ipaddr: ' .. ipaddr
@@ -433,7 +594,7 @@ function M.new(ipaddr, port, username, password)
     local session = ssh.new()
     local fd = sock:getfd()
 
-    local obj = { session = session, sock = sock, iow = eco.watcher(eco.IO, fd) }
+    local obj = { session = session, sock = sock, io = eco.io(fd) }
 
     local ok
 

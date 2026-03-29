@@ -3,11 +3,58 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/**
+ * Logging utilities.
+ *
+ * This module provides simple logging helpers backed by syslog/stdout/file.
+ *
+ * - Default level: `INFO`
+ * - Default flags: `FLAG_LF`
+ *
+ * Output backend selection:
+ *
+ * - If stdout is a TTY, logs go to stdout.
+ * - Otherwise logs go to syslog.
+ * - If @{log.set_path} is called with a non-empty path, logs are appended to that file.
+ *
+ * Log level constants (syslog priorities):
+ *
+ * - `EMERG`
+ * - `ALERT`
+ * - `CRIT`
+ * - `ERR`
+ * - `WARNING`
+ * - `NOTICE`
+ * - `INFO`
+ * - `DEBUG`
+ *
+ * Flag constants:
+ *
+ * - `FLAG_LF` - append '\n'
+ * - `FLAG_FILE` - filename:line
+ * - `FLAG_PATH` - full path:line
+ *
+ * Notes about message arguments:
+ *
+ * - The logging functions accept varargs.
+ * - Only `string`, `number`, `boolean` and `nil` values are rendered; other types are ignored.
+
+ * @module eco.log
+ */
+
 #include <stdio.h>
 
 #include "log/log.h"
 #include "eco.h"
 
+/**
+ * Set current log level.
+ *
+ * Messages with priority greater than `level` are discarded.
+ *
+ * @function set_level
+ * @tparam int level One of the level constants (e.g. `log.INFO`, `log.DEBUG`).
+ */
 static int lua_log_set_level(lua_State *L)
 {
     int level = luaL_checkinteger(L, 1);
@@ -89,6 +136,12 @@ static void __lua_log(lua_State *L, int priority)
     ___log(filename, line, priority, "%s", buf);
 }
 
+/**
+ * Log a DEBUG message.
+ *
+ * @function debug
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log_debug(lua_State *L)
 {
     __lua_log(L, LOG_DEBUG);
@@ -96,6 +149,12 @@ static int lua_log_debug(lua_State *L)
     return 0;
 }
 
+/**
+ * Log an INFO message.
+ *
+ * @function info
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log_info(lua_State *L)
 {
     __lua_log(L, LOG_INFO);
@@ -103,6 +162,12 @@ static int lua_log_info(lua_State *L)
     return 0;
 }
 
+/**
+ * Log an ERR message.
+ *
+ * @function err
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log_err(lua_State *L)
 {
     __lua_log(L, LOG_ERR);
@@ -110,9 +175,16 @@ static int lua_log_err(lua_State *L)
     return 0;
 }
 
+/**
+ * Log a message at a specific priority.
+ *
+ * @function log
+ * @tparam int priority One of the level constants (e.g. `log.WARNING`).
+ * @tparam[opt] any ... Values to log.
+ */
 static int lua_log(lua_State *L)
 {
-    int priority = lua_tointeger(L, 1);
+    int priority = luaL_checkinteger(L, 1);
 
     lua_remove(L, 1);
 
@@ -121,6 +193,15 @@ static int lua_log(lua_State *L)
     return 0;
 }
 
+/**
+ * Set log output file path.
+ *
+ * When set to a non-empty path, logs are appended to that file.
+ * Passing an empty string resets output back to stdout/syslog.
+ *
+ * @function set_path
+ * @tparam string path Output file path, or `''` to reset.
+ */
 static int lua_log_set_path(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
@@ -130,15 +211,33 @@ static int lua_log_set_path(lua_State *L)
     return 0;
 }
 
+/**
+ * Set log flags.
+ *
+ * Combine flags using bitwise OR, e.g. `log.FLAG_LF | log.FLAG_FILE`.
+ *
+ * @function set_flags
+ * @tparam int flags Bitmask of `FLAG_*` constants.
+ */
 static int lua_log_set_flags(lua_State *L)
 {
-    int flags = lua_tointeger(L, 1);
+     int flags = luaL_checkinteger(L, 1);
 
     set_log_flags(flags);
 
     return 0;
 }
 
+/**
+ * Set log roll size threshold in bytes.
+ *
+ * When current log file size reaches this threshold, it is rotated.
+ * `0` disables log rolling.
+ * Default is `100 * 1024` bytes.
+ *
+ * @function set_roll_size
+ * @tparam int size Maximum file size in bytes before rolling.
+ */
 static int lua_log_set_roll_size(lua_State *L)
 {
     lua_Integer size = luaL_checkinteger(L, 1);
@@ -150,6 +249,15 @@ static int lua_log_set_roll_size(lua_State *L)
     return 0;
 }
 
+/**
+ * Set max number of rolled files to keep.
+ *
+ * Values less than or equal to 0 are treated as library default.
+ * Default is `10`.
+ *
+ * @function set_roll_count
+ * @tparam int count Max rolled file count to keep.
+ */
 static int lua_log_set_roll_count(lua_State *L)
 {
     int count = luaL_checkinteger(L, 1);
@@ -159,6 +267,14 @@ static int lua_log_set_roll_count(lua_State *L)
     return 0;
 }
 
+/**
+ * Set syslog/file ident.
+ *
+ * This also affects the prefix when logging to file/stdout.
+ *
+ * @function set_ident
+ * @tparam string ident Identifier string.
+ */
 static int lua_log_set_ident(lua_State *L)
 {
     const char *ident = luaL_checkstring(L, 1);

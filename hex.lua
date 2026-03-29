@@ -1,9 +1,22 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
 
+--- Hex encoding/decoding utilities.
+--
+-- This module provides helpers to encode raw bytes into lowercase hexadecimal
+-- strings, decode hex strings back into raw bytes, and format a hexdump similar
+-- to `hexdump -C`.
+--
+-- @module eco.encoding.hex
+
 local M = {}
 
--- returns the hexadecimal encoding of src
+--- Encode bytes to a hexadecimal string.
+--
+-- @function encode
+-- @tparam string bin Input bytes.
+-- @tparam[opt=''] string sep Optional separator inserted between bytes.
+-- @treturn string Lowercase hexadecimal string.
 function M.encode(bin, sep)
     local first = true
 
@@ -21,11 +34,19 @@ function M.encode(bin, sep)
     return s
 end
 
--- returns the bytes represented by the hexadecimal string s
+--- Decode a hexadecimal string into bytes.
+--
+-- On malformed input, returns `nil, 'input is malformed'`.
+--
+-- @function decode
+-- @tparam string s Hex string.
+-- @treturn string out Decoded bytes.
+-- @treturn[2] nil On malformed input.
+-- @treturn[2] string Error message.
 function M.decode(s)
 
     local bin, n = s:gsub('%x%x', function(c)
-        return string.char(tonumber(c, 16))
+        return string.char(tonumber(c, 16) or 0)
     end)
 
     if #s ~= n * 2 then
@@ -35,8 +56,16 @@ function M.decode(s)
     return bin
 end
 
--- Dump returns a string that contains a hex dump of the given data.
--- The format of the hex dump matches the output of `hexdump -C` on the command line.
+--- Format a hexdump of the given data.
+--
+-- The format matches the output of `hexdump -C`.
+--
+-- @function dump
+-- @tparam string data Input bytes.
+-- @treturn string Dump string (contains newlines).
+-- @usage
+-- local hex = require 'eco.encoding.hex'
+-- print(hex.dump('hello'))
 function M.dump(data)
     local lines = {}
 
