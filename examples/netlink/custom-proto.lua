@@ -14,17 +14,10 @@ local msg = nl.nlmsg(0, 0)
 
 msg:put('Hello, I am lua-eco!')
 
-local ok, err = sock:send(msg)
+local ok, err = sock:request_dump(msg, function(reply)
+    print('Recv from kernel:', reply:payload())
+    return true
+end)
 if not ok then
-    print('send fail:', err)
-    return
-end
-
-msg, err = sock:recv()
-if not msg then
-    print('recv fail:', err)
-end
-
-if msg:next() then
-    print('Recv from kernel:', msg:payload())
+    print('request fail:', err)
 end

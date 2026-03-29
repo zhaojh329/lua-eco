@@ -4,7 +4,6 @@
 local nl80211 = require 'eco.core.nl80211'
 local hex = require 'eco.encoding.hex'
 local socket = require 'eco.socket'
-local sys = require 'eco.core.sys'
 local file = require 'eco.file'
 local genl = require 'eco.genl'
 local nl = require 'eco.nl'
@@ -297,34 +296,6 @@ local function put_interface_attrs(msg, attrs)
     end
 end
 
-local function send_nl80211_msg(sock, msg)
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
-        return nil, 'no ack'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        if err == 0 then
-            return true
-        end
-
-        return nil, sys.strerror(-err)
-    end
-
-    return true
-end
-
 function M.add_interface(phy, ifname, attrs)
     local phyid
 
@@ -359,7 +330,7 @@ function M.add_interface(phy, ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    return send_nl80211_msg(sock, msg)
+    return sock:request_ack(msg)
 end
 
 function M.set_interface(ifname, attrs)
@@ -381,7 +352,7 @@ function M.set_interface(ifname, attrs)
 
     put_interface_attrs(msg, attrs)
 
-    return send_nl80211_msg(sock, msg)
+    return sock:request_ack(msg)
 end
 
 function M.del_interface(ifname)
@@ -401,33 +372,31 @@ function M.del_interface(ifname)
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, if_index)
 
-    return send_nl80211_msg(sock, msg)
+    return sock:request_ack(msg)
 end
 
 local function get_interface(sock, msg, ifidx)
+    local info
+
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
-    local ok, err = sock:send(msg)
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        info = parse_interface(reply)
+        return true
+    end)
     if not ok then
         return nil, err
     end
 
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
+    if not info then
         return nil, 'no msg responsed'
     end
 
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        return nil, sys.strerror(-err)
-    end
-
-    return parse_interface(msg)
+    return info
 end
 
 function M.get_interface(ifname)
@@ -457,37 +426,20 @@ local function get_interfaces(sock, msg, phy)
         msg:put_attr_u32(nl80211.ATTR_WIPHY, phy)
     end
 
-    local ok, err = sock:send(msg)
+    local interfaces = {}
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        interfaces[#interfaces + 1] = parse_interface(reply)
+    end)
     if not ok then
         return nil, err
     end
 
-    local interfaces = {}
-
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
-        end
-
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                return nil, sys.strerror(-err)
-            end
-
-            if nlh.type == nl.NLMSG_DONE then
-                return interfaces
-            end
-
-            interfaces[#interfaces + 1] = parse_interface(msg)
-        end
-    end
+    return interfaces
 end
 
 function M.get_interfaces(phy)
@@ -767,66 +719,30 @@ local function nl80211_scan(sock, msg, action, cmd, params)
         end
     end
 
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
     if cmd ~= nl80211.CMD_GET_SCAN then
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
-        end
-
-        local nlh = msg:next()
-        if not nlh then
-            return nil, 'no msg responsed'
-        end
-
-        if nlh.type ~= nl.NLMSG_ERROR then
-            return nil, 'invalid msg received'
-        end
-
-        local err = msg:parse_error()
-        if err ~= 0 then
-            return nil, sys.strerror(-err)
-        end
-
-        return true
+        return sock:request_ack(msg)
     end
 
     local bss = {}
 
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
         end
 
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                return nil, sys.strerror(-err)
-            end
-
-            if nlh.type == nl.NLMSG_DONE then
-                return bss
-            end
-
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-            if attrs[nl80211.ATTR_BSS] then
-                local res = parse_bss(attrs[nl80211.ATTR_BSS], params.keep_elems)
-                if res then
-                    bss[#bss + 1] = res
-                end
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+        if attrs[nl80211.ATTR_BSS] then
+            local res = parse_bss(attrs[nl80211.ATTR_BSS], params.keep_elems)
+            if res then
+                bss[#bss + 1] = res
             end
         end
+    end)
+    if not ok then
+        return nil, err
     end
+
+    return bss
 end
 
 function M.scan(action, params)
@@ -872,20 +788,9 @@ local function wait_event(sock, grp_name, timeout, cb, data)
         return nil, err
     end
 
-    while true do
-        local msg, err = sock:recv(nil, timeout)
-        if not msg then
-            return nil, err
-        end
-
-        local nlh = msg:next()
-        if not nlh then
-            return nil, 'invalid msg received'
-        end
-
-        if nlh.type == nl.NLMSG_ERROR then
-            err = msg:parse_error()
-            return nil, sys.strerror(-err)
+    return sock:recv_messages(function(msg, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
         end
 
         local hdr = genl.parse_genlmsghdr(msg)
@@ -897,7 +802,7 @@ local function wait_event(sock, grp_name, timeout, cb, data)
         elseif ok == false then
             return false, err
         end
-    end
+    end, nil, nil, timeout)
 end
 
 --[[
@@ -917,63 +822,47 @@ end
 local function get_surveys(sock, msg, ifidx)
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
-    local ok, err = sock:send(msg)
+    local surveys = {}
+
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+        if attrs[nl80211.ATTR_SURVEY_INFO] then
+            local si = nl.parse_attr_nested(attrs[nl80211.ATTR_SURVEY_INFO])
+            local survey = {}
+
+            if si[nl80211.SURVEY_INFO_FREQUENCY] then
+                survey.frequency = nl.attr_get_u32(si[nl80211.SURVEY_INFO_FREQUENCY])
+            end
+
+            if si[nl80211.SURVEY_INFO_NOISE] then
+                survey.noise = nl.attr_get_s8(si[nl80211.SURVEY_INFO_NOISE])
+            end
+
+            if si[nl80211.SURVEY_INFO_IN_USE] then
+                survey.in_use = true
+            end
+
+            if si[nl80211.SURVEY_INFO_TIME] then
+                survey.active_time = nl.attr_get_u64(si[nl80211.SURVEY_INFO_TIME])
+            end
+
+            if si[nl80211.SURVEY_INFO_TIME_BUSY] then
+                survey.busy_time = nl.attr_get_u64(si[nl80211.SURVEY_INFO_TIME_BUSY])
+            end
+
+            surveys[#surveys + 1] = survey
+        end
+    end)
     if not ok then
         return nil, err
     end
 
-    local surveys = {}
-
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
-        end
-
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                return nil, sys.strerror(-err)
-            end
-
-            if nlh.type == nl.NLMSG_DONE then
-                return surveys
-            end
-
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-            if attrs[nl80211.ATTR_SURVEY_INFO] then
-                local si = nl.parse_attr_nested(attrs[nl80211.ATTR_SURVEY_INFO])
-                local survey = {}
-
-                if si[nl80211.SURVEY_INFO_FREQUENCY] then
-                    survey.frequency = nl.attr_get_u32(si[nl80211.SURVEY_INFO_FREQUENCY])
-                end
-
-                if si[nl80211.SURVEY_INFO_NOISE] then
-                    survey.noise = nl.attr_get_s8(si[nl80211.SURVEY_INFO_NOISE])
-                end
-
-                if si[nl80211.SURVEY_INFO_IN_USE] then
-                    survey.in_use = true
-                end
-
-                if si[nl80211.SURVEY_INFO_TIME] then
-                    survey.active_time = nl.attr_get_u64(si[nl80211.SURVEY_INFO_TIME])
-                end
-
-                if si[nl80211.SURVEY_INFO_TIME_BUSY] then
-                    survey.busy_time = nl.attr_get_u64(si[nl80211.SURVEY_INFO_TIME_BUSY])
-                end
-
-                surveys[#surveys + 1] = survey
-            end
-        end
-    end
+    return surveys
 end
 
 function M.get_surveys(ifname)
@@ -1186,34 +1075,32 @@ local function get_station(sock, msg, ifname, mac)
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
     msg:put_attr(nl80211.ATTR_MAC, hex.decode(mac:gsub(':', '')))
 
-    local ok, err = sock:send(msg)
+    local res
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+        if not attrs[nl80211.ATTR_STA_INFO] then
+            return false, 'invalid received'
+        end
+
+        local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
+
+        res = parse_station(attrs, sinfo)
+        res.noise = M.get_noise(ifname) or 0
+
+        return true
+    end)
     if not ok then
         return nil, err
     end
 
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
+    if not res then
         return nil, 'no msg responsed'
     end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        return nil, sys.strerror(-err)
-    end
-
-    local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-    if not attrs[nl80211.ATTR_STA_INFO] then
-        return nil, 'invalid received'
-    end
-
-    local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
-    local res = parse_station(attrs, sinfo)
-    res.noise = M.get_noise(ifname) or 0
 
     return res
 end
@@ -1243,47 +1130,30 @@ local function get_stations(sock, msg, ifname)
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
     local noise = M.get_noise(ifname) or 0
 
     local stations = {}
 
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
         end
 
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                return nil, sys.strerror(-err)
-            end
-
-            if nlh.type == nl.NLMSG_DONE then
-                return stations
-            end
-
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-            if attrs[nl80211.ATTR_STA_INFO] then
-                local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
-                local res = parse_station(attrs, sinfo)
-                if res then
-                    res.noise = noise
-                    stations[#stations + 1] = res
-                end
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+        if attrs[nl80211.ATTR_STA_INFO] then
+            local sinfo = nl.parse_attr_nested(attrs[nl80211.ATTR_STA_INFO])
+            local res = parse_station(attrs, sinfo)
+            if res then
+                res.noise = noise
+                stations[#stations + 1] = res
             end
         end
+    end)
+    if not ok then
+        return nil, err
     end
+
+    return stations
 end
 
 function M.get_stations(ifname)
@@ -1301,32 +1171,28 @@ end
 
 local function get_protocol_features(sock, msg, phyid)
     msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
+    local features
 
-    local ok, err = sock:send(msg)
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        features = 0
+
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+        if attrs and attrs[nl80211.ATTR_PROTOCOL_FEATURES] then
+            features = nl.attr_get_u32(attrs[nl80211.ATTR_PROTOCOL_FEATURES])
+        end
+
+        return true
+    end)
     if not ok then
         return nil, err
     end
 
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
+    if features == nil then
         return nil, 'no msg responsed'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        return nil, sys.strerror(-err)
-    end
-
-    local features = 0
-
-    local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-    if attrs and attrs[nl80211.ATTR_PROTOCOL_FEATURES] then
-        features = nl.attr_get_u32(attrs[nl80211.ATTR_PROTOCOL_FEATURES])
     end
 
     return features
@@ -1437,41 +1303,24 @@ local function get_freqlist(sock, msg, phyid)
     msg:put_attr_u32(nl80211.ATTR_WIPHY, phyid)
     msg:put_attr_flag(nl80211.ATTR_SPLIT_WIPHY_DUMP)
 
-    local ok, err = sock:send(msg)
+    local freqlist = {}
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+
+        if attrs[nl80211.ATTR_WIPHY_BANDS] then
+            parse_freqlist(nl.parse_attr_nested(attrs[nl80211.ATTR_WIPHY_BANDS]), freqlist)
+        end
+    end)
     if not ok then
         return nil, err
     end
 
-    local freqlist = {}
-
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
-        end
-
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                return nil, sys.strerror(-err)
-            end
-
-            if nlh.type == nl.NLMSG_DONE then
-                return freqlist
-            end
-
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-
-            if attrs[nl80211.ATTR_WIPHY_BANDS] then
-                parse_freqlist(nl.parse_attr_nested(attrs[nl80211.ATTR_WIPHY_BANDS]), freqlist)
-            end
-        end
-    end
+    return freqlist
 end
 
 function M.get_freqlist(phy)
@@ -1504,43 +1353,29 @@ local function get_link_bss(sock, msg, ifname)
 
     msg:put_attr_u32(nl80211.ATTR_IFINDEX, ifidx)
 
-    local ok, err = sock:send(msg)
+    local found
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type < nl.NLMSG_MIN_TYPE then
+            return
+        end
+
+        local attrs = reply:parse_attr(genl.GENLMSGHDR_SIZE)
+        if attrs[nl80211.ATTR_BSS] then
+            local bss = parse_bss(attrs[nl80211.ATTR_BSS])
+            if bss then
+                if bss.status == 'associated' or bss.status == 'ibss_joined' then
+                    found = bss
+                    return true
+                end
+            end
+        end
+    end)
     if not ok then
         return nil, err
     end
 
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
-        end
-
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                return nil, sys.strerror(-err)
-            end
-
-            if nlh.type == nl.NLMSG_DONE then
-                return nil
-            end
-
-            local attrs = msg:parse_attr(genl.GENLMSGHDR_SIZE)
-            if attrs[nl80211.ATTR_BSS] then
-                local bss = parse_bss(attrs[nl80211.ATTR_BSS])
-                if bss then
-                    if bss.status == 'associated' or bss.status == 'ibss_joined' then
-                        return bss
-                    end
-                end
-            end
-        end
-    end
+    return found
 end
 
 function M.get_link(ifname)

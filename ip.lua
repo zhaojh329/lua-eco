@@ -9,41 +9,13 @@ local nl = require 'eco.nl'
 
 local M = {}
 
-local function __rtnl_send(sock, msg)
-    local ok, err = sock:send(msg)
-    if not ok then
-        return nil, err
-    end
-
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
-        return nil, 'no ack'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        if err == 0 then
-            return true
-        end
-
-        return nil, 'RTNETLINK answers: ' .. sys.strerror(-err)
-    end
-
-    return nil, 'no ack'
-end
-
 local function rtnl_send(msg)
     local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
     if not sock then
         return nil, err
     end
 
-    return __rtnl_send(sock, msg)
+    return sock:request_ack(msg)
 end
 
 local function is_valid_mac(mac)
@@ -192,110 +164,102 @@ end
 
 local function link_get(sock, ifindex)
     local msg = nl.nlmsg(rtnl.RTM_GETLINK, nl.NLM_F_REQUEST)
+    local res
 
     msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, index = ifindex }))
 
-    local ok, err = sock:send(msg)
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type ~= rtnl.RTM_NEWLINK and nlh.type ~= rtnl.RTM_DELLINK then
+            return false, 'no ack'
+        end
+
+        res = {
+            up = false,
+            running = false,
+            arp = true,
+            dynamic = false,
+            multicast = false,
+            allmulticast = false,
+            promisc = false
+        }
+
+        local info = rtnl.parse_ifinfomsg(reply)
+
+        res.type = info.type
+
+        if info.flags & rtnl.IFF_UP > 0 then
+            res.up = true
+        end
+
+        if info.flags & rtnl.IFF_RUNNING > 0 then
+            res.running = true
+        end
+
+        if info.flags & rtnl.IFF_NOARP > 0 then
+            res.arp = false
+        end
+
+        if info.flags & rtnl.IFF_DYNAMIC > 0 then
+            res.dynamic = true
+        end
+
+        if info.flags & rtnl.IFF_MULTICAST > 0 then
+            res.multicast = true
+        end
+
+        if info.flags & rtnl.IFF_ALLMULTI > 0 then
+            res.allmulticast = true
+        end
+
+        if info.flags & rtnl.IFF_PROMISC > 0 then
+            res.promisc = true
+        end
+
+        local attrs = reply:parse_attr(rtnl.IFINFOMSG_SIZE)
+
+        if attrs[rtnl.IFLA_CARRIER] then
+            res.carrier = nl.attr_get_u8(attrs[rtnl.IFLA_CARRIER]) == 1 and true or false
+        end
+
+        if attrs[rtnl.IFLA_IFNAME] then
+            res.ifname = nl.attr_get_str(attrs[rtnl.IFLA_IFNAME])
+        end
+
+        if attrs[rtnl.IFLA_IFALIAS] then
+            res.alias = nl.attr_get_str(attrs[rtnl.IFLA_IFALIAS])
+        end
+
+        if attrs[rtnl.IFLA_MASTER] then
+            local idx = nl.attr_get_u32(attrs[rtnl.IFLA_MASTER])
+            res.master = socket.if_indextoname(idx)
+        end
+
+        if attrs[rtnl.IFLA_MTU] then
+            res.mtu = nl.attr_get_u32(attrs[rtnl.IFLA_MTU])
+        end
+
+        if attrs[rtnl.IFLA_TXQLEN] then
+            res.txqueuelen = nl.attr_get_u32(attrs[rtnl.IFLA_TXQLEN])
+        end
+
+        if attrs[rtnl.IFLA_ADDRESS] then
+            local addr = nl.attr_get_payload(attrs[rtnl.IFLA_ADDRESS])
+            res.address = hex.encode(addr, ':')
+        end
+
+        if attrs[rtnl.IFLA_BROADCAST] then
+            local addr = nl.attr_get_payload(attrs[rtnl.IFLA_BROADCAST])
+            res.broadcast = hex.encode(addr, ':')
+        end
+
+        return true
+    end)
     if not ok then
         return nil, err
     end
 
-    msg, err = sock:recv()
-    if not msg then
-        return nil, err
-    end
-
-    local nlh = msg:next()
-    if not nlh then
+    if not res then
         return nil, 'no ack'
-    end
-
-    if nlh.type == nl.NLMSG_ERROR then
-        err = msg:parse_error()
-        if err == 0 then
-            return true
-        end
-
-        return nil, 'RTNETLINK answers: ' .. sys.strerror(-err)
-    end
-
-    local res = {
-        up = false,
-        running = false,
-        arp = true,
-        dynamic = false,
-        multicast = false,
-        allmulticast = false,
-        promisc = false
-    }
-
-    local info = rtnl.parse_ifinfomsg(msg)
-
-    res.type = info.type
-
-    if info.flags & rtnl.IFF_UP > 0 then
-        res.up = true
-    end
-
-    if info.flags & rtnl.IFF_RUNNING > 0 then
-        res.running = true
-    end
-
-    if info.flags & rtnl.IFF_NOARP > 0 then
-        res.arp = false
-    end
-
-    if info.flags & rtnl.IFF_DYNAMIC > 0 then
-        res.dynamic = true
-    end
-
-    if info.flags & rtnl.IFF_MULTICAST > 0 then
-        res.multicast = true
-    end
-
-    if info.flags & rtnl.IFF_ALLMULTI > 0 then
-        res.allmulticast = true
-    end
-
-    if info.flags & rtnl.IFF_PROMISC > 0 then
-        res.promisc = true
-    end
-
-    local attrs = msg:parse_attr(rtnl.IFINFOMSG_SIZE)
-
-    if attrs[rtnl.IFLA_CARRIER] then
-        res.carrier = nl.attr_get_u8(attrs[rtnl.IFLA_CARRIER]) == 1 and true or false
-    end
-
-    if attrs[rtnl.IFLA_IFNAME] then
-        res.ifname = nl.attr_get_str(attrs[rtnl.IFLA_IFNAME])
-    end
-
-    if attrs[rtnl.IFLA_IFALIAS] then
-        res.alias = nl.attr_get_str(attrs[rtnl.IFLA_IFALIAS])
-    end
-
-    if attrs[rtnl.IFLA_MASTER] then
-        local idx = nl.attr_get_u32(attrs[rtnl.IFLA_MASTER])
-        res.master = socket.if_indextoname(idx)
-    end
-
-    if attrs[rtnl.IFLA_MTU] then
-        res.mtu = nl.attr_get_u32(attrs[rtnl.IFLA_MTU])
-    end
-
-    if attrs[rtnl.IFLA_TXQLEN] then
-        res.txqueuelen = nl.attr_get_u32(attrs[rtnl.IFLA_TXQLEN])
-    end
-
-    if attrs[rtnl.IFLA_ADDRESS] then
-        local addr = nl.attr_get_payload(attrs[rtnl.IFLA_ADDRESS])
-        res.address = hex.encode(addr, ':')
-    end
-
-    if attrs[rtnl.IFLA_BROADCAST] then
-        local addr = nl.attr_get_payload(attrs[rtnl.IFLA_BROADCAST])
-        res.broadcast = hex.encode(addr, ':')
     end
 
     return res
@@ -359,7 +323,7 @@ local function do_address(action, dev, addr)
         return nil, 'invalid prefix length'
     end
 
-    local local_addr = socket.inet_pton(family, local_addr)
+    local_addr = socket.inet_pton(family, local_addr)
     if not local_addr then
         return nil, 'invalid local address'
     end
@@ -429,75 +393,57 @@ end
 
 local function address_get(sock, ifindex)
     local msg = nl.nlmsg(rtnl.RTM_GETADDR, nl.NLM_F_REQUEST | nl.NLM_F_DUMP)
+    local reses = {}
 
     msg:put(rtnl.ifaddrmsg({ family = socket.AF_UNSPEC }))
 
-    local ok, err = sock:send(msg)
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type ~= rtnl.RTM_NEWADDR then
+            return
+        end
+
+        local res = {}
+        local info = rtnl.parse_ifaddrmsg(reply)
+        local family = info.family
+
+        if not ifindex or ifindex == info.index then
+            res.ifname = socket.if_indextoname(info.index)
+            res.scope = rtscope_to_name[info.scope]
+            res.family = family
+
+            local attrs = reply:parse_attr(rtnl.IFADDRMSG_SIZE)
+            local addr_attr
+
+            if family == socket.AF_INET then
+                addr_attr = attrs[rtnl.IFA_LOCAL]
+            elseif family == socket.AF_INET6 then
+                addr_attr = attrs[rtnl.IFA_ADDRESS]
+            end
+
+            if addr_attr then
+                res.address = socket.inet_ntop(family, nl.attr_get_payload(addr_attr))
+
+                if attrs[rtnl.IFA_BROADCAST] then
+                    res.broadcast = socket.inet_ntop(family, nl.attr_get_payload(attrs[rtnl.IFA_BROADCAST]))
+                end
+
+                if attrs[rtnl.IFA_LABEL] then
+                    res.label = nl.attr_get_str(attrs[rtnl.IFA_LABEL])
+                end
+
+                reses[#reses + 1] = res
+            end
+        end
+    end)
     if not ok then
         return nil, err
     end
 
-    local reses = {}
-
-    while true do
-        msg, err = sock:recv()
-        if not msg then
-            return nil, err
-        end
-
-        while true do
-            local nlh = msg:next()
-            if not nlh then
-                break
-            end
-
-            if nlh.type == rtnl.RTM_NEWADDR then
-                local res = {}
-
-                local info = rtnl.parse_ifaddrmsg(msg)
-                local family = info.family
-
-                if not ifindex or ifindex == info.index then
-                    res.ifname = socket.if_indextoname(info.index)
-                    res.scope = rtscope_to_name[info.scope]
-                    res.family = family
-
-                    local attrs = msg:parse_attr(rtnl.IFADDRMSG_SIZE)
-                    local addr_attr
-
-                    if family == socket.AF_INET then
-                        addr_attr = attrs[rtnl.IFA_LOCAL]
-                    elseif family == socket.AF_INET6 then
-                        addr_attr = attrs[rtnl.IFA_ADDRESS]
-                    end
-
-                    if addr_attr then
-                        res.address = socket.inet_ntop(family, nl.attr_get_payload(addr_attr))
-
-                        if attrs[rtnl.IFA_BROADCAST] then
-                            res.broadcast = socket.inet_ntop(family, nl.attr_get_payload(attrs[rtnl.IFA_BROADCAST]))
-                        end
-
-                        if attrs[rtnl.IFA_LABEL] then
-                            res.label = nl.attr_get_str(attrs[rtnl.IFA_LABEL])
-                        end
-
-                        reses[#reses + 1] = res
-                    end
-                end
-            elseif nlh.type == nl.NLMSG_ERROR then
-                err = msg:parse_error()
-                if err < 0 then
-                    return nil, 'RTNETLINK answers: ' .. sys.strerror(-err)
-                end
-            elseif nlh.type == nl.NLMSG_DONE then
-                if ifindex and #reses < 1 then
-                    return nil, 'not found'
-                end
-                return reses
-            end
-        end
+    if ifindex and #reses < 1 then
+        return nil, 'not found'
     end
+
+    return reses
 end
 
 function address.get(dev)
