@@ -30,7 +30,7 @@ while true do
     local pkt = packet.icmp(socket.ICMP_ECHO, 0, 0, local_seq, 'hello')
     local_seq = local_seq + 1
 
-    local _, err = s:sendto(pkt, dest_ip, 0)
+    _, err = s:sendto(pkt, dest_ip, 0)
     if err then
         print('send fail:', err)
         break

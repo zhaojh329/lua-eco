@@ -4,16 +4,12 @@ project(lua-eco C)
 
 include(FindPkgConfig)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # The version number.
-set(ECO_VERSION_MAJOR 3)
-set(ECO_VERSION_MINOR 18)
+set(ECO_VERSION_MAJOR 4)
+set(ECO_VERSION_MINOR 0)
 set(ECO_VERSION_PATCH 0)
-
-find_package(Libev REQUIRED)
 
 pkg_search_module(LUA54 lua-5.4)
 
@@ -26,12 +22,12 @@ if (NOT LUA54_INCLUDE_DIRS OR NOT LUA54_LIBRARIES)
     message(FATAL_ERROR "Liblua 5.4 is required.")
 endif()
 
-add_compile_options(-D_GNU_SOURCE -DLUA_USE_LINUX -Os -Wall -Werror --std=gnu99 -fno-strict-aliasing)
+add_compile_options(-DLUA_USE_LINUX -Os -Wall -Werror --std=gnu99 -fno-strict-aliasing)
 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-include_directories(${LUA54_INCLUDE_DIRS} ${LIBEV_INCLUDE_DIR})
+include_directories(${LUA54_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 set(LUA_INSTALL_PREFIX lib/lua/5.4)
 
@@ -40,33 +36,22 @@ option(ECO_UBUS_SUPPORT "ubus" ON)
 option(ECO_UCI_SUPPORT "uci" ON)
 option(ECO_SSH_SUPPORT "ssh" ON)
 
-add_library(libeco SHARED libeco.c)
-set_target_properties(libeco PROPERTIES OUTPUT_NAME eco)
-set_target_properties(libeco PROPERTIES VERSION
-    ${ECO_VERSION_MAJOR}.${ECO_VERSION_MINOR}.${ECO_VERSION_PATCH} SOVERSION ${ECO_VERSION_MAJOR})
+add_executable(eco interpreter.c eco.c)
+target_link_libraries(eco PRIVATE ${LUA54_LIBRARIES})
 
-add_executable(eco eco.c)
-target_link_libraries(eco PRIVATE libeco ${LIBEV_LIBRARY} ${LUA54_LIBRARIES})
-target_include_directories(eco PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+add_library(sync MODULE sync.c)
+set_target_properties(sync PROPERTIES OUTPUT_NAME sync PREFIX "")
 
 add_library(time MODULE time.c)
-target_link_libraries(time PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY})
 set_target_properties(time PROPERTIES OUTPUT_NAME time PREFIX "")
 
-add_library(bufio MODULE bufio.c)
-target_link_libraries(bufio PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
-set_target_properties(bufio PROPERTIES OUTPUT_NAME bufio PREFIX "")
-
 add_library(sys MODULE sys.c)
-target_link_libraries(sys PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY})
 set_target_properties(sys PROPERTIES OUTPUT_NAME sys PREFIX "")
 
 add_library(file MODULE file.c)
-target_link_libraries(file PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
 set_target_properties(file PROPERTIES OUTPUT_NAME file PREFIX "")
 
 add_library(socket MODULE socket.c)
-target_link_libraries(socket PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
 set_target_properties(socket PROPERTIES OUTPUT_NAME socket PREFIX "")
 
 add_library(dns MODULE dns.c)
@@ -74,44 +59,13 @@ target_link_libraries(dns PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(dns PROPERTIES OUTPUT_NAME dns PREFIX "")
 
 add_library(termios MODULE termios.c)
-target_link_libraries(termios PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
 
 add_library(log MODULE log.c log/log.c)
-target_link_libraries(log PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(log PROPERTIES OUTPUT_NAME log PREFIX "")
 
 add_library(base64 MODULE base64.c)
-target_link_libraries(base64 PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(base64 PROPERTIES OUTPUT_NAME base64 PREFIX "")
-
-add_library(sha1 MODULE sha1.c)
-target_link_libraries(sha1 PRIVATE ${LUA54_LIBRARIES} libeco)
-set_target_properties(sha1 PROPERTIES OUTPUT_NAME sha1 PREFIX "")
-
-add_library(sha256 MODULE sha256.c)
-target_link_libraries(sha256 PRIVATE ${LUA54_LIBRARIES} libeco)
-set_target_properties(sha256 PROPERTIES OUTPUT_NAME sha256 PREFIX "")
-
-add_library(md5 MODULE md5.c)
-target_link_libraries(md5 PRIVATE ${LUA54_LIBRARIES} libeco)
-set_target_properties(md5 PROPERTIES OUTPUT_NAME md5 PREFIX "")
-
-add_library(nl MODULE nl.c)
-target_link_libraries(nl PRIVATE ${LUA54_LIBRARIES})
-set_target_properties(nl PROPERTIES OUTPUT_NAME nl PREFIX "")
-
-add_library(rtnl MODULE rtnl.c)
-target_link_libraries(rtnl PRIVATE ${LUA54_LIBRARIES})
-set_target_properties(rtnl PROPERTIES OUTPUT_NAME rtnl PREFIX "")
-
-add_library(genl MODULE genl.c)
-target_link_libraries(genl PRIVATE ${LUA54_LIBRARIES})
-set_target_properties(genl PROPERTIES OUTPUT_NAME genl PREFIX "")
-
-add_library(nl80211 MODULE nl80211.c)
-target_link_libraries(nl80211 PRIVATE ${LUA54_LIBRARIES})
-set_target_properties(nl80211 PROPERTIES OUTPUT_NAME nl80211 PREFIX "")
 
 if (ECO_SSL_SUPPORT)
     add_subdirectory(ssl)
@@ -122,7 +76,7 @@ if (ECO_SSL_SUPPORT)
 
         install(
             TARGETS essl
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
         )
 
         install(
@@ -143,7 +97,7 @@ if (ECO_UBUS_SUPPORT)
 
         install(
             TARGETS lubus
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
         )
 
         install(
@@ -159,7 +113,7 @@ if (ECO_UCI_SUPPORT)
     find_library(UCI NAMES uci)
     if (UCI)
         add_library(luci MODULE uci.c)
-        target_link_libraries(luci PRIVATE ${LUA54_LIBRARIES} uci libeco)
+        target_link_libraries(luci PRIVATE uci)
         set_target_properties(luci PROPERTIES OUTPUT_NAME uci PREFIX "")
 
         install(
@@ -180,7 +134,7 @@ if (ECO_SSH_SUPPORT)
 
         install(
             TARGETS ssh
-            DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+            DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
         )
 
         install(
@@ -193,23 +147,18 @@ if (ECO_SSH_SUPPORT)
 endif()
 
 install(
-    TARGETS libeco
-    DESTINATION lib
-)
-
-install(
     TARGETS eco
     DESTINATION bin
 )
 
 install(
-    TARGETS log termios rtnl bufio
+    TARGETS log termios
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
-    TARGETS sys file time nl genl socket nl80211 dns
-    DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
+    TARGETS sync sys file time log socket dns
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/internal
 )
 
 install(
@@ -223,19 +172,8 @@ install(
 )
 
 install(
-    TARGETS sha1 sha256 md5
-    DESTINATION ${LUA_INSTALL_PREFIX}/eco/hash
-)
-
-install(
-    FILES hmac.lua
-    DESTINATION ${LUA_INSTALL_PREFIX}/eco/hash
-)
-
-install(
-    FILES time.lua sys.lua file.lua dns.lua socket.lua packet.lua mqtt.lua
-        websocket.lua sync.lua channel.lua nl.lua genl.lua ip.lua nl80211.lua
-        shared.lua net.lua
+    FILES time.lua sys.lua file.lua dns.lua socket.lua
+        packet.lua mqtt.lua websocket.lua sync.lua channel.lua shared.lua net.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
@@ -243,3 +181,6 @@ install(
     FILES http/client.lua http/server.lua http/url.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/http
 )
+
+add_subdirectory(nl)
+add_subdirectory(hash)

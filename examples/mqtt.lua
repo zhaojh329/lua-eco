@@ -9,7 +9,7 @@ local time = require 'eco.time'
 local auto_reconnect = false
 
 local function on_conack(ack, client)
-    print('conack:', ack.rc, ack.reason, ack.session_present)
+    print('conack:', ack.rc, 'reason:', ack.reason, 'session_present:', ack.session_present)
 
     if ack.rc ~= mqtt.CONNACK_ACCEPTED then
         return
@@ -24,7 +24,7 @@ local function on_suback(ack)
     if ack.rc == mqtt.SUBACK_FAILURE then
         print('suback:', ack.topic, 'fail')
     else
-        print('suback:', ack.topic, ack.rc)
+        print('suback:', ack.topic, 'rc:', ack.rc)
     end
 end
 

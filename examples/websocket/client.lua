@@ -22,7 +22,7 @@ end
 
 print('received: ', data, ' (', typ, '): ', err)
 
-local bytes, err = ws:send_close(1000, 'bye')
+bytes, err = ws:send_close(1000, 'bye')
 if not bytes then
     print('failed to send frame: ', err)
     return

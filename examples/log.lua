@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local log = require 'eco.log'
+local eco = require 'eco'
 
 log.debug('eco')
 log.info('eco')

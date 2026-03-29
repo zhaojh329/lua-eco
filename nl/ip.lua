@@ -1,0 +1,564 @@
+-- SPDX-License-Identifier: MIT
+-- Author: Jianhui Zhao <zhaojh329@gmail.com>
+
+--- IP configuration helpers.
+--
+-- This module provides a small, convenience API built on top of
+-- RTNETLINK via @{eco.nl} and @{eco.rtnl}.
+--
+-- It exposes two subtables:
+--
+-- - `link`: manage link-level properties (UP/DOWN, MTU, MAC, master, etc.)
+-- - `address`: manage interface addresses (get all; add/del IPv4)
+--
+-- Most operations require sufficient privileges (typically `CAP_NET_ADMIN`).
+--
+-- @module eco.ip
+-- @usage
+-- local link = require 'eco.ip'.link
+-- local addr = require 'eco.ip'.address
+--
+-- local ok, err = link.set('eth0', { up = true, mtu = 1500 })
+-- assert(ok, err)
+--
+-- local res, err = addr.get('eth0')
+-- assert(res, err)
+
+local hex = require 'eco.encoding.hex'
+local socket = require 'eco.socket'
+local rtnl = require 'eco.rtnl'
+local nl = require 'eco.nl'
+
+local M = {}
+
+local function rtnl_send(msg)
+    local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
+    if not sock then
+        return nil, err
+    end
+
+    return sock:request_ack(msg)
+end
+
+local function is_valid_mac(mac)
+    if type(mac) ~= 'string' then
+        return false
+    end
+
+    return not not mac:match('^%x%x:%x%x:%x%x:%x%x:%x%x:%x%x$')
+end
+
+local link = {}
+
+--- Set link attributes.
+--
+-- Supported `attrs` fields:
+--
+-- - `up` (boolean): bring interface up
+-- - `down` (boolean): bring interface down
+-- - `arp` (boolean): enable/disable ARP
+-- - `dynamic` (boolean)
+-- - `multicast` (boolean)
+-- - `allmulticast` (boolean)
+-- - `promisc` (boolean)
+-- - `carrier` (boolean)
+-- - `txqueuelen` (number)
+-- - `address` (string): MAC address like `"00:11:22:33:44:55"`
+-- - `broadcast` (string): MAC address
+-- - `mtu` (number)
+-- - `alias` (string)
+-- - `master` (string): master interface name
+-- - `nomaster` (boolean): detach from master
+--
+-- @function link.set
+-- @tparam string dev Interface name.
+-- @tparam[opt] table attrs Attributes table.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function link.set(dev, attrs)
+    local dev_index = socket.if_nametoindex(dev)
+    if not dev_index then
+        return nil, 'no such device'
+    end
+
+    attrs = attrs or {}
+
+    local msg = nl.nlmsg(rtnl.RTM_SETLINK, nl.NLM_F_REQUEST | nl.NLM_F_ACK)
+
+    local change = 0
+    local flags = 0
+
+    if attrs.up then
+        change = change | rtnl.IFF_UP
+        flags = flags | rtnl.IFF_UP
+    elseif attrs.down then
+        change = change | rtnl.IFF_UP
+    end
+
+    if attrs.arp ~= nil then
+        change = change | rtnl.IFF_NOARP
+
+        if not attrs.arp then
+            flags = flags | rtnl.IFF_NOARP
+        end
+    end
+
+    if attrs.dynamic ~= nil then
+        change = change | rtnl.IFF_DYNAMIC
+
+        if attrs.dynamic then
+            flags = flags | rtnl.IFF_DYNAMIC
+        end
+    end
+
+    if attrs.multicast ~= nil then
+        change = change | rtnl.IFF_MULTICAST
+
+        if attrs.multicast then
+            flags = flags | rtnl.IFF_MULTICAST
+        end
+    end
+
+    if attrs.allmulticast ~= nil then
+        change = change | rtnl.IFF_ALLMULTI
+
+        if attrs.allmulticast then
+            flags = flags | rtnl.IFF_ALLMULTI
+        end
+    end
+
+    if attrs.promisc ~= nil then
+        change = change | rtnl.IFF_PROMISC
+
+        if attrs.promisc then
+            flags = flags | rtnl.IFF_PROMISC
+        end
+    end
+
+    msg:put(rtnl.ifinfomsg({
+        family = socket.AF_UNSPEC,
+        index = dev_index,
+        change = change,
+        flags = flags
+    }))
+
+    if attrs.carrier ~= nil then
+        msg:put_attr_u8(rtnl.IFLA_CARRIER, attrs.carrier and 1 or 0)
+    end
+
+    if attrs.txqueuelen then
+        msg:put_attr_u32(rtnl.IFLA_TXQLEN, attrs.txqueuelen)
+    end
+
+    if attrs.address then
+        assert(is_valid_mac(attrs.address), 'not a valid address')
+        msg:put_attr(rtnl.IFLA_ADDRESS, hex.decode(attrs.address:gsub(':', '')))
+    end
+
+    if attrs.broadcast then
+        assert(is_valid_mac(attrs.broadcast), 'not a valid broadcast')
+        msg:put_attr(rtnl.IFLA_BROADCAST, hex.decode(attrs.broadcast:gsub(':', '')))
+    end
+
+    if attrs.mtu then
+        msg:put_attr_u32(rtnl.IFLA_MTU, attrs.mtu)
+    end
+
+    if attrs.alias then
+        msg:put_attr_str(rtnl.IFLA_IFALIAS, attrs.alias)
+    end
+
+    if attrs.master then
+        local master = attrs.master
+        local index = socket.if_nametoindex(master)
+        if not index then
+            return nil, 'Device does not exist: ' .. master
+        end
+        msg:put_attr_u32(rtnl.IFLA_MASTER, index)
+    end
+
+    if attrs.nomaster then
+        msg:put_attr_u32(rtnl.IFLA_MASTER, 0)
+    end
+
+    return rtnl_send(msg)
+end
+
+local function link_get(sock, ifindex)
+    local msg = nl.nlmsg(rtnl.RTM_GETLINK, nl.NLM_F_REQUEST)
+    local res
+
+    msg:put(rtnl.ifinfomsg({ family = socket.AF_UNSPEC, index = ifindex }))
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type ~= rtnl.RTM_NEWLINK and nlh.type ~= rtnl.RTM_DELLINK then
+            return false, 'no ack'
+        end
+
+        res = {
+            up = false,
+            running = false,
+            arp = true,
+            dynamic = false,
+            multicast = false,
+            allmulticast = false,
+            promisc = false
+        }
+
+        local info = rtnl.parse_ifinfomsg(reply)
+
+        res.type = info.type
+
+        if info.flags & rtnl.IFF_UP > 0 then
+            res.up = true
+        end
+
+        if info.flags & rtnl.IFF_RUNNING > 0 then
+            res.running = true
+        end
+
+        if info.flags & rtnl.IFF_NOARP > 0 then
+            res.arp = false
+        end
+
+        if info.flags & rtnl.IFF_DYNAMIC > 0 then
+            res.dynamic = true
+        end
+
+        if info.flags & rtnl.IFF_MULTICAST > 0 then
+            res.multicast = true
+        end
+
+        if info.flags & rtnl.IFF_ALLMULTI > 0 then
+            res.allmulticast = true
+        end
+
+        if info.flags & rtnl.IFF_PROMISC > 0 then
+            res.promisc = true
+        end
+
+        local attrs = reply:parse_attr(rtnl.IFINFOMSG_SIZE)
+
+        if attrs[rtnl.IFLA_CARRIER] then
+            res.carrier = nl.attr_get_u8(attrs[rtnl.IFLA_CARRIER]) == 1 and true or false
+        end
+
+        if attrs[rtnl.IFLA_IFNAME] then
+            res.ifname = nl.attr_get_str(attrs[rtnl.IFLA_IFNAME])
+        end
+
+        if attrs[rtnl.IFLA_IFALIAS] then
+            res.alias = nl.attr_get_str(attrs[rtnl.IFLA_IFALIAS])
+        end
+
+        if attrs[rtnl.IFLA_MASTER] then
+            local idx = nl.attr_get_u32(attrs[rtnl.IFLA_MASTER])
+            res.master = socket.if_indextoname(idx)
+        end
+
+        if attrs[rtnl.IFLA_MTU] then
+            res.mtu = nl.attr_get_u32(attrs[rtnl.IFLA_MTU])
+        end
+
+        if attrs[rtnl.IFLA_TXQLEN] then
+            res.txqueuelen = nl.attr_get_u32(attrs[rtnl.IFLA_TXQLEN])
+        end
+
+        if attrs[rtnl.IFLA_ADDRESS] then
+            local addr = nl.attr_get_payload(attrs[rtnl.IFLA_ADDRESS])
+            res.address = hex.encode(addr, ':')
+        end
+
+        if attrs[rtnl.IFLA_BROADCAST] then
+            local addr = nl.attr_get_payload(attrs[rtnl.IFLA_BROADCAST])
+            res.broadcast = hex.encode(addr, ':')
+        end
+
+        return true
+    end)
+    if not ok then
+        return nil, err
+    end
+
+    if not res then
+        return nil, 'no ack'
+    end
+
+    return res
+end
+
+--- Get link attributes.
+--
+-- Returns a table with fields:
+--
+-- - `ifname` (string)
+-- - `alias` (string)
+-- - `master` (string)
+-- - `type` (int)
+-- - `mtu` (int)
+-- - `txqueuelen` (int)
+-- - `address` (string): MAC as `"xx:xx:..."`
+-- - `broadcast` (string): MAC as `"xx:xx:..."`
+-- - `carrier` (boolean)
+-- - flags (boolean): `up`, `running`, `arp`, `dynamic`, `multicast`,
+--   `allmulticast`, `promisc`
+--
+-- @function link.get
+-- @tparam string dev Interface name.
+-- @treturn table info Link info table.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function link.get(dev)
+    local ifindex = socket.if_nametoindex(dev)
+    if not ifindex then
+        return nil, 'no such device'
+    end
+
+    local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
+    if not sock then
+        return nil, err
+    end
+
+    return link_get(sock, ifindex)
+end
+
+M.link = link
+
+local address = {}
+
+local rtscope_to_num = {
+    global = rtnl.RT_SCOPE_UNIVERSE,
+    nowhere = rtnl.RT_SCOPE_NOWHERE,
+    host = rtnl.RT_SCOPE_HOST,
+    link = rtnl.RT_SCOPE_LINK,
+    site = rtnl.RT_SCOPE_SITE
+}
+
+local rtscope_to_name = {
+    [rtnl.RT_SCOPE_UNIVERSE] = 'global',
+    [rtnl.RT_SCOPE_NOWHERE] = 'nowhere',
+    [rtnl.RT_SCOPE_HOST] = 'host',
+    [rtnl.RT_SCOPE_LINK] = 'link',
+    [rtnl.RT_SCOPE_SITE] = 'site'
+}
+
+local function do_address(action, dev, addr)
+    local dev_index = socket.if_nametoindex(dev)
+    if not dev_index then
+        return nil, 'no such device'
+    end
+
+    local family = socket.AF_INET
+
+    local local_addr = addr.address
+    local prefix = addr.prefix
+
+    if local_addr:find('/') then
+        local_addr, prefix = local_addr:match('(%d+%.%d+%.%d+%.%d+)/(%d+)')
+        if not local_addr then
+            return nil, 'invalid local address'
+        end
+    end
+
+    prefix = tonumber(prefix or 32)
+
+    if prefix > 32 then
+        return nil, 'invalid prefix length'
+    end
+
+    local_addr = socket.inet_pton(family, local_addr)
+    if not local_addr then
+        return nil, 'invalid local address'
+    end
+
+    local scope = rtnl.RT_SCOPE_UNIVERSE
+
+    if addr.scope then
+        if not rtscope_to_num[addr.scope] then
+            return nil, 'invalid scope'
+        end
+        scope = rtscope_to_num[addr.scope]
+    end
+
+    local msg_type
+
+    if action == 'add' then
+        msg_type = rtnl.RTM_NEWADDR
+    elseif action == 'del' then
+        msg_type = rtnl.RTM_DELADDR
+    else
+        error('invalid action')
+    end
+
+    local msg = nl.nlmsg(msg_type, nl.NLM_F_REQUEST | nl.NLM_F_ACK)
+
+    msg:put(rtnl.ifaddrmsg({
+        family = family,
+        index = dev_index,
+        prefixlen = prefix,
+        scope = scope
+    }))
+
+    msg:put_attr(rtnl.IFA_LOCAL, local_addr)
+
+    if addr.broadcast then
+        local in_addr = socket.inet_pton(family, addr.broadcast)
+        if not in_addr then
+            return nil, 'invalid broadcast address'
+        end
+        msg:put_attr(rtnl.IFA_BROADCAST, in_addr)
+    end
+
+    if addr.label then
+        msg:put_attr_str(rtnl.IFA_LABEL, addr.label)
+    end
+
+    if rtnl.IFA_RT_PRIORITY then
+        if addr.metric then
+            msg:put_attr_u32(rtnl.IFA_RT_PRIORITY, addr.metric)
+        end
+
+        if addr.priority then
+            msg:put_attr_u32(rtnl.IFA_RT_PRIORITY, addr.priority)
+        end
+    end
+
+    return rtnl_send(msg)
+end
+
+--- Add an IPv4 address to an interface.
+--
+-- `addr.address` may include prefix length in CIDR form
+-- (e.g. `"192.168.1.2/24"`).
+--
+-- Supported `addr` fields:
+--
+-- - `address` (string): IPv4 address (optionally with `/prefix`)
+-- - `prefix` (number): prefix length (default: 32)
+-- - `scope` (string): one of `"global"`, `"nowhere"`, `"host"`, `"link"`, `"site"`
+-- - `broadcast` (string): IPv4 broadcast address
+-- - `label` (string)
+-- - `metric` (number)
+-- - `priority` (number)
+--
+-- Note: this helper currently builds an IPv4 (`AF_INET`) request.
+--
+-- @function address.add
+-- @tparam string dev Interface name.
+-- @tparam table addr Address spec.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function address.add(dev, addr)
+    return do_address('add', dev, addr)
+end
+
+--- Delete an IPv4 address from an interface.
+--
+-- Uses the same `addr` format as @{address.add}.
+--
+-- @function address.del
+-- @tparam string dev Interface name.
+-- @tparam table addr Address spec.
+-- @treturn boolean true On success.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function address.del(dev, addr)
+    return do_address('del', dev, addr)
+end
+
+local function address_get(sock, ifindex)
+    local msg = nl.nlmsg(rtnl.RTM_GETADDR, nl.NLM_F_REQUEST | nl.NLM_F_DUMP)
+    local reses = {}
+
+    msg:put(rtnl.ifaddrmsg({ family = socket.AF_UNSPEC }))
+
+    local ok, err = sock:request_dump(msg, function(reply, nlh)
+        if nlh.type ~= rtnl.RTM_NEWADDR then
+            return
+        end
+
+        local res = {}
+        local info = rtnl.parse_ifaddrmsg(reply)
+        local family = info.family
+
+        if not ifindex or ifindex == info.index then
+            res.ifname = socket.if_indextoname(info.index)
+            res.scope = rtscope_to_name[info.scope]
+            res.family = family
+
+            local attrs = reply:parse_attr(rtnl.IFADDRMSG_SIZE)
+            local addr_attr
+
+            if family == socket.AF_INET then
+                addr_attr = attrs[rtnl.IFA_LOCAL]
+            elseif family == socket.AF_INET6 then
+                addr_attr = attrs[rtnl.IFA_ADDRESS]
+            end
+
+            if addr_attr then
+                res.address = socket.inet_ntop(family, nl.attr_get_payload(addr_attr))
+
+                if attrs[rtnl.IFA_BROADCAST] then
+                    res.broadcast = socket.inet_ntop(family, nl.attr_get_payload(attrs[rtnl.IFA_BROADCAST]))
+                end
+
+                if attrs[rtnl.IFA_LABEL] then
+                    res.label = nl.attr_get_str(attrs[rtnl.IFA_LABEL])
+                end
+
+                reses[#reses + 1] = res
+            end
+        end
+    end)
+    if not ok then
+        return nil, err
+    end
+
+    if ifindex and #reses < 1 then
+        return nil, 'not found'
+    end
+
+    return reses
+end
+
+--- Get addresses.
+--
+-- When `dev` is omitted, dumps addresses for all interfaces.
+--
+-- Returns an array of tables with fields:
+--
+-- - `ifname` (string)
+-- - `family` (int): address family (e.g. @{eco.socket.AF_INET})
+-- - `scope` (string): scope name
+-- - `address` (string)
+-- - `broadcast` (string|nil) (IPv4 only)
+-- - `label` (string|nil)
+--
+-- @function address.get
+-- @tparam[opt] string dev Interface name.
+-- @treturn table res Array of address info tables.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function address.get(dev)
+    local ifindex
+
+    if dev then
+        ifindex = socket.if_nametoindex(dev)
+        if not ifindex then
+            return nil, 'no such device'
+        end
+    end
+
+    local sock<close>, err = nl.open(nl.NETLINK_ROUTE)
+    if not sock then
+        return nil, err
+    end
+
+    return address_get(sock, ifindex)
+end
+
+M.address = address
+
+return M

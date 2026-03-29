@@ -3,18 +3,55 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+/**
+ * Terminal I/O settings (termios).
+ *
+ * This module exposes a small subset of POSIX termios APIs.
+ *
+ * The main value type is an @{attr} userdata which wraps a `struct termios`.
+ * Use @{tcgetattr} to obtain an attribute object, modify it via `attr:*`
+ * methods, then apply it with @{tcsetattr}.
+ *
+ * Exported constants (from the system `<termios.h>`):
+ *
+ * - `tcsetattr` actions: `TCSANOW`, `TCSADRAIN`, `TCSAFLUSH`
+ * - input flags: `IGNBRK`, `BRKINT`, `IGNPAR`, `PARMRK`, `INPCK`, `ISTRIP`,
+ *   `INLCR`, `IGNCR`, `ICRNL`, `IUCLC`, `IXON`, `IXANY`, `IXOFF`, `IMAXBEL`,
+ *   `IUTF8`
+ * - output flags: `OPOST`, `OLCUC`, `ONLCR`, `OCRNL`, `ONOCR`, `ONLRET`,
+ *   `OFILL`, `OFDEL`, `NLDLY`, `CRDLY`, `TABDLY`, `BSDLY`, `VTDLY`, `FFDLY`
+ * - control flags: `CBAUD`, `CBAUDEX`, `CSIZE`, `CSTOPB`, `CREAD`, `PARENB`,
+ *   `PARODD`, `HUPCL`, `CLOCAL`, `CIBAUD`, `CMSPAR`, `CRTSCTS`
+ * - local flags: `ISIG`, `ICANON`, `XCASE`, `ECHO`, `ECHOE`, `ECHOK`,
+ *   `ECHONL`, `ECHOCTL`, `ECHOPRT`, `ECHOKE`, `FLUSHO`, `NOFLSH`, `TOSTOP`,
+ *   `PENDIN`, `IEXTEN`
+ * - control character indices: `VDISCARD`, `VEOF`, `VEOL`, `VEOL2`, `VERASE`,
+ *   `VINTR`, `VKILL`, `VLNEXT`, `VMIN`, `VQUIT`, `VREPRINT`, `VSTART`,
+ *   `VSTOP`, `VSUSP`, `VTIME`, `VWERASE`
+ * - baud rate constants: `B0` ... `B230400`
+ * - `tcflush` selectors: `TCIFLUSH`, `TCOFLUSH`, `TCIOFLUSH`
+ * - `tcflow` actions: `TCOOFF`, `TCOON`, `TCIOFF`, `TCION`
+ *
+ * @module eco.termios
+ */
+
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
 #include <stdbool.h>
 #include <termios.h>
+#include <string.h>
 #include <errno.h>
 
 #include "eco.h"
 
-#define ECO_TERMIOS_ATTR_MT "eco{termios}"
+#define TERMIOS_ATTR_MT "struct termios *"
 
 
 static int lua_termios_change_flag(lua_State *L, bool set)
 {
-    struct termios *attr = luaL_checkudata(L, 1, ECO_TERMIOS_ATTR_MT);
+    struct termios *attr = luaL_checkudata(L, 1, TERMIOS_ATTR_MT);
     const char *type = luaL_checkstring(L, 2);
     int flag = luaL_checkinteger(L, 3);
     tcflag_t *flags;
@@ -45,19 +82,57 @@ static int lua_termios_change_flag(lua_State *L, bool set)
     return 0;
 }
 
+/**
+ * Termios attributes.
+ *
+ * This userdata wraps a `struct termios`.
+ *
+ * @type attr
+ */
+
+/**
+ * Set a flag bit in the attributes.
+ *
+ * `type` selects which flag field is modified:
+ *
+ * - `"i"`: input flags (`c_iflag`)
+ * - `"o"`: output flags (`c_oflag`)
+ * - `"c"`: control flags (`c_cflag`)
+ * - `"l"`: local flags (`c_lflag`)
+ *
+ * @function attr:set_flag
+ * @tparam string type One of `"i"`, `"o"`, `"c"`, `"l"`.
+ * @tparam integer flag Bitmask value.
+ */
 static int lua_termios_attr_set_flag(lua_State *L)
 {
     return lua_termios_change_flag(L, true);
 }
 
+/**
+ * Clear a flag bit in the attributes.
+ *
+ * @function attr:clr_flag
+ * @tparam string type One of `"i"`, `"o"`, `"c"`, `"l"`.
+ * @tparam integer flag Bitmask value.
+ */
 static int lua_termios_attr_clr_flag(lua_State *L)
 {
     return lua_termios_change_flag(L, false);
 }
 
+/**
+ * Set a control character.
+ *
+ * `name` is one of the `V*` indices (e.g. `termios.VMIN`, `termios.VTIME`).
+ *
+ * @function attr:set_cc
+ * @tparam integer name Control character index.
+ * @tparam integer value Value to set.
+ */
 static int lua_termios_attr_set_cc(lua_State *L)
 {
-    struct termios *attr = luaL_checkudata(L, 1, ECO_TERMIOS_ATTR_MT);
+    struct termios *attr = luaL_checkudata(L, 1, TERMIOS_ATTR_MT);
     int name = luaL_checkinteger(L, 2);
     int value = luaL_checkinteger(L, 3);
 
@@ -67,19 +142,30 @@ static int lua_termios_attr_set_cc(lua_State *L)
     attr->c_cc[name] = value;
     return 0;
 }
-
 static int lua_termios_attr_get_speed_common(lua_State *L, speed_t (*get)(const struct termios *))
 {
-    struct termios *attr = luaL_checkudata(L, 1, ECO_TERMIOS_ATTR_MT);
+    struct termios *attr = luaL_checkudata(L, 1, TERMIOS_ATTR_MT);
     lua_pushinteger(L, get(attr));
     return 1;
 }
 
+/**
+ * Get input baud rate.
+ *
+ * @function attr:get_ispeed
+ * @treturn integer speed
+ */
 static int lua_termios_attr_get_ispeed(lua_State *L)
 {
     return lua_termios_attr_get_speed_common(L, cfgetispeed);
 }
 
+/**
+ * Get output baud rate.
+ *
+ * @function attr:get_ospeed
+ * @treturn integer speed
+ */
 static int lua_termios_attr_get_ospeed(lua_State *L)
 {
     return lua_termios_attr_get_speed_common(L, cfgetospeed);
@@ -87,46 +173,77 @@ static int lua_termios_attr_get_ospeed(lua_State *L)
 
 static int lua_termios_attr_set_speed_common(lua_State *L, int (*set)(struct termios *, speed_t))
 {
-    struct termios *attr = luaL_checkudata(L, 1, ECO_TERMIOS_ATTR_MT);
+    struct termios *attr = luaL_checkudata(L, 1, TERMIOS_ATTR_MT);
     int speed = luaL_checkinteger(L, 2);
 
-    if (set(attr, speed)) {
-        lua_pushboolean(L, false);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
+    if (set(attr, speed))
+        return push_errno(L, errno);
 
     lua_pushboolean(L, true);
     return 1;
 }
 
+/**
+ * Set input baud rate.
+ *
+ * @function attr:set_ispeed
+ * @tparam integer speed Baud rate constant (e.g. `termios.B115200`).
+ * @treturn boolean true On success.
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int lua_termios_attr_set_ispeed(lua_State *L)
 {
     return lua_termios_attr_set_speed_common(L, cfsetispeed);
 }
 
+/**
+ * Set output baud rate.
+ *
+ * @function attr:set_ospeed
+ * @tparam integer speed Baud rate constant.
+ * @treturn boolean true On success.
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int lua_termios_attr_set_ospeed(lua_State *L)
 {
     return lua_termios_attr_set_speed_common(L, cfsetospeed);
 }
 
+/**
+ * Set both input and output baud rate.
+ *
+ * @function attr:set_speed
+ * @tparam integer speed Baud rate constant.
+ * @treturn boolean true On success.
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int lua_termios_attr_set_speed(lua_State *L)
 {
     return lua_termios_attr_set_speed_common(L, cfsetspeed);
 }
 
+/**
+ * Clone attributes.
+ *
+ * @function attr:clone
+ * @treturn attr new_attr
+ */
 static int lua_termios_attr_clone(lua_State *L)
 {
-    struct termios *attr = luaL_checkudata(L, 1, ECO_TERMIOS_ATTR_MT);
-    struct termios *nattr = lua_newuserdata(L, sizeof(struct termios));
+    struct termios *attr = luaL_checkudata(L, 1, TERMIOS_ATTR_MT);
+    struct termios *nattr = lua_newuserdatauv(L, sizeof(struct termios), 0);
 
-    luaL_getmetatable(L, ECO_TERMIOS_ATTR_MT);
-    lua_setmetatable(L, -2);
+    luaL_setmetatable(L, TERMIOS_ATTR_MT);
 
     memcpy(nattr, attr, sizeof(struct termios));
 
     return 1;
 }
+
+/// @section end
 
 static const struct luaL_Reg termios_methods[] =  {
     {"set_flag", lua_termios_attr_set_flag},
@@ -141,64 +258,122 @@ static const struct luaL_Reg termios_methods[] =  {
     {NULL, NULL}
 };
 
+/**
+ * Get terminal attributes.
+ *
+ * @function tcgetattr
+ * @tparam integer fd File descriptor.
+ * @treturn attr attr
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int lua_tcgetattr(lua_State *L)
 {
+    struct termios *attr;
     int fd = luaL_checkinteger(L, 1);
-    struct termios *attr = lua_newuserdata(L, sizeof(struct termios));
 
-    if (tcgetattr(fd, attr)) {
-        lua_pushnil(L);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
+    attr = lua_newuserdatauv(L, sizeof(struct termios), 0);
+    luaL_setmetatable(L, TERMIOS_ATTR_MT);
 
-    eco_new_metatable(L, ECO_TERMIOS_ATTR_MT, NULL, termios_methods);
-    lua_setmetatable(L, -2);
+    if (tcgetattr(fd, attr))
+        return push_errno(L, errno);
 
     return 1;
 }
 
+/**
+ * Set terminal attributes.
+ *
+ * @function tcsetattr
+ * @tparam integer fd File descriptor.
+ * @tparam integer actions One of `termios.TCSANOW`, `termios.TCSADRAIN`, `termios.TCSAFLUSH`.
+ * @tparam attr attr Attributes.
+ * @treturn boolean true On success
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ * @usage
+ * local termios = require 'eco.termios'
+ * local file = require 'eco.file'
+ * local eco = require 'eco'
+ *
+ * local f<close>, err = file.open('/dev/ttyUSB0')
+ * assert(f, err)
+ *
+ * local attr, err = termios.tcgetattr(f.fd)
+ * assert(attr, err)
+ *
+ * local nattr = attr:clone()
+ *
+ * nattr:clr_flag('l', termios.ECHO)
+ * nattr:set_speed(termios.B115200)
+ *
+ * local ok, err = termios.tcsetattr(f.fd, termios.TCSANOW, nattr)
+ * assert(ok, err)
+ *
+ * eco.run(function()
+ *     local data, err = f:read(1024)
+ *     assert(data, err)
+ *
+ *     print('read:', data)
+ *
+ *     -- recover term attr
+ *     termios.tcsetattr(f.fd, termios.TCSANOW, attr)
+ * end)
+ *
+ * eco.loop()
+ */
 static int lua_tcsetattr(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     int actions = luaL_checkinteger(L, 2);
-    struct termios *attr = luaL_checkudata(L, 3, ECO_TERMIOS_ATTR_MT);
+    struct termios *attr = luaL_checkudata(L, 3, TERMIOS_ATTR_MT);
 
-    if (tcsetattr(fd, actions, attr)) {
-        lua_pushboolean(L, false);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
+    if (tcsetattr(fd, actions, attr))
+        return push_errno(L, errno);
 
     lua_pushboolean(L, true);
     return 1;
 }
 
+/**
+ * Flush terminal I/O queues.
+ *
+ * @function tcflush
+ * @tparam integer fd File descriptor.
+ * @tparam integer queue_selector One of `termios.TCIFLUSH`, `termios.TCOFLUSH`, `termios.TCIOFLUSH`.
+ * @treturn boolean true On success
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int lua_tcflush(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     int queue_selector = luaL_checkinteger(L, 2);
 
-    if (tcflush(fd, queue_selector)) {
-        lua_pushboolean(L, false);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
+    if (tcflush(fd, queue_selector))
+        return push_errno(L, errno);
 
     lua_pushboolean(L, true);
     return 1;
 }
 
+/**
+ * Suspend or restart terminal I/O.
+ *
+ * @function tcflow
+ * @tparam integer fd File descriptor.
+ * @tparam integer action One of `termios.TCOOFF`, `termios.TCOON`, `termios.TCIOFF`, `termios.TCION`.
+ * @treturn boolean true On success
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
+ */
 static int lua_tcflow(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     int action = luaL_checkinteger(L, 2);
 
-    if (tcflow(fd, action)) {
-        lua_pushboolean(L, false);
-        lua_pushstring(L, strerror(errno));
-        return 2;
-    }
+    if (tcflow(fd, action))
+        return push_errno(L, errno);
 
     lua_pushboolean(L, true);
     return 1;
@@ -212,8 +387,10 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_termios(lua_State *L)
+int luaopen_eco_internal_termios(lua_State *L)
 {
+    creat_metatable(L, TERMIOS_ATTR_MT, NULL, termios_methods);
+
     luaL_newlib(L, funcs);
 
     /* actions for tcsetattr */
@@ -336,4 +513,9 @@ int luaopen_eco_termios(lua_State *L)
     lua_add_constant(L, "TCION", TCION);
 
     return 1;
+}
+
+int luaopen_eco_termios(lua_State *L)
+{
+    return luaopen_eco_internal_termios(L);
 }

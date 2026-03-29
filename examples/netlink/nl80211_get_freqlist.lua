@@ -12,7 +12,12 @@ for _, info in ipairs(freqlist) do
     io.write(info.freq .. ' MHz')
     io.write('(Band: ', info.band .. ' GHz, Channel: ', info.channel, ') ')
 
-    local flags = table.keys(info.flags)
+    local flags = {}
+
+    for flag in pairs(info.flags) do
+        flags[#flags + 1] = flag
+    end
+
     if #flags > 0 then
         io.write('[', table.concat(flags, ', '), ']')
     end

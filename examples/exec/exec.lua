@@ -8,7 +8,7 @@ if not p then
     return
 end
 
-print('pid:', p:pid())
+print('pid:', p.pid)
 
 local pid, status = p:wait(10.0)
 if not pid then

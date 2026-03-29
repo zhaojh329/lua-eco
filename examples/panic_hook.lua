@@ -1,12 +1,27 @@
 #!/usr/bin/env eco
 
-eco.panic_hook = function(...)
+local eco = require 'eco'
+
+eco.set_panic_hook(function(traceback1, traceback2)
     print('panic_hook:')
 
-    for _, v in ipairs({...}) do
-        print(v)
-    end
+    print(traceback1)
+    print(traceback2)
+end)
+
+local function test2()
+    -- call a nil value
+    x()
 end
 
--- call a nil value
-x()
+local function test1()
+    test2()
+end
+
+local function main()
+    eco.run(function ()
+        test1()
+    end)
+end
+
+main()

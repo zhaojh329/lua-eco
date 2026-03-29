@@ -1,9 +1,9 @@
 #!/usr/bin/env eco
 
 local http = require 'eco.http.server'
-local time = require 'eco.time'
 local log = require 'eco.log'
 local sys = require 'eco.sys'
+local eco = require 'eco'
 
 log.set_level(log.DEBUG)
 
@@ -53,6 +53,7 @@ for _ = 1, sys.get_nprocs() do
     sys.spawn(http_server)
 end
 
-while true do
-    time.sleep(1)
-end
+sys.signal(sys.SIGINT, function()
+    print('\nGot SIGINT, now quit')
+    eco.unloop()
+end)

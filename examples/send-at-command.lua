@@ -1,18 +1,17 @@
 #!/usr/bin/env eco
 
 local termios = require 'eco.termios'
-local bufio = require 'eco.bufio'
 local file = require 'eco.file'
 
-local function send_at(cmd, fd, b)
-    termios.tcflush(fd, termios.TCIOFLUSH)
+local function send_at(cmd, f)
+    termios.tcflush(f.fd, termios.TCIOFLUSH)
 
-    file.write(fd, cmd .. '\n')
+    f:write(cmd .. '\n')
 
     local data = {}
 
     while true do
-        local line, err = b:readl('l')
+        local line, err = f:read('l')
         if not line then
             return nil, err
         end
@@ -31,17 +30,11 @@ local function send_at(cmd, fd, b)
     end
 end
 
-local fd, err = file.open('/dev/ttyUSB2', file.O_RDWR)
-if not fd then
-    print('open fail:', err)
-    return
-end
+local f, err = file.open('/dev/ttyUSB2', file.O_RDWR)
+assert(f, err)
 
-local attr, err = termios.tcgetattr(fd)
-if not attr then
-    print('tcgetattr:', err)
-    return
-end
+local attr, err = termios.tcgetattr(f.fd)
+assert(attr, err)
 
 local nattr = attr:clone()
 
@@ -55,15 +48,10 @@ nattr:set_cc(termios.VTIME, 0)
 
 nattr:set_speed(termios.B115200)
 
-local ok, err = termios.tcsetattr(fd, termios.TCSANOW, nattr)
-if not ok then
-    print('tcsetattr:', err)
-    return
-end
+local ok, err = termios.tcsetattr(f.fd, termios.TCSANOW, nattr)
+assert(ok, err)
 
-local b = bufio.new(fd)
-
-local res, err = send_at('ATI', fd, b)
+local res, err = send_at('ATI', f)
 if not res then
     print('send fail:', err)
 else
@@ -71,6 +59,4 @@ else
 end
 
 -- recover term attr
-termios.tcsetattr(fd, termios.TCSANOW, attr)
-
-file.close(fd)
+termios.tcsetattr(f.fd, termios.TCSANOW, attr)

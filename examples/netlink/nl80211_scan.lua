@@ -6,6 +6,32 @@ local nl = require 'eco.nl'
 
 local ifname = 'wlan0'
 
+local function table_keys(t)
+    local keys = {}
+
+    for key in pairs(t) do
+        keys[#keys + 1] = key
+    end
+
+    return keys
+end
+
+local function print_field(k, v, intend)
+    intend = intend or 0
+    for _ = 1, intend do
+        io.write('    ')
+    end
+
+    print(k .. ': ' .. v)
+end
+
+local function print_rsn(rsn)
+    print_field('Version', rsn.version, 1)
+    print_field('Group cipher', rsn.group_cipher, 1)
+    print_field('Pairwise ciphers', table.concat(table_keys(rsn.pair_ciphers), ' '), 1)
+    print_field('Authentication suites', table.concat(table_keys(rsn.auth_suites), ' '), 1)
+end
+
 -- If no ssids is passed, a passive scan is performed
 local ok, err = nl80211.scan('trigger', { ifname = ifname, ssids = { '', 'test1', 'test2' }, freqs = { 2412, 2417 } })
 if not ok then
@@ -39,26 +65,10 @@ if not res then
     return
 end
 
-local function print_field(k, v, intend)
-    intend = intend or 0
-    for i = 1, intend do
-        io.write('    ')
-    end
-
-    print(k .. ': ' .. v)
-end
-
-local function print_rsn(rsn)
-    print_field('Version', rsn.version, 1)
-    print_field('Group cipher', rsn.group_cipher, 1)
-    print_field('Pairwise ciphers', table.concat(table.keys(rsn.pair_ciphers), ' '), 1)
-    print_field('Authentication suites', table.concat(table.keys(rsn.auth_suites), ' '), 1)
-end
-
 for _, bss in ipairs(res) do
     print_field('BSSID', bss.bssid)
     print_field('SSID', nl80211.escape_ssid(bss.ssid))
-    print_field('capability', table.concat(table.keys(bss.caps), ' '))
+    print_field('capability', table.concat(table_keys(bss.caps), ' '))
     print_field('Frequency', bss.freq / 1000 .. ' GHz')
     print_field('Band', bss.band .. ' GHz')
     print_field('Channel', bss.channel)

@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local sync = require 'eco.sync'
+local eco = require 'eco'
 
 local wg = sync.waitgroup()
 

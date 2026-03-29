@@ -2,6 +2,7 @@
 
 local channel = require 'eco.channel'
 local time = require 'eco.time'
+local eco = require 'eco'
 
 -- Create a channel with 5 buffers.
 local ch = channel.new(5)
@@ -23,19 +24,14 @@ eco.run(function()
     end
 end)
 
-eco.run(function()
-    time.sleep(2)
-    while true do
-        local v = ch:recv()
-        if v then
-            print(os.time(), 'recv:', v)
-        else
-            print(os.time(), 'closed')
-            break
-        end
-    end
-end)
+time.sleep(2)
 
 while true do
-    time.sleep(1)
+    local v = ch:recv()
+    if v then
+        print(os.time(), 'recv:', v)
+    else
+        print(os.time(), 'closed')
+        break
+    end
 end

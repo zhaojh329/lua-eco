@@ -1,12 +1,7 @@
 #!/usr/bin/env eco
 
 local ssl = require 'eco.ssl'
-local sys = require 'eco.sys'
-
-sys.signal(sys.SIGINT, function()
-    print('\nGot SIGINT, now quit')
-    eco.unloop()
-end)
+local eco = require 'eco'
 
 local s, err = ssl.listen(nil, 8080, { reuseaddr = true, cert = 'cert.pem', key = 'key.pem', insecure = true })
 if not s then
@@ -26,13 +21,13 @@ while true do
 
     eco.run(function()
         while true do
-            local data, err = c:recv('l')
+            local data, err = c:recv(1024)
             if not data then
                 print(err)
                 break
             end
             print('read:', data)
-            c:send('I am eco:' .. data .. '\n')
+            c:send('I am eco:' .. data)
         end
     end, c)
 end

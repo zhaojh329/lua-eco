@@ -400,7 +400,7 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_core_dns(lua_State *L)
+int luaopen_eco_internal_dns(lua_State *L)
 {
     luaL_newlib(L, funcs);
     return 1;

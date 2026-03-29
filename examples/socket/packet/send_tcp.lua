@@ -16,5 +16,3 @@ local ip_pkt = packet.ip(saddr, daddr, socket.IPPROTO_TCP, tcp_pkt)
 local eth_pkt = packet.ether('00:15:5d:de:28:a4', '00:15:5d:fc:5a:53', socket.ETH_P_IP, ip_pkt)
 
 sock:sendto(eth_pkt, { ifname = 'eth0' })
-
-os.exit(0)
