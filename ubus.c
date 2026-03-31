@@ -759,6 +759,7 @@ static int lua_ubus_subscribe(lua_State *L)
 
     ret = ubus_subscribe(&ctx->ctx, sub, id);
     if (ret) {
+        ubus_unregister_subscriber(&ctx->ctx, sub);
         lua_pushnil(L);
         lua_pushstring(L, ubus_strerror(ret));
         return 2;
