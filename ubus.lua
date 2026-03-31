@@ -65,10 +65,10 @@ function methods:add(object, ms)
     return con:add(object, ms)
 end
 
-function methods:subscribe(path, cb)
+function methods:subscribe(path, cb, auto)
     local s, err = self.con:subscribe(path, function(...)
         eco.run(cb, ...)
-    end)
+    end, auto)
     if not s then
         return false, err
     end

@@ -32,6 +32,11 @@ struct eco_ubus_object {
     struct ubus_method methods[0];
 };
 
+struct eco_ubus_subscriber {
+    struct ubus_subscriber subscriber;
+    char path_data[0];
+};
+
 #define UBUS_MAX_MSGLEN 1048576
 
 #define ECO_UBUS_CTX_MT "eco{ubus-ctx}"
@@ -728,27 +733,50 @@ static int ubus_subscriber_cb(struct ubus_context *ctx, struct ubus_object *obj,
     return 0;
 }
 
+static bool ubus_new_object_cb(struct ubus_context *ctx,
+                struct ubus_subscriber *sub, const char *path)
+{
+    struct eco_ubus_subscriber *esub = container_of(sub,
+                            struct eco_ubus_subscriber, subscriber);
+
+    return !strcmp(esub->path_data, path);
+}
+
 static int lua_ubus_subscribe(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
     const char *path = luaL_checkstring(L, 2);
+    bool auto_sub = lua_toboolean(L, 4);
+    size_t size = sizeof(struct eco_ubus_subscriber);
+    struct eco_ubus_subscriber *sub_ud;
     struct ubus_subscriber *sub;
     uint32_t id;
     int ret;
 
-    if (ubus_lookup_id(&ctx->ctx, path, &id)) {
+    luaL_checktype(L, 3, LUA_TFUNCTION);
+
+    if (auto_sub)
+        size += strlen(path) + 1;
+
+    if (!auto_sub && ubus_lookup_id(&ctx->ctx, path, &id)) {
         lua_pushnil(L);
         lua_pushliteral(L, "not found");
         return 2;
     }
 
-    sub = lua_newuserdata(L, sizeof(struct ubus_subscriber));
+    sub_ud = lua_newuserdata(L, size);
     lua_pushvalue(L, 3);
     lua_setuservalue(L, -2);
 
-    memset(sub, 0, sizeof(struct ubus_subscriber));
+    memset(sub_ud, 0, size);
+
+    sub = &sub_ud->subscriber;
 
     sub->cb = ubus_subscriber_cb;
+    if (auto_sub) {
+        strcpy(sub_ud->path_data, path);
+        sub->new_obj_cb = ubus_new_object_cb;
+    }
 
     ret = ubus_register_subscriber(&ctx->ctx, sub);
     if (ret) {
@@ -757,12 +785,14 @@ static int lua_ubus_subscribe(lua_State *L)
         return 2;
     }
 
-    ret = ubus_subscribe(&ctx->ctx, sub, id);
-    if (ret) {
-        ubus_unregister_subscriber(&ctx->ctx, sub);
-        lua_pushnil(L);
-        lua_pushstring(L, ubus_strerror(ret));
-        return 2;
+    if (!auto_sub) {
+        ret = ubus_subscribe(&ctx->ctx, sub, id);
+        if (ret) {
+            ubus_unregister_subscriber(&ctx->ctx, sub);
+            lua_pushnil(L);
+            lua_pushstring(L, ubus_strerror(ret));
+            return 2;
+        }
     }
 
     return lua_save_obj_to_ubus_ctx(L, sub);

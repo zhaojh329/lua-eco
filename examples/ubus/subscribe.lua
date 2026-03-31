@@ -29,7 +29,7 @@ eco.run(function()
         if method == 'time' then
             print('recv:', msg.ts)
         end
-    end)
+    end, true)
 
     while true do
         time.sleep(1000)
