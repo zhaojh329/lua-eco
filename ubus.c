@@ -469,6 +469,24 @@ static void lua_ubus_get_obj_uv(lua_State *L, void *ctx, void *obj)
     lua_getuservalue(L, -1);
 }
 
+static void lua_ubus_remove_obj(lua_State *L, void *ctx, void *obj)
+{
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &obj_registry);
+    lua_rawgetp(L, -1, ctx);
+
+    if (!lua_isuserdata(L, -1)) {
+        lua_pop(L, 2);
+        return;
+    }
+
+    lua_getuservalue(L, -1);
+    lua_pushlightuserdata(L, obj);
+    lua_pushnil(L);
+    lua_rawset(L, -3);
+
+    lua_pop(L, 3);
+}
+
 static void lua_ubus_get_cb(lua_State *L, void *ctx, void *obj)
 {
     lua_ubus_get_obj_uv(L, ctx, obj);
@@ -742,6 +760,18 @@ static bool ubus_new_object_cb(struct ubus_context *ctx,
     return !strcmp(esub->path_data, path);
 }
 
+static void ubus_subscriber_remove_cb(struct ubus_context *ctx,
+                struct ubus_subscriber *sub, uint32_t id)
+{
+    struct eco_ubus_context *c = container_of(ctx, struct eco_ubus_context, ctx);
+
+    if (sub->new_obj_cb)
+        return;
+
+    ubus_unregister_subscriber(&c->ctx, sub);
+    lua_ubus_remove_obj(c->L, c, sub);
+}
+
 static int lua_ubus_subscribe(lua_State *L)
 {
     struct eco_ubus_context *ctx = luaL_checkudata(L, 1, ECO_UBUS_CTX_MT);
@@ -773,6 +803,7 @@ static int lua_ubus_subscribe(lua_State *L)
     sub = &sub_ud->subscriber;
 
     sub->cb = ubus_subscriber_cb;
+    sub->remove_cb = ubus_subscriber_remove_cb;
     if (auto_sub) {
         strcpy(sub_ud->path_data, path);
         sub->new_obj_cb = ubus_new_object_cb;
