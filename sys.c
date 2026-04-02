@@ -5,6 +5,7 @@
 
 #include <sys/sysinfo.h>
 #include <sys/prctl.h>
+#include <sys/types.h>
 #include <stdbool.h>
 #include <signal.h>
 #include <unistd.h>
@@ -13,6 +14,53 @@
 #include <pwd.h>
 
 #include "eco.h"
+
+static char *resolve_cmd_path(const char *cmd)
+{
+    const char *path = "/bin:/usr/bin:/usr/sbin:/sbin";
+    const char *entry;
+    size_t cmdlen;
+
+    if (strchr(cmd, '/'))
+        return strdup(cmd);
+
+    cmdlen = strlen(cmd);
+    entry = path;
+
+    while (1) {
+        const char *next = strchr(entry, ':');
+        size_t dirlen = next ? (next - entry) : strlen(entry);
+        size_t len = (dirlen ? dirlen : 1) + 1 + cmdlen + 1;
+        char *fullpath = malloc(len);
+
+        if (!fullpath)
+            return NULL;
+
+        if (dirlen) {
+            memcpy(fullpath, entry, dirlen);
+            fullpath[dirlen] = '/';
+            memcpy(fullpath + dirlen + 1, cmd, cmdlen + 1);
+        } else {
+            fullpath[0] = '.';
+            fullpath[1] = '/';
+            memcpy(fullpath + 2, cmd, cmdlen + 1);
+        }
+
+        if (access(fullpath, X_OK) == 0)
+            return fullpath;
+
+        free(fullpath);
+
+        if (!next)
+            break;
+
+        entry = next + 1;
+    }
+
+    errno = ENOENT;
+
+    return NULL;
+}
 
 static int lua_uptime(lua_State *L)
 {
@@ -115,8 +163,10 @@ static int lua_exec(lua_State *L)
     } else if (pid == 0) {
         const char **envp = NULL;
         const char **args;
+        const char **argv;
         const char *cmd;
-        int i, narg;
+        char *cmdpath = NULL;
+        int i, narg, ret;
 
         /* close unused read end */
         close(opipe[0]);
@@ -137,14 +187,16 @@ static int lua_exec(lua_State *L)
             narg = lua_gettop(L);
         }
 
-        args = malloc(sizeof(char *) * (narg + 1));
+        args = malloc(sizeof(char *) * (narg + 2));
         if (!args)
             exit(1);
+
+        args[0] = NULL;
 
         if (lua_istable(L, 1)) {
             for (i = 0; i < narg; i++) {
                 lua_geti(L, 1, i + 1);
-                args[i] = lua_tostring(L, -1);
+                args[i + 1] = lua_tostring(L, -1);
             }
 
             if (lua_istable(L, 2)) {
@@ -162,16 +214,38 @@ static int lua_exec(lua_State *L)
             }
         } else {
             for (i = 0; i < narg; i++)
-                args[i] = lua_tostring(L, i + 1);
+                args[i + 1] = lua_tostring(L, i + 1);
         }
 
-        args[narg] = NULL;
+        args[narg + 1] = NULL;
+        argv = args + 1;
 
+again:
         if (envp)
-            execvpe(cmd, (char *const *)args, (char *const *)envp);
+            ret = execvpe(cmd, (char *const *)argv, (char *const *)envp);
         else
-            execvp(cmd, (char *const *)args);
+            ret = execvp(cmd, (char *const *)argv);
 
+        if (ret < 0) {
+            if (errno == ENOEXEC && argv != args) {
+                char *sh = getenv("SHELL");
+
+                if (!sh)
+                    sh = "/bin/sh";
+
+                cmdpath = resolve_cmd_path(cmd);
+                if (!cmdpath)
+                    goto out;
+
+                args[0] = sh;
+                args[1] = cmdpath;
+                cmd = sh;
+                argv = args;
+                goto again;
+            }
+        }
+
+out:
         fprintf(stderr, "%s: %s", cmd, strerror(errno));
         free(args);
         exit(127);
