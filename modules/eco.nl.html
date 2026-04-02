@@ -1,0 +1,1791 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Class_nlsocket">Class nlsocket </a></li>
+<li><a href="#Class_nlmsg_ker">Class nlmsg_ker </a></li>
+<li><a href="#Class_nlmsg">Class nlmsg </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><strong>eco.nl</strong></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.nl</code></h1>
+<p>Netlink sockets and helpers.</p>
+<p>
+
+
+<p> This module is a small wrapper around <a href="../modules/eco.socket.html#">eco.socket</a>'s netlink sockets and
+ provides low-level message/attribute helpers and Linux netlink constants.</p>
+
+<p> The most common entry point is <a href="../modules/eco.nl.html#open">nl.open</a>, which returns a socket object with
+ convenience methods.</p>
+
+<p> Many constants from Linux headers are also exported:</p>
+
+<ul>
+    <li>Netlink message type: <code>NLMSG_*</code></li>
+    <li>Netlink message flag: <code>NLM_F_*</code></li>
+    <li>Netlink protocol family: <code>NETLINK_*</code></li>
+</ul>
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#open">open (protocol)</a></td>
+	<td class="summary">Create a netlink socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_u8">attr_get_u8 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is an unsigned 8-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_s8">attr_get_s8 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is a signed 8-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_u16">attr_get_u16 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is an unsigned 16-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_s16">attr_get_s16 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is a signed 16-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_u32">attr_get_u32 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is an unsigned 32-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_s32">attr_get_s32 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is a signed 32-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_u64">attr_get_u64 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is an unsigned 64-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_s64">attr_get_s64 (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is a signed 64-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_str">attr_get_str (attr)</a></td>
+	<td class="summary">Decode an attribute whose payload is a NUL-terminated string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#attr_get_payload">attr_get_payload (attr)</a></td>
+	<td class="summary">Get the raw payload bytes of an attribute.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#parse_attr_nested">parse_attr_nested (nest)</a></td>
+	<td class="summary">Parse attributes from a nested attribute.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg">nlmsg (type, flags[, seq=0[, size=4096]])</a></td>
+	<td class="summary">Create a new netlink message builder.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg_ker">nlmsg_ker (data)</a></td>
+	<td class="summary">Create a parser for a received netlink datagram.</td>
+	</tr>
+</table>
+<h2><a href="#Class_nlsocket">Class nlsocket </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:bind">nlsocket:bind (groups[, pid])</a></td>
+	<td class="summary">Bind the netlink socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:add_membership">nlsocket:add_membership (group)</a></td>
+	<td class="summary">Subscribe to a multicast group.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:drop_membership">nlsocket:drop_membership (group)</a></td>
+	<td class="summary">Unsubscribe from a multicast group.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:send">nlsocket:send (msg)</a></td>
+	<td class="summary">Send a netlink message.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:recv">nlsocket:recv ([n=8192[, timeout]])</a></td>
+	<td class="summary">Receive data from the netlink socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:request_ack">nlsocket:request_ack (msg[, on_error])</a></td>
+	<td class="summary">Send a request and wait for an ACK (<code>NLMSG_ERROR</code> with error=0).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:request_dump">nlsocket:request_dump (msg[, on_msg[, on_error]])</a></td>
+	<td class="summary">Send a request and iterate reply messages until <code>NLMSG_DONE</code>.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:recv_messages">nlsocket:recv_messages ([on_msg[, on_error[, n=8192[, timeout]]]])</a></td>
+	<td class="summary">Receive and dispatch netlink messages in a loop.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlsocket:close">nlsocket:close ()</a></td>
+	<td class="summary">Close the socket.</td>
+	</tr>
+</table>
+<h2><a href="#Class_nlmsg_ker">Class nlmsg_ker </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg_ker:next">nlmsg_ker:next ()</a></td>
+	<td class="summary">Iterate to the next netlink message in the received datagram.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg_ker:payload">nlmsg_ker:payload ()</a></td>
+	<td class="summary">Get the payload of the current netlink message.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg_ker:parse_attr">nlmsg_ker:parse_attr (offset)</a></td>
+	<td class="summary">Parse netlink attributes from the current message.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg_ker:parse_error">nlmsg_ker:parse_error ()</a></td>
+	<td class="summary">Parse an <code>NLMSG_ERROR</code> message.</td>
+	</tr>
+</table>
+<h2><a href="#Class_nlmsg">Class nlmsg </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:binary">nlmsg:binary ()</a></td>
+	<td class="summary">Serialize a message builder to a binary string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put">nlmsg:put (data)</a></td>
+	<td class="summary">Append raw bytes to the message payload.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr">nlmsg:put_attr (type, value)</a></td>
+	<td class="summary">Append a netlink attribute with an arbitrary payload.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_flag">nlmsg:put_attr_flag (type)</a></td>
+	<td class="summary">Append a flag attribute (attribute with zero-length payload).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_u8">nlmsg:put_attr_u8 (type, value)</a></td>
+	<td class="summary">Append an attribute whose payload is an unsigned 8-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_u16">nlmsg:put_attr_u16 (type, value)</a></td>
+	<td class="summary">Append an attribute whose payload is an unsigned 16-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_u32">nlmsg:put_attr_u32 (type, value)</a></td>
+	<td class="summary">Append an attribute whose payload is an unsigned 32-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_u64">nlmsg:put_attr_u64 (type, value)</a></td>
+	<td class="summary">Append an attribute whose payload is an unsigned 64-bit integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_str">nlmsg:put_attr_str (type, value)</a></td>
+	<td class="summary">Append an attribute whose payload is a string (without trailing NUL).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_strz">nlmsg:put_attr_strz (type, value)</a></td>
+	<td class="summary">Append an attribute whose payload is a NUL-terminated string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_nest_start">nlmsg:put_attr_nest_start (type)</a></td>
+	<td class="summary">Start a nested attribute.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nlmsg:put_attr_nest_end">nlmsg:put_attr_nest_end ()</a></td>
+	<td class="summary">End the current nested attribute.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "open"></a>
+    <strong>open (protocol)</strong>
+    </dt>
+    <dd>
+    Create a netlink socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">protocol</span>
+            <span class="types"><span class="type">int</span></span>
+         Netlink protocol.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlsocket">nlsocket</a></span>
+
+
+
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> nl = <span class="global">require</span> <span class="string">'eco.nl'</span>
+
+<span class="keyword">local</span> sock&lt;close&gt;, err = nl.<span class="function-name">open</span>(nl.NETLINK_ROUTE)
+<span class="global">assert</span>(sock, err)
+
+<span class="comment">-- Build a request.
+</span><span class="keyword">local</span> msg = nl.<span class="function-name">nlmsg</span>(<span class="number">0</span>, <span class="number">0</span>)
+msg:<span class="function-name">put</span>(<span class="string">'hello'</span>)
+<span class="global">assert</span>(sock:<span class="function-name">send</span>(msg))
+
+<span class="comment">-- Receive and iterate.
+</span><span class="keyword">local</span> rx = <span class="global">assert</span>(sock:<span class="function-name">recv</span>())
+<span class="keyword">local</span> hdr = rx:<span class="global">next</span>()
+<span class="keyword">if</span> hdr <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">'type:'</span>, hdr.<span class="global">type</span>)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "attr_get_u8"></a>
+    <strong>attr_get_u8 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is an unsigned 8-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_s8"></a>
+    <strong>attr_get_s8 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is a signed 8-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_u16"></a>
+    <strong>attr_get_u16 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is an unsigned 16-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_s16"></a>
+    <strong>attr_get_s16 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is a signed 16-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_u32"></a>
+    <strong>attr_get_u32 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is an unsigned 32-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_s32"></a>
+    <strong>attr_get_s32 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is a signed 32-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_u64"></a>
+    <strong>attr_get_u64 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is an unsigned 64-bit integer. </p>
+
+<p> Values larger than <code>INT64_MAX</code> are clamped to <code>INT64_MAX</code> because Lua integers
+ are signed.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_s64"></a>
+    <strong>attr_get_s64 (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is a signed 64-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_str"></a>
+    <strong>attr_get_str (attr)</strong>
+    </dt>
+    <dd>
+    Decode an attribute whose payload is a NUL-terminated string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "attr_get_payload"></a>
+    <strong>attr_get_payload (attr)</strong>
+    </dt>
+    <dd>
+    Get the raw payload bytes of an attribute.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">attr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        payload
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "parse_attr_nested"></a>
+    <strong>parse_attr_nested (nest)</strong>
+    </dt>
+    <dd>
+    Parse attributes from a nested attribute. </p>
+
+<p> The returned table is indexed by attribute type. Each value is a raw
+ attribute binary string (including header), compatible with <code>attr_get_*</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">nest</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw attribute bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        attrs
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg"></a>
+    <strong>nlmsg (type, flags[, seq=0[, size=4096]])</strong>
+    </dt>
+    <dd>
+    Create a new netlink message builder.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Netlink message type.
+        </li>
+        <li><span class="parameter">flags</span>
+            <span class="types"><span class="type">int</span></span>
+         Netlink flags bitmask.
+        </li>
+        <li><span class="parameter">seq</span>
+            <span class="types"><span class="type">integer</span></span>
+         Sequence number.
+         (<em>default</em> 0)
+        </li>
+        <li><span class="parameter">size</span>
+            <span class="types"><span class="type">integer</span></span>
+         Buffer size hint (bytes) for payload/attributes.
+         (<em>default</em> 4096)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        msg
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg_ker"></a>
+    <strong>nlmsg_ker (data)</strong>
+    </dt>
+    <dd>
+    Create a parser for a received netlink datagram. </p>
+
+<p> The returned object can iterate over all messages within the datagram.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Binary datagram returned by a netlink socket.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg_ker</a></span>
+        msg
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_nlsocket"></a>Class nlsocket </h2>
+
+          <div class="section-description">
+          Netlink socket object returned by <a href="../modules/eco.nl.html#open">nl.open</a>. </p>
+
+<p> This is a thin wrapper around a netlink socket returned by
+ <a href="../modules/eco.socket.html#netlink">eco.socket.netlink</a>. The object also supports Lua 5.4 to-be-closed
+ variables via the <code>__close</code> metamethod.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "nlsocket:bind"></a>
+    <strong>nlsocket:bind (groups[, pid])</strong>
+    </dt>
+    <dd>
+    Bind the netlink socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">groups</span>
+            <span class="types"><span class="type">int</span></span>
+         Multicast group bitmap.
+        </li>
+        <li><span class="parameter">pid</span>
+            <span class="types"><span class="type">int</span></span>
+         Local PID to bind.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:add_membership"></a>
+    <strong>nlsocket:add_membership (group)</strong>
+    </dt>
+    <dd>
+    Subscribe to a multicast group.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">group</span>
+            <span class="types"><span class="type">int</span></span>
+         Multicast group id.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:drop_membership"></a>
+    <strong>nlsocket:drop_membership (group)</strong>
+    </dt>
+    <dd>
+    Unsubscribe from a multicast group.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">group</span>
+            <span class="types"><span class="type">int</span></span>
+         Multicast group id.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:send"></a>
+    <strong>nlsocket:send (msg)</strong>
+    </dt>
+    <dd>
+    Send a netlink message.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">msg</span>
+            <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+         Message created by <a href="../modules/eco.nl.html#nlmsg">nl.nlmsg</a>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:recv"></a>
+    <strong>nlsocket:recv ([n=8192[, timeout]])</strong>
+    </dt>
+    <dd>
+    Receive data from the netlink socket. </p>
+
+<p> The return value is a message parser created by <a href="../modules/eco.nl.html#nlmsg_ker">nl.nlmsg_ker</a>. The parser
+ may contain multiple netlink messages; iterate them with <a href="../modules/eco.nl.html#nlmsg_ker:next">nlmsg_ker:next</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">integer</span></span>
+         Max bytes to read.
+         (<em>default</em> 8192)
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg_ker</a></span>
+
+
+
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:request_ack"></a>
+    <strong>nlsocket:request_ack (msg[, on_error])</strong>
+    </dt>
+    <dd>
+    Send a request and wait for an ACK (<code>NLMSG_ERROR</code> with error=0).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">msg</span>
+            <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+         Request message.
+        </li>
+        <li><span class="parameter">on_error</span>
+            <span class="types"><span class="type">function</span></span>
+         Optional mapper <code>on_error(errno)-&gt;string</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:request_dump"></a>
+    <strong>nlsocket:request_dump (msg[, on_msg[, on_error]])</strong>
+    </dt>
+    <dd>
+    Send a request and iterate reply messages until <code>NLMSG_DONE</code>. </p>
+
+<p> Callback return conventions:
+ - <code>true</code>: stop early and return success
+ - <code>false, err</code>: stop and return error
+ - <code>nil</code>: continue
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">msg</span>
+            <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+         Request message.
+        </li>
+        <li><span class="parameter">on_msg</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback <code>on_msg(reply, nlh)</code>.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">on_error</span>
+            <span class="types"><span class="type">function</span></span>
+         Optional mapper <code>on_error(errno)-&gt;string</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:recv_messages"></a>
+    <strong>nlsocket:recv_messages ([on_msg[, on_error[, n=8192[, timeout]]]])</strong>
+    </dt>
+    <dd>
+    Receive and dispatch netlink messages in a loop. </p>
+
+<p> This is intended for event subscription sockets that only receive
+ multicast notifications.</p>
+
+<p> Callback return conventions:
+ - <code>true</code>: stop loop and return success
+ - <code>false, err</code>: stop loop and return error
+ - <code>nil</code>: continue
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">on_msg</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback <code>on_msg(reply, nlh)</code>.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">on_error</span>
+            <span class="types"><span class="type">function</span></span>
+         Optional mapper <code>on_error(errno)-&gt;string</code>.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">integer</span></span>
+         Max bytes to read per recv.
+         (<em>default</em> 8192)
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds for each recv.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true When callback stops loop with <code>true</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlsocket:close"></a>
+    <strong>nlsocket:close ()</strong>
+    </dt>
+    <dd>
+    Close the socket.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_nlmsg_ker"></a>Class nlmsg_ker </h2>
+
+          <div class="section-description">
+          Netlink message parser returned by <a href="../modules/eco.nl.html#nlmsg_ker">nl.nlmsg_ker</a>. </p>
+
+<p> A single received datagram may contain multiple netlink messages.
+ Call <a href="../modules/eco.nl.html#nlmsg_ker:next">nlmsg_ker:next</a> to iterate, then use <a href="../modules/eco.nl.html#nlmsg_ker:payload">nlmsg_ker:payload</a>,
+ <a href="../modules/eco.nl.html#nlmsg_ker:parse_attr">nlmsg_ker:parse_attr</a>, etc. to inspect the <em>current</em> message.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "nlmsg_ker:next"></a>
+    <strong>nlmsg_ker:next ()</strong>
+    </dt>
+    <dd>
+    Iterate to the next netlink message in the received datagram. </p>
+
+<p> The returned table contains header fields for the current message.
+ When there are no more messages, returns <code>nil</code>.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a> or <span class="type">nil</span></span>
+        hdr Header table with fields: <a href="https://www.lua.org/manual/5.1/manual.html#pdf-type">type</a>, <code>flags</code>, <code>seq</code>, <code>pid</code>.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg_ker:payload"></a>
+    <strong>nlmsg_ker:payload ()</strong>
+    </dt>
+    <dd>
+    Get the payload of the current netlink message. </p>
+
+<p> The current message is the one most recently selected by <a href="../modules/eco.nl.html#nlmsg_ker:next">nlmsg_ker:next</a>.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        payload
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg_ker:parse_attr"></a>
+    <strong>nlmsg_ker:parse_attr (offset)</strong>
+    </dt>
+    <dd>
+    Parse netlink attributes from the current message. </p>
+
+<p> This parses the payload region starting at <code>offset</code> and returns a table
+ indexed by attribute type. Each value is a binary string representing the
+ <code>struct nlattr</code> (including header).</p>
+
+<p> Use the module-level accessors (e.g. <a href="../modules/eco.nl.html#attr_get_u32">attr_get_u32</a>, <a href="../modules/eco.nl.html#attr_get_str">attr_get_str</a>) to
+ decode the returned attributes.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">offset</span>
+            <span class="types"><span class="type">int</span></span>
+         Byte offset within the message payload where attributes start.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        attrs
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg_ker:parse_error"></a>
+    <strong>nlmsg_ker:parse_error ()</strong>
+    </dt>
+    <dd>
+    Parse an <code>NLMSG_ERROR</code> message. </p>
+
+<p> On success, returns the <a href="https://www.lua.org/manual/5.1/manual.html#pdf-error">error</a> field from <code>struct nlmsgerr</code>.
+ Typically, <code>0</code> means ACK/success; a negative value is <code>-errno</code>.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        errcode
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_nlmsg"></a>Class nlmsg </h2>
+
+          <div class="section-description">
+          Netlink message builder returned by <a href="../modules/eco.nl.html#nlmsg">nl.nlmsg</a>. </p>
+
+<p> Use the <code>put*</code> methods to append payload and attributes.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "nlmsg:binary"></a>
+    <strong>nlmsg:binary ()</strong>
+    </dt>
+    <dd>
+    Serialize a message builder to a binary string.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        data
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put"></a>
+    <strong>nlmsg:put (data)</strong>
+    </dt>
+    <dd>
+    Append raw bytes to the message payload.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Bytes to append.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr"></a>
+    <strong>nlmsg:put_attr (type, value)</strong>
+    </dt>
+    <dd>
+    Append a netlink attribute with an arbitrary payload.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Attribute payload bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_flag"></a>
+    <strong>nlmsg:put_attr_flag (type)</strong>
+    </dt>
+    <dd>
+    Append a flag attribute (attribute with zero-length payload).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_u8"></a>
+    <strong>nlmsg:put_attr_u8 (type, value)</strong>
+    </dt>
+    <dd>
+    Append an attribute whose payload is an unsigned 8-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><span class="type">int</span></span>
+         Value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_u16"></a>
+    <strong>nlmsg:put_attr_u16 (type, value)</strong>
+    </dt>
+    <dd>
+    Append an attribute whose payload is an unsigned 16-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><span class="type">int</span></span>
+         Value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_u32"></a>
+    <strong>nlmsg:put_attr_u32 (type, value)</strong>
+    </dt>
+    <dd>
+    Append an attribute whose payload is an unsigned 32-bit integer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><span class="type">int</span></span>
+         Value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_u64"></a>
+    <strong>nlmsg:put_attr_u64 (type, value)</strong>
+    </dt>
+    <dd>
+    Append an attribute whose payload is an unsigned 64-bit integer. </p>
+
+<p> Note: if Lua integers are 32-bit on the current build, values outside the
+ 32-bit range may lose precision.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><span class="type">int</span></span>
+         Value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_str"></a>
+    <strong>nlmsg:put_attr_str (type, value)</strong>
+    </dt>
+    <dd>
+    Append an attribute whose payload is a string (without trailing NUL). </p>
+
+<p> This uses <code>strlen()</code> and therefore cannot be used for strings containing
+ embedded <code>\0</code> bytes.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         String value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_strz"></a>
+    <strong>nlmsg:put_attr_strz (type, value)</strong>
+    </dt>
+    <dd>
+    Append an attribute whose payload is a NUL-terminated string. </p>
+
+<p> This uses <code>strlen()</code> and appends the terminating NUL.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         String value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_nest_start"></a>
+    <strong>nlmsg:put_attr_nest_start (type)</strong>
+    </dt>
+    <dd>
+    Start a nested attribute. </p>
+
+<p> After calling this, subsequent attributes appended to the message will be
+ counted into the nested attribute's length until <a href="../modules/eco.nl.html#nlmsg:put_attr_nest_end">nlmsg:put_attr_nest_end</a>
+ is called.</p>
+
+<p> Note: this implementation tracks a single active nest level.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">type</span>
+            <span class="types"><span class="type">int</span></span>
+         Attribute type.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nlmsg:put_attr_nest_end"></a>
+    <strong>nlmsg:put_attr_nest_end ()</strong>
+    </dt>
+    <dd>
+    End the current nested attribute.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.nl.html#Class_nlmsg">nlmsg</a></span>
+        self
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

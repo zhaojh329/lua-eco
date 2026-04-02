@@ -1,0 +1,1445 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Class_file">Class file </a></li>
+<li><a href="#Class_inotify">Class inotify </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><strong>eco.file</strong></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.file</code></h1>
+<p>File utilities.</p>
+<p>
+
+
+<p> This module provides file and filesystem related helpers, bind common POSIX file APIs.</p>
+
+<p> Exported constants:</p>
+
+<ul>
+    <li>open(2) flags: <code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code>, <code>O_APPEND</code>, <code>O_CLOEXEC</code>,
+    <code>O_CREAT</code>, <code>O_EXCL</code>, <code>O_NOCTTY</code>, <code>O_NONBLOCK</code>, <code>O_TRUNC</code></li>
+    <li>stat(2) mode bits: <code>S_IRWXU</code>, <code>S_IRUSR</code>, <code>S_IWUSR</code>, <code>S_IXUSR</code>, <code>S_IRWXG</code>,
+    <code>S_IRGRP</code>, <code>S_IWGRP</code>, <code>S_IXGRP</code>, <code>S_IRWXO</code>, <code>S_IROTH</code>, <code>S_IWOTH</code>,
+    <code>S_IXOTH</code>, <code>S_ISUID</code>, <code>S_ISGID</code>, <code>S_ISVTX</code></li>
+    <li>lseek(2) whence: <code>SEEK_SET</code>, <code>SEEK_CUR</code>, <code>SEEK_END</code></li>
+    <li>flock(2) operations: <code>LOCK_SH</code>, <code>LOCK_EX</code>, <code>LOCK_UN</code></li>
+    <li>inotify(7) masks: <code>IN_ACCESS</code>, <code>IN_MODIFY</code>, <code>IN_ATTRIB</code>, <code>IN_CLOSE_WRITE</code>,
+    <code>IN_CLOSE_NOWRITE</code>, <code>IN_CLOSE</code>, <code>IN_OPEN</code>, <code>IN_MOVED_FROM</code>, <code>IN_MOVED_TO</code>,
+    <code>IN_MOVE</code>, <code>IN_CREATE</code>, <code>IN_DELETE</code>, <code>IN_DELETE_SELF</code>, <code>IN_MOVE_SELF</code>,
+    <code>IN_ALL_EVENTS</code>, <code>IN_ISDIR</code></li>
+</ul>
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#readfile">readfile (path[, m='*a'])</a></td>
+	<td class="summary">Read contents from a file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#writefile">writefile (path, data[, append=false])</a></td>
+	<td class="summary">Write data to a file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#open">open (path[, flags=file.O_RDONLY[, mode=0]])</a></td>
+	<td class="summary">Open and possibly create a file</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inotify">inotify ()</a></td>
+	<td class="summary">Create an inotify watcher.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#walk">walk (root, cb)</a></td>
+	<td class="summary">Recursively traverse a directory tree.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#sync">sync ()</a></td>
+	<td class="summary">Commit filesystem caches to disk
+ Calls the underlying POSIX <code>sync(2)</code> function.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#mkdir">mkdir (pathname[, mode=0777])</a></td>
+	<td class="summary">Create a directory.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#access">access (file[, mode])</a></td>
+	<td class="summary">Test file accessibility.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#readlink">readlink (path)</a></td>
+	<td class="summary">Read value of a symbolic link.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#stat">stat (path)</a></td>
+	<td class="summary">Get file status by path.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#statvfs">statvfs (path)</a></td>
+	<td class="summary">Get filesystem statistics.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#dir">dir (path)</a></td>
+	<td class="summary">Iterate a directory.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#chown">chown (pathname[, uid[, gid]])</a></td>
+	<td class="summary">Change owner and group of a file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#dirname">dirname (path)</a></td>
+	<td class="summary">Get directory part of a path.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#basename">basename (path)</a></td>
+	<td class="summary">Get last path component.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#SKIP">SKIP</a></td>
+	<td class="summary">Special return value for <a href="../modules/eco.file.html#walk">walk</a> callback to skip descending into the current directory.</td>
+	</tr>
+</table>
+<h2><a href="#Class_file">Class file </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#file:read">file:read ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:read">read</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:readfull">file:readfull ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:readfull">readfull</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:readuntil">file:readuntil ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:readuntil">readuntil</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:write">file:write ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#writer:write">write</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:lseek">file:lseek (offset, where)</a></td>
+	<td class="summary">Reposition read/write file offset.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:stat">file:stat ()</a></td>
+	<td class="summary">Get file status.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:flock">file:flock (fd, operation[, timeout])</a></td>
+	<td class="summary">Acquire or release an advisory file lock.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file:close">file:close ()</a></td>
+	<td class="summary">Close the file.</td>
+	</tr>
+</table>
+<h2><a href="#Class_inotify">Class inotify </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#inotify:wait">inotify:wait ([timeout])</a></td>
+	<td class="summary">Wait for an inotify event.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inotify:add">inotify:add (path[, mask])</a></td>
+	<td class="summary">Add a path to be watched.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inotify:del">inotify:del (wd)</a></td>
+	<td class="summary">Remove a watch by its watch descriptor.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inotify:close">inotify:close ()</a></td>
+	<td class="summary">Close the watcher.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "readfile"></a>
+    <strong>readfile (path[, m='*a'])</strong>
+    </dt>
+    <dd>
+    Read contents from a file. </p>
+
+<p> Opens the file in read-only mode and reads data using <a href="../modules/eco.file.html#file:read">file:read</a>.
+ The file handle is automatically closed after use.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path of the file to read.
+        </li>
+        <li><span class="parameter">m</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">number</span></span>
+
+<p> Read mode passed to <a href="../modules/eco.file.html#file:read">file:read</a>.</p>
+
+<ul>
+    <li>'a': read the whole file (default)</li>
+    <li>'l': read a line without newline</li>
+    <li>'L': read a line with newline</li>
+    <li>'n': read a number</li>
+    <li>int: read specified number of bytes</li>
+</ul>
+
+
+         (<em>default</em> '*a')
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">any</span></span>
+        Result returned by <a href="../modules/eco.file.html#file:read">file:read</a> on success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure to open file.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message when failed.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> data, err = file.<span class="function-name">readfile</span>(<span class="string">'/etc/os-release'</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> data <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">'readfile failed:'</span>, err)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "writefile"></a>
+    <strong>writefile (path, data[, append=false])</strong>
+    </dt>
+    <dd>
+    Write data to a file. </p>
+
+<p> Opens the file in write mode (<code>&apos;w&apos;</code>) by default, or append mode (<code>&apos;a&apos;</code>) when <code>append</code> is true.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path of the file to write.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Data to write.
+        </li>
+        <li><span class="parameter">append</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Append instead of truncate.
+         (<em>default</em> false)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> ok, err = file.<span class="function-name">writefile</span>(<span class="string">'/tmp/out.txt'</span>, <span class="string">'hello\n'</span>)
+<span class="global">assert</span>(ok, err)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "open"></a>
+    <strong>open (path[, flags=file.O_RDONLY[, mode=0]])</strong>
+    </dt>
+    <dd>
+    Open and possibly create a file
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path of the file.
+        </li>
+        <li><span class="parameter">flags</span>
+            <span class="types"><span class="type">int</span></span>
+         Open flags (bitwise OR of <code>file.O_*</code> constants).
+         (<em>default</em> file.O_RDONLY)
+        </li>
+        <li><span class="parameter">mode</span>
+            <span class="types"><span class="type">int</span></span>
+         File mode bits (bitwise OR of <code>file.S_I*</code> constants, only meaningful with flag <code>file.O_CREAT</code>).
+         (<em>default</em> 0)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.file.html#Class_file">file</a></span>
+        File object on success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "inotify"></a>
+    <strong>inotify ()</strong>
+    </dt>
+    <dd>
+    Create an inotify watcher.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.file.html#Class_inotify">inotify</a></span>
+        Watcher object.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> w, err = file.<span class="function-name">inotify</span>()
+<span class="global">assert</span>(w, err)
+<span class="keyword">local</span> wd = <span class="global">assert</span>(w:<span class="function-name">add</span>(<span class="string">'/tmp'</span>, file.IN_CREATE | file.IN_DELETE))
+<span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+    <span class="keyword">local</span> ev = <span class="global">assert</span>(w:<span class="function-name">wait</span>())
+    <span class="global">print</span>(ev.name, ev.mask)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "walk"></a>
+    <strong>walk (root, cb)</strong>
+    </dt>
+    <dd>
+
+<p>Recursively traverse a directory tree. </p>
+
+<p> For each entry under <code>root</code>, invokes <code>cb(fullpath, name, info)</code>.
+ <code>info</code> is the same table returned by <a href="../modules/eco.file.html#dir">dir</a>.</p>
+
+<p> Callback return values:</p>
+
+<ul>
+    <li><code>false</code>: terminate traversal</li>
+    <li><a href="../modules/eco.file.html#SKIP">file.SKIP</a>: if the current entry is a directory, do not descend into it</li>
+    <li>anything else / nil: continue</li>
+</ul>
+
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">root</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Root directory.
+        </li>
+        <li><span class="parameter">cb</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback function.
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">file.<span class="function-name">walk</span>(<span class="string">'/etc'</span>, <span class="keyword">function</span>(path, name, info)
+    <span class="global">print</span>(path, info.<span class="global">type</span>)
+    <span class="keyword">if</span> name == <span class="string">'.git'</span> <span class="keyword">then</span>
+        <span class="keyword">return</span> file.SKIP
+    <span class="keyword">end</span>
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "sync"></a>
+    <strong>sync ()</strong>
+    </dt>
+    <dd>
+    Commit filesystem caches to disk
+ Calls the underlying POSIX <code>sync(2)</code> function.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "mkdir"></a>
+    <strong>mkdir (pathname[, mode=0777])</strong>
+    </dt>
+    <dd>
+    Create a directory.
+ Calls the underlying POSIX <code>mkdir(2)</code> function.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">pathname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path of the directory to create.
+        </li>
+        <li><span class="parameter">mode</span>
+            <span class="types"><span class="type">int</span></span>
+         Permission bits for the new directory (before umask).
+         (<em>default</em> 0777)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message when failed.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> ok, err = file.<span class="function-name">mkdir</span>(<span class="string">'/tmp/test'</span>, <span class="number">0755</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">'mkdir failed:'</span>, err)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "access"></a>
+    <strong>access (file[, mode])</strong>
+    </dt>
+    <dd>
+    Test file accessibility. </p>
+
+<p> Thin wrapper around POSIX <code>access(2)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">file</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path to test.
+        </li>
+        <li><span class="parameter">mode</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Access mode string: contains <code>r</code>, <code>w</code>, or <code>x</code>.
+   If omitted, checks existence (<code>F_OK</code>).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        <code>true</code> if accessible, otherwise <code>false</code>.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "readlink"></a>
+    <strong>readlink (path)</strong>
+    </dt>
+    <dd>
+    Read value of a symbolic link. </p>
+
+<p> Thin wrapper around POSIX <code>readlink(2)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Symbolic link path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Link target.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "stat"></a>
+    <strong>stat (path)</strong>
+    </dt>
+    <dd>
+    Get file status by path. </p>
+
+<p> Thin wrapper around POSIX <code>stat(2)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path to file.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Info table with fields: <a href="https://www.lua.org/manual/5.1/manual.html#pdf-type">type</a>, <code>mode</code>, <code>atime</code>, <code>mtime</code>,
+   <code>ctime</code>, <code>nlink</code>, <code>uid</code>, <code>gid</code>, <code>size</code>, <code>ino</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "statvfs"></a>
+    <strong>statvfs (path)</strong>
+    </dt>
+    <dd>
+    Get filesystem statistics. </p>
+
+<p> Thin wrapper around <code>statvfs(3)</code>.
+ The returned values are in KiB (kibibytes).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Any path on the target filesystem.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">number</span></span>
+        Total size in KiB.</li>
+        <li>
+           <span class="types"><span class="type">number</span></span>
+        Available size in KiB for unprivileged processes.</li>
+        <li>
+           <span class="types"><span class="type">number</span></span>
+        Used size in KiB.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "dir"></a>
+    <strong>dir (path)</strong>
+    </dt>
+    <dd>
+    Iterate a directory. </p>
+
+<p> Convenience iterator around <code>opendir(3)</code> / <code>readdir(3)</code>.
+ Each iteration returns entry name and a <a href="../modules/eco.file.html#stat">stat</a> style info table.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Directory path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">function</span></span>
+        Iterator function.</li>
+        <li>
+           <span class="types"><span class="type">any</span></span>
+        Iterator state.</li>
+        <li>
+           <span class="types"><span class="type">any</span></span>
+        Iterator initial value.</li>
+        <li>
+           <span class="types"><span class="type">any</span></span>
+        A closeable userdata (for <code>__close</code>).</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">for</span> name, info <span class="keyword">in</span> file.<span class="function-name">dir</span>(<span class="string">'/tmp'</span>) <span class="keyword">do</span>
+    <span class="global">print</span>(name, info.<span class="global">type</span>, info.size)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "chown"></a>
+    <strong>chown (pathname[, uid[, gid]])</strong>
+    </dt>
+    <dd>
+    Change owner and group of a file. </p>
+
+<p> Thin wrapper around POSIX <code>chown(2)</code>.
+ To keep a value unchanged, pass <code>nil</code> for that argument.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">pathname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path of the file.
+        </li>
+        <li><span class="parameter">uid</span>
+            <span class="types"><span class="type">int</span></span>
+         New user id, or <code>nil</code> to keep.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">gid</span>
+            <span class="types"><span class="type">int</span></span>
+         New group id, or <code>nil</code> to keep.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "dirname"></a>
+    <strong>dirname (path)</strong>
+    </dt>
+    <dd>
+    Get directory part of a path. </p>
+
+<p> Wrapper around <code>dirname(3)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Input path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Directory component.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "basename"></a>
+    <strong>basename (path)</strong>
+    </dt>
+    <dd>
+    Get last path component. </p>
+
+<p> Wrapper around <code>basename(3)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Input path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Base name.
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "SKIP"></a>
+    <strong>SKIP</strong>
+    </dt>
+    <dd>
+    Special return value for <a href="../modules/eco.file.html#walk">walk</a> callback to skip descending into the current directory.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_file"></a>Class file </h2>
+
+          <div class="section-description">
+          File object returned by <a href="../modules/eco.file.html#open">open</a>. </p>
+
+<p> This object wraps a file descriptor.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "file:read"></a>
+    <strong>file:read ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#reader:read">read</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:readfull"></a>
+    <strong>file:readfull ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#reader:readfull">readfull</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:readuntil"></a>
+    <strong>file:readuntil ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#reader:readuntil">readuntil</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:write"></a>
+    <strong>file:write ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#writer:write">write</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:lseek"></a>
+    <strong>file:lseek (offset, where)</strong>
+    </dt>
+    <dd>
+    Reposition read/write file offset.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">offset</span>
+            <span class="types"><span class="type">int</span></span>
+         Offset.
+        </li>
+        <li><span class="parameter">where</span>
+            <span class="types"><span class="type">int</span></span>
+         One of <code>file.SEEK_SET</code>, <code>file.SEEK_CUR</code>, <code>file.SEEK_END</code>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        New offset on success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:stat"></a>
+    <strong>file:stat ()</strong>
+    </dt>
+    <dd>
+    Get file status. </p>
+
+<p> Thin wrapper around POSIX <code>fstat(2)</code>.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        See <a href="../modules/eco.file.html#stat">file.stat</a>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:flock"></a>
+    <strong>file:flock (fd, operation[, timeout])</strong>
+    </dt>
+    <dd>
+    Acquire or release an advisory file lock.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fd</span>
+            <span class="types"><span class="type">int</span></span>
+         File descriptor.
+        </li>
+        <li><span class="parameter">operation</span>
+            <span class="types"><span class="type">int</span></span>
+         Lock operation (<code>file.LOCK_SH</code>, <code>file.LOCK_EX</code>, <code>file.LOCK_UN</code>).
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message (or <code>&apos;timeout&apos;</code>).</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file:close"></a>
+    <strong>file:close ()</strong>
+    </dt>
+    <dd>
+    Close the file. </p>
+
+<p> This is idempotent and is also used as the <code>__gc</code> / <code>__close</code> metamethod.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_inotify"></a>Class inotify </h2>
+
+          <div class="section-description">
+          Inotify handle returned by <a href="../modules/eco.file.html#inotify">inotify</a>.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "inotify:wait"></a>
+    <strong>inotify:wait ([timeout])</strong>
+    </dt>
+    <dd>
+
+<p>Wait for an inotify event. </p>
+
+<p> If there are already parsed events buffered in the watcher, returns the next
+ one immediately; otherwise, reads from the underlying inotify fd.</p>
+
+<p> The returned event is a table with fields:</p>
+
+<ul>
+    <li><code>name</code>: full path of the affected entry</li>
+    <li><code>mask</code>: inotify mask bits (<code>file.IN_ACCESS</code>, <code>file.IN_MODIFY</code>, <code>file.IN_OPEN</code>,...)</li>
+</ul>
+
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Event table <code>{ name = string, mask = int }</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On timeout or error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> w = <span class="global">assert</span>(file.<span class="function-name">inotify</span>())
+<span class="global">assert</span>(w:<span class="function-name">add</span>(<span class="string">'/tmp'</span>, file.IN_CREATE | file.IN_DELETE))
+<span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+    <span class="keyword">local</span> ev = <span class="global">assert</span>(w:<span class="function-name">wait</span>())
+    <span class="global">print</span>(ev.name, ev.mask)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "inotify:add"></a>
+    <strong>inotify:add (path[, mask])</strong>
+    </dt>
+    <dd>
+    Add a path to be watched.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path to watch.
+        </li>
+        <li><span class="parameter">mask</span>
+            <span class="types"><span class="type">int</span></span>
+         Event mask. Defaults to <code>file.IN_ALL_EVENTS</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Watch descriptor (<code>wd</code>).
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> w = <span class="global">assert</span>(file.<span class="function-name">inotify</span>())
+<span class="keyword">local</span> wd = <span class="global">assert</span>(w:<span class="function-name">add</span>(<span class="string">'/tmp'</span>, file.IN_CREATE))</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "inotify:del"></a>
+    <strong>inotify:del (wd)</strong>
+    </dt>
+    <dd>
+    Remove a watch by its watch descriptor.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">wd</span>
+            <span class="types"><span class="type">int</span></span>
+         Watch descriptor returned by <a href="../modules/eco.file.html#inotify:add">inotify:add</a>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "inotify:close"></a>
+    <strong>inotify:close ()</strong>
+    </dt>
+    <dd>
+    Close the watcher.
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

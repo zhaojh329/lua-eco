@@ -1,0 +1,1027 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Class_ParsedPacket">Class ParsedPacket </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><strong>eco.packet</strong></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.packet</code></h1>
+<p>Packet encoding and decoding helpers.</p>
+<p> This module provides:</p>
+
+<ul>
+    <li>decoders for common L2/L3/L4 packets (Ethernet, IPv4/IPv6, ARP, ICMP,
+    TCP, UDP, and selected 802.11 radiotap frames)</li>
+    <li>encoders for raw packets used with raw sockets</li>
+</ul>
+
+<p> Most <code>from_*</code> functions return a packet object that supports <code>pkt:next()</code> to
+ decode the next protocol layer.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#from_icmp">from_icmp (data)</a></td>
+	<td class="summary">Decode a raw ICMP packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#from_icmp6">from_icmp6 (data)</a></td>
+	<td class="summary">Decode a raw ICMPv6 packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#from_ip">from_ip (data)</a></td>
+	<td class="summary">Decode a raw IPv4 packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#from_ip6">from_ip6 (data)</a></td>
+	<td class="summary">Decode a raw IPv6 packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#from_ether">from_ether (data)</a></td>
+	<td class="summary">Decode an Ethernet frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#from_radiotap">from_radiotap (data)</a></td>
+	<td class="summary">Decode an IEEE 802.11 frame from a radiotap packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#icmp">icmp (typ, code, id, sequence[, data=""[, checksum=false]])</a></td>
+	<td class="summary">Build an ICMP echo or echo-reply packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#icmp6">icmp6 (typ, code, id, sequence[, data=""[, checksum=false]])</a></td>
+	<td class="summary">Build an ICMPv6 echo request or echo reply packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#udp">udp (source, dest[, data=""[, saddr[, daddr]]])</a></td>
+	<td class="summary">Build a UDP packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tcp">tcp (source, dest, seq, ack_seq[, flags[, window=false[, saddr=false[, daddr=false[, data=false]]]]])</a></td>
+	<td class="summary">Build a TCP packet (without options).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ip">ip (saddr, daddr, protocol[, data=""])</a></td>
+	<td class="summary">Build an IPv4 packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#arp">arp (op[, sha="00:00:00:00:00:00"[, sip="0.0.0.0"[, tha="00:00:00:00:00:00"[, tip="0.0.0.0"]]]])</a></td>
+	<td class="summary">Build an ARP packet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ether">ether (source, dest, proto[, data=""])</a></td>
+	<td class="summary">Build an Ethernet frame.</td>
+	</tr>
+</table>
+<h2><a href="#Class_ParsedPacket">Class ParsedPacket </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#ParsedPacket:next">ParsedPacket:next ()</a></td>
+	<td class="summary">Decode the next protocol layer from current packet payload.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "from_icmp"></a>
+    <strong>from_icmp (data)</strong>
+    </dt>
+    <dd>
+    Decode a raw ICMP packet.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw ICMP bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        Decoded ICMP packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "from_icmp6"></a>
+    <strong>from_icmp6 (data)</strong>
+    </dt>
+    <dd>
+    Decode a raw ICMPv6 packet.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw ICMPv6 bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        Decoded ICMPv6 packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "from_ip"></a>
+    <strong>from_ip (data)</strong>
+    </dt>
+    <dd>
+    Decode a raw IPv4 packet.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw IPv4 bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        Decoded IPv4 packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "from_ip6"></a>
+    <strong>from_ip6 (data)</strong>
+    </dt>
+    <dd>
+    Decode a raw IPv6 packet.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw IPv6 bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        Decoded IPv6 packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "from_ether"></a>
+    <strong>from_ether (data)</strong>
+    </dt>
+    <dd>
+    Decode an Ethernet frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw Ethernet frame bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        Decoded Ethernet packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "from_radiotap"></a>
+    <strong>from_radiotap (data)</strong>
+    </dt>
+    <dd>
+    Decode an IEEE 802.11 frame from a radiotap packet. </p>
+
+<p> This parser extracts commonly used management/data fields and selected
+ information elements (for example SSID in beacon/probe frames).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Raw radiotap packet bytes.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        Decoded 802.11 packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "icmp"></a>
+    <strong>icmp (typ, code, id, sequence[, data=""[, checksum=false]])</strong>
+    </dt>
+    <dd>
+    Build an ICMP echo or echo-reply packet. </p>
+
+<p> <code>typ</code> must be one of <code>socket.ICMP_ECHO</code> or <code>socket.ICMP_ECHOREPLY</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">typ</span>
+            <span class="types"><span class="type">number</span></span>
+         ICMP type.
+        </li>
+        <li><span class="parameter">code</span>
+            <span class="types"><span class="type">number</span></span>
+         ICMP code.
+        </li>
+        <li><span class="parameter">id</span>
+            <span class="types"><span class="type">number</span></span>
+         Identifier.
+        </li>
+        <li><span class="parameter">sequence</span>
+            <span class="types"><span class="type">number</span></span>
+         Sequence number.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Payload.
+         (<em>default</em> "")
+        </li>
+        <li><span class="parameter">checksum</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Whether to compute and fill checksum.
+         (<em>default</em> false)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw ICMP packet bytes.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "icmp6"></a>
+    <strong>icmp6 (typ, code, id, sequence[, data=""[, checksum=false]])</strong>
+    </dt>
+    <dd>
+    Build an ICMPv6 echo request or echo reply packet. </p>
+
+<p> <code>typ</code> must be one of <code>socket.ICMPV6_ECHO_REQUEST</code> or
+ <code>socket.ICMPV6_ECHO_REPLY</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">typ</span>
+            <span class="types"><span class="type">number</span></span>
+         ICMPv6 type.
+        </li>
+        <li><span class="parameter">code</span>
+            <span class="types"><span class="type">number</span></span>
+         ICMPv6 code.
+        </li>
+        <li><span class="parameter">id</span>
+            <span class="types"><span class="type">number</span></span>
+         Identifier.
+        </li>
+        <li><span class="parameter">sequence</span>
+            <span class="types"><span class="type">number</span></span>
+         Sequence number.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Payload.
+         (<em>default</em> "")
+        </li>
+        <li><span class="parameter">checksum</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Whether to compute and fill checksum.
+         (<em>default</em> false)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw ICMPv6 packet bytes.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "udp"></a>
+    <strong>udp (source, dest[, data=""[, saddr[, daddr]]])</strong>
+    </dt>
+    <dd>
+    Build a UDP packet. </p>
+
+<p> If both <code>saddr</code> and <code>daddr</code> are provided, UDP checksum is computed with an
+ IPv4 pseudo-header.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">source</span>
+            <span class="types"><span class="type">number</span></span>
+         Source port.
+        </li>
+        <li><span class="parameter">dest</span>
+            <span class="types"><span class="type">number</span></span>
+         Destination port.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         UDP payload.
+         (<em>default</em> "")
+        </li>
+        <li><span class="parameter">saddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         IPv4 source address used for checksum.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">daddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         IPv4 destination address used for checksum.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw UDP packet bytes.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "tcp"></a>
+    <strong>tcp (source, dest, seq, ack_seq[, flags[, window=false[, saddr=false[, daddr=false[, data=false]]]]])</strong>
+    </dt>
+    <dd>
+    Build a TCP packet (without options). </p>
+
+<p> The header length is fixed to 20 bytes (<code>doff = 5</code>), i.e. TCP options are
+ not included.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">source</span>
+            <span class="types"><span class="type">number</span></span>
+         Source port.
+        </li>
+        <li><span class="parameter">dest</span>
+            <span class="types"><span class="type">number</span></span>
+         Destination port.
+        </li>
+        <li><span class="parameter">seq</span>
+            <span class="types"><span class="type">number</span></span>
+         Sequence number.
+        </li>
+        <li><span class="parameter">ack_seq</span>
+            <span class="types"><span class="type">number</span></span>
+         Acknowledgment number.
+        </li>
+        <li><span class="parameter">flags</span> TCP flags table.
+        <ul>
+        <li><span class="parameter">cwr</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Congestion Window Reduced.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">ece</span>
+            <span class="types"><span class="type">boolean</span></span>
+         ECN-Echo.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">urg</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Urgent pointer significant.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">ack</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Acknowledgment valid.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">psh</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Push function.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">rst</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Reset connection.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">syn</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Synchronize sequence numbers.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">fin</span>
+            <span class="types"><span class="type">boolean</span></span>
+         No more data from sender.
+         (<em>default</em> false)
+        </li>
+        </li></ul>
+        <li><span class="parameter">window</span>
+            <span class="types"><span class="type">number</span></span>
+         Window size.
+        </li>
+        <li><span class="parameter">saddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         IPv4 source address used for checksum.
+        </li>
+        <li><span class="parameter">daddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         IPv4 destination address used for checksum.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         TCP payload.
+         (<em>default</em> "")
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw TCP packet bytes.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ip"></a>
+    <strong>ip (saddr, daddr, protocol[, data=""])</strong>
+    </dt>
+    <dd>
+    Build an IPv4 packet. </p>
+
+<p> This creates a minimal IPv4 header (no options) and computes header
+ checksum automatically.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">saddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Source IPv4 address.
+        </li>
+        <li><span class="parameter">daddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Destination IPv4 address.
+        </li>
+        <li><span class="parameter">protocol</span>
+            <span class="types"><span class="type">number</span></span>
+         IP protocol number, e.g. <a href="../modules/eco.socket.html#IPPROTO_UDP">socket.IPPROTO_UDP</a>.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         IPv4 payload.
+         (<em>default</em> "")
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw IPv4 packet bytes.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "arp"></a>
+    <strong>arp (op[, sha="00:00:00:00:00:00"[, sip="0.0.0.0"[, tha="00:00:00:00:00:00"[, tip="0.0.0.0"]]]])</strong>
+    </dt>
+    <dd>
+    Build an ARP packet. </p>
+
+<p> Common operations are <code>socket.ARPOP_REQUEST</code> and <code>socket.ARPOP_REPLY</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">op</span>
+            <span class="types"><span class="type">number</span></span>
+         ARP operation.
+        </li>
+        <li><span class="parameter">sha</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Sender MAC address.
+         (<em>default</em> "00:00:00:00:00:00")
+        </li>
+        <li><span class="parameter">sip</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Sender IPv4 address.
+         (<em>default</em> "0.0.0.0")
+        </li>
+        <li><span class="parameter">tha</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Target MAC address.
+         (<em>default</em> "00:00:00:00:00:00")
+        </li>
+        <li><span class="parameter">tip</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Target IPv4 address.
+         (<em>default</em> "0.0.0.0")
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw ARP packet bytes.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ether"></a>
+    <strong>ether (source, dest, proto[, data=""])</strong>
+    </dt>
+    <dd>
+    Build an Ethernet frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">source</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Source MAC address, format <code>xx:xx:xx:xx:xx:xx</code>.
+        </li>
+        <li><span class="parameter">dest</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Destination MAC address, format <code>xx:xx:xx:xx:xx:xx</code>.
+        </li>
+        <li><span class="parameter">proto</span>
+            <span class="types"><span class="type">number</span></span>
+         EtherType, e.g. <code>socket.ETH_P_IP</code>.
+        </li>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Ethernet payload.
+         (<em>default</em> "")
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Raw Ethernet frame bytes.
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_ParsedPacket"></a>Class ParsedPacket </h2>
+
+          <div class="section-description">
+
+<p>Decoded packet object returned by parser helpers. </p>
+
+<p> Common fields:</p>
+
+<ul>
+    <li><code>name</code>: protocol name, for example <code>&quot;ETHER&quot;</code>, <code>&quot;IP&quot;</code>, <code>&quot;TCP&quot;</code>.</li>
+    <li><code>proto</code> (optional): next L3 ethertype, usually present on L2 packets.</li>
+    <li><code>protocol</code> (optional): next L4 protocol number, usually present on IP packets.</li>
+    <li><code>data</code> (optional): remaining payload bytes.</li>
+    <li><code>source</code> (optional): source address or source port depending on packet layer.</li>
+    <li><code>dest</code> (optional): destination address or destination port depending on packet layer.</li>
+</ul>
+
+
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "ParsedPacket:next"></a>
+    <strong>ParsedPacket:next ()</strong>
+    </dt>
+    <dd>
+    Decode the next protocol layer from current packet payload.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.packet.html#Class_ParsedPacket">ParsedPacket</a></span>
+        next_pkt Decoded upper-layer packet.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

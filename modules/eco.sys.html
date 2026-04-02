@@ -1,0 +1,1259 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Class_process">Class process </a></li>
+<li><a href="#Class_signal">Class signal </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><strong>eco.sys</strong></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.sys</code></h1>
+<p>System and process related utilities.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#exec">exec (cmd[, env])</a></td>
+	<td class="summary">Execute a program.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#sh">sh (cmd[, timeout=30])</a></td>
+	<td class="summary">Execute a shell command and return stdout and stderr.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#spawn">spawn (f)</a></td>
+	<td class="summary">Spawn a new process to run a Lua function.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#signal">signal (signum, cb, Additional)</a></td>
+	<td class="summary">Listen for a specific signal and invoke a callback asynchronously.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#uptime">uptime ()</a></td>
+	<td class="summary">Get system uptime.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#waitpid">waitpid (pid)</a></td>
+	<td class="summary">Wait for a child process status change (non-blocking).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#getpid">getpid ()</a></td>
+	<td class="summary">Get current process id.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#getppid">getppid ()</a></td>
+	<td class="summary">Get parent process id.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#getpwnam">getpwnam (name)</a></td>
+	<td class="summary">Lookup a user by name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#kill">kill (pid, sig)</a></td>
+	<td class="summary">Send a signal to a process.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#fork">fork ()</a></td>
+	<td class="summary">Fork the current process.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#prctl">prctl (option[, arg])</a></td>
+	<td class="summary">Process control operations.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_nprocs">get_nprocs ()</a></td>
+	<td class="summary">Get number of available processors.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#strerror">strerror (errno)</a></td>
+	<td class="summary">Convert errno value to message.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#SIGINT">SIGINT</a></td>
+	<td class="summary">Signal number for interrupt from keyboard.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SIGTERM">SIGTERM</a></td>
+	<td class="summary">Signal number for termination.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SIGHUP">SIGHUP</a></td>
+	<td class="summary">Signal number for terminal line hangup.</td>
+	</tr>
+</table>
+<h2><a href="#Class_process">Class process </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#process:close">process:close ()</a></td>
+	<td class="summary">Close stdout and stderr file descriptors.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:wait">process:wait ([timeout])</a></td>
+	<td class="summary">Wait for the process to exit.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:signal">process:signal (sig)</a></td>
+	<td class="summary">Send a signal to the process.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:kill">process:kill ()</a></td>
+	<td class="summary">Force kill the process with SIGKILL.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:stop">process:stop ([timeout=3])</a></td>
+	<td class="summary">Stop the process gracefully, then force kill if needed.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:read_stdout">process:read_stdout ()</a></td>
+	<td class="summary">Read from process stdout.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:read_stderr">process:read_stderr ()</a></td>
+	<td class="summary">Read from process stderr.</td>
+	</tr>
+</table>
+<h2><a href="#Class_signal">Class signal </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#signal:close">signal:close ()</a></td>
+	<td class="summary">Stop listening for the signal and release resources.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "exec"></a>
+    <strong>exec (cmd[, env])</strong>
+    </dt>
+    <dd>
+    Execute a program. </p>
+
+<p> Spawns a new process and returns a process handle object.
+ The returned object provides methods to wait for process exit, read stdout/stderr.</p>
+
+<p> There are two supported calling forms:</p>
+
+<ol>
+    <li><p>Argument list form:</p>
+
+<pre><code>p, err = sys.exec(cmd, arg1, arg2, ...)
+</code></pre></li>
+    <li><p>Table form with optional environment:</p>
+
+<pre><code>p, err = sys.exec({ cmd, arg1, arg2, ... }, env)
+</code></pre></li>
+</ol>
+
+<p> In the second form, <code>env</code> is a table of environment variables.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">cmd</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+
+
+
+<ul>
+    <li>a string representing the program to execute, followed by arguments</li>
+    <li>or a table <code>{ cmd, arg1, arg2, ... }</code></li>
+</ul>
+
+        </li>
+        <li><span class="parameter">env</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Environment variables table (only valid when first argument is a table form).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.sys.html#Class_process">process</a></span>
+        Process handle object on success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message when failed.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="comment">-- simple form
+</span><span class="keyword">local</span> p, err = sys.<span class="function-name">exec</span>(<span class="string">'ls'</span>, <span class="string">'-l'</span>, <span class="string">'/tmp'</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> p <span class="keyword">then</span>
+    <span class="global">print</span>(err)
+<span class="keyword">end</span>
+
+<span class="comment">-- table form with environment
+</span><span class="keyword">local</span> p, err = sys.<span class="function-name">exec</span>({ <span class="string">'printenv'</span>, <span class="string">'A'</span> }, { A = <span class="string">'123'</span> })</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "sh"></a>
+    <strong>sh (cmd[, timeout=30])</strong>
+    </dt>
+    <dd>
+    Execute a shell command and return stdout and stderr. </p>
+
+<p> This is a convenience wrapper around <a href="../modules/eco.sys.html#exec">exec</a>.
+ It accepts a command string or a table of arguments.
+ If a string is provided, it will be executed using <code>/bin/sh -c</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">cmd</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+
+<p> Command to execute.</p>
+
+<ul>
+    <li>If string, executed via <code>/bin/sh -c</code>.</li>
+    <li>If table, first element is program, remaining are arguments.</li>
+</ul>
+
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds for reading stdout/stderr.
+         (<em>default</em> 30)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Standard output of the command.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Standard error of the command.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message when failed.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> out, err = sys.<span class="function-name">sh</span>({ <span class="string">'echo'</span>, <span class="string">'hello'</span> })
+<span class="keyword">if</span> <span class="keyword">not</span> out <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">"Command failed:"</span>, e)
+<span class="keyword">else</span>
+    <span class="global">print</span>(<span class="string">"stdout:"</span>, out)
+    <span class="global">print</span>(<span class="string">"stderr:"</span>, err)
+<span class="keyword">end</span>
+
+<span class="comment">-- Table form with program and arguments
+</span><span class="keyword">local</span> out, err, e = sys.<span class="function-name">sh</span>({ <span class="string">"ls"</span>, <span class="string">"-l"</span>, <span class="string">"/tmp"</span> })</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "spawn"></a>
+    <strong>spawn (f)</strong>
+    </dt>
+    <dd>
+    Spawn a new process to run a Lua function. </p>
+
+<p> This function forks a child process and runs the given function <code>f</code>
+ inside it. The child process will be terminated if the parent dies (<code>PR_SET_PDEATHSIG = SIGKILL</code>).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">f</span>
+            <span class="types"><span class="type">function</span></span>
+         Lua function to run in the child process.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Child process ID (in the parent process).
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> pid, err = sys.<span class="function-name">spawn</span>(<span class="keyword">function</span>()
+    <span class="global">print</span>(<span class="string">"Hello from child process!"</span>)
+<span class="keyword">end</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> pid <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">"Failed to spawn child:"</span>, err)
+<span class="keyword">else</span>
+    <span class="global">print</span>(<span class="string">"Spawned child PID:"</span>, pid)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "signal"></a>
+    <strong>signal (signum, cb, Additional)</strong>
+    </dt>
+    <dd>
+    Listen for a specific signal and invoke a callback asynchronously. </p>
+
+<p> This function wraps <code>signalfd</code> and spawns a coroutine to continuously
+ read the signal. When the specified signal <code>sig</code> is received, the
+ callback <code>cb</code> is invoked with any additional arguments.</p>
+
+<p> The returned <a href="../modules/eco.sys.html#signal">signal</a> object controls the listener lifetime.
+ Call <code>sig:close()</code> to stop listening.</p>
+
+<p> Internally this function blocks <code>signum</code> in the process mask and uses
+ <code>signalfd</code> for delivery. The signal will be unblocked when the listener
+ is closed.</p>
+
+<p> Note: <code>SIGCHLD</code> is reserved by eco's scheduler for child process reaping
+ and must not be listened to via this API.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">signum</span>
+            <span class="types"><span class="type">int</span></span>
+         Signal number to listen for (e.g., <a href="../modules/eco.sys.html#SIGINT">sys.SIGINT</a>).
+        </li>
+        <li><span class="parameter">cb</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback function to invoke when the signal occurs.
+        </li>
+        <li><span class="parameter">Additional</span>
+            <span class="types"><span class="type">...</span></span>
+         arguments passed to the callback.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.sys.html#Class_signal">signal</a></span>
+        Signal object (use <a href="../modules/eco.sys.html#signal:close">signal:close</a> to stop listening).
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> sig
+sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class="keyword">function</span>()
+    <span class="global">print</span>(<span class="string">'Received SIGINT!'</span>)
+    sig:<span class="function-name">close</span>()
+<span class="keyword">end</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> sig <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">'Failed to listen for signal:'</span>, err)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "uptime"></a>
+    <strong>uptime ()</strong>
+    </dt>
+    <dd>
+    Get system uptime.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Uptime in seconds.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "waitpid"></a>
+    <strong>waitpid (pid)</strong>
+    </dt>
+    <dd>
+    Wait for a child process status change (non-blocking). </p>
+
+<p> This is a thin wrapper around <code>waitpid(pid, ..., WNOHANG | WUNTRACED)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">pid</span>
+            <span class="types"><span class="type">int</span></span>
+         Process id to wait for. Use <code>-1</code> for any child.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        pid The pid that changed state, or <code>0</code> if none.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Status information.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "getpid"></a>
+    <strong>getpid ()</strong>
+    </dt>
+    <dd>
+    Get current process id.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        pid
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "getppid"></a>
+    <strong>getppid ()</strong>
+    </dt>
+    <dd>
+    Get parent process id.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        pid
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "getpwnam"></a>
+    <strong>getpwnam (name)</strong>
+    </dt>
+    <dd>
+    Lookup a user by name.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">name</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         User name.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        User info table with fields: <code>username</code>, <code>password</code>, <code>uid</code>, <code>gid</code>, <code>home</code>, <code>shell</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error or not found.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "kill"></a>
+    <strong>kill (pid, sig)</strong>
+    </dt>
+    <dd>
+    Send a signal to a process.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">pid</span>
+            <span class="types"><span class="type">int</span></span>
+         Target pid.
+        </li>
+        <li><span class="parameter">sig</span>
+            <span class="types"><span class="type">int</span></span>
+         Signal number.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true on Success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "fork"></a>
+    <strong>fork ()</strong>
+    </dt>
+    <dd>
+    Fork the current process.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Child pid in parent, 0 in child.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "prctl"></a>
+    <strong>prctl (option[, arg])</strong>
+    </dt>
+    <dd>
+    Process control operations. </p>
+
+<p> Currently supports <code>PR_SET_PDEATHSIG</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">option</span>
+            <span class="types"><span class="type">int</span></span>
+         prctl option.
+        </li>
+        <li><span class="parameter">arg</span>
+            <span class="types"><span class="type">int</span></span>
+         Option-specific argument.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true on success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error or unsupported option.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get_nprocs"></a>
+    <strong>get_nprocs ()</strong>
+    </dt>
+    <dd>
+    Get number of available processors.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        n
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "strerror"></a>
+    <strong>strerror (errno)</strong>
+    </dt>
+    <dd>
+    Convert errno value to message.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">errno</span>
+            <span class="types"><span class="type">int</span></span>
+         Error number.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        message
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "SIGINT"></a>
+    <strong>SIGINT</strong>
+    </dt>
+    <dd>
+    Signal number for interrupt from keyboard.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SIGTERM"></a>
+    <strong>SIGTERM</strong>
+    </dt>
+    <dd>
+    Signal number for termination.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SIGHUP"></a>
+    <strong>SIGHUP</strong>
+    </dt>
+    <dd>
+    Signal number for terminal line hangup.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_process"></a>Class process </h2>
+
+          <div class="section-description">
+          Process handle returned by <a href="../modules/eco.sys.html#exec">sys.exec</a>. </p>
+
+<p> This object represents a running child process.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "process:close"></a>
+    <strong>process:close ()</strong>
+    </dt>
+    <dd>
+    Close stdout and stderr file descriptors.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:wait"></a>
+    <strong>process:wait ([timeout])</strong>
+    </dt>
+    <dd>
+    Wait for the process to exit. </p>
+
+<p> If the child has already exited before calling this method,
+ it returns immediately with the status cached on this process handle.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        pid Process id.</li>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        status Exit status.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On timeout or error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:signal"></a>
+    <strong>process:signal (sig)</strong>
+    </dt>
+    <dd>
+    Send a signal to the process.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">sig</span>
+            <span class="types"><span class="type">int</span></span>
+         Signal number.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:kill"></a>
+    <strong>process:kill ()</strong>
+    </dt>
+    <dd>
+    Force kill the process with SIGKILL.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:stop"></a>
+    <strong>process:stop ([timeout=3])</strong>
+    </dt>
+    <dd>
+    Stop the process gracefully, then force kill if needed. </p>
+
+<p> This sends SIGTERM first, waits up to <code>timeout</code> seconds, then sends
+ SIGKILL if the process is still alive. Waiting remains coroutine-based.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Wait timeout in seconds for each phase.
+         (<em>default</em> 3)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        pid Process id.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        status Exit status table.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:read_stdout"></a>
+    <strong>process:read_stdout ()</strong>
+    </dt>
+    <dd>
+    Read from process stdout. </p>
+
+<p> See <a href="../modules/eco.html#reader:read">read</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:read_stderr"></a>
+    <strong>process:read_stderr ()</strong>
+    </dt>
+    <dd>
+    Read from process stderr. </p>
+
+<p> See <a href="../modules/eco.html#reader:read">read</a>
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_signal"></a>Class signal </h2>
+
+          <div class="section-description">
+          Signal handle returned by <a href="../modules/eco.sys.html#signal">sys.signal</a>. </p>
+
+<p> This object represents one signal listener created by <a href="../modules/eco.sys.html#signal">sys.signal</a>.</p>
+
+<p> Call <a href="../modules/eco.sys.html#signal:close">signal:close</a> to stop listening and release underlying resources.
+ The close operation is idempotent.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "signal:close"></a>
+    <strong>signal:close ()</strong>
+    </dt>
+    <dd>
+    Stop listening for the signal and release resources. </p>
+
+<p> This closes the internal <code>signalfd</code>, cancels pending read operations,
+ and restores the process signal mask for this signal.
+ Calling this method multiple times is safe.
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

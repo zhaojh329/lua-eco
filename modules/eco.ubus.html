@@ -1,0 +1,1426 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Class_connection">Class connection </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><strong>eco.ubus</strong></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.ubus</code></h1>
+<p>UBus support.</p>
+<p> This module provides bindings to OpenWrt's ubus IPC system via libubus.</p>
+
+<p> Note: connecting to ubus requires root privileges in this implementation.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#call">call (object, method[, params[, timeout]])</a></td>
+	<td class="summary">Call a ubus method (one-shot connection).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#send">send (event[, params])</a></td>
+	<td class="summary">Send an ubus event (one-shot connection).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#objects">objects ()</a></td>
+	<td class="summary">List ubus objects (one-shot connection).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#signatures">signatures (object)</a></td>
+	<td class="summary">Get the signatures of an ubus object (one-shot connection).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connect">connect ([path[, auto_reconnect=false]])</a></td>
+	<td class="summary">Connect to ubus.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_OK">STATUS_OK</a></td>
+	<td class="summary">Return status: success.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_INVALID_COMMAND">STATUS_INVALID_COMMAND</a></td>
+	<td class="summary">Return status: invalid command.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_INVALID_ARGUMENT">STATUS_INVALID_ARGUMENT</a></td>
+	<td class="summary">Return status: invalid argument.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_METHOD_NOT_FOUND">STATUS_METHOD_NOT_FOUND</a></td>
+	<td class="summary">Return status: method not found.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_NOT_FOUND">STATUS_NOT_FOUND</a></td>
+	<td class="summary">Return status: object not found.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_NO_DATA">STATUS_NO_DATA</a></td>
+	<td class="summary">Return status: no data.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_PERMISSION_DENIED">STATUS_PERMISSION_DENIED</a></td>
+	<td class="summary">Return status: permission denied.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_TIMEOUT">STATUS_TIMEOUT</a></td>
+	<td class="summary">Return status: timeout.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_NOT_SUPPORTED">STATUS_NOT_SUPPORTED</a></td>
+	<td class="summary">Return status: not supported.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_UNKNOWN_ERROR">STATUS_UNKNOWN_ERROR</a></td>
+	<td class="summary">Return status: unknown error.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STATUS_CONNECTION_FAILED">STATUS_CONNECTION_FAILED</a></td>
+	<td class="summary">Return status: connection failed.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ARRAY">ARRAY</a></td>
+	<td class="summary">Blob message policy type: array.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TABLE">TABLE</a></td>
+	<td class="summary">Blob message policy type: table.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STRING">STRING</a></td>
+	<td class="summary">Blob message policy type: string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INT64">INT64</a></td>
+	<td class="summary">Blob message policy type: int64.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INT32">INT32</a></td>
+	<td class="summary">Blob message policy type: int32.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INT16">INT16</a></td>
+	<td class="summary">Blob message policy type: int16.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INT8">INT8</a></td>
+	<td class="summary">Blob message policy type: int8.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#DOUBLE">DOUBLE</a></td>
+	<td class="summary">Blob message policy type: double.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BOOLEAN">BOOLEAN</a></td>
+	<td class="summary">Blob message policy type: boolean.</td>
+	</tr>
+</table>
+<h2><a href="#Class_connection">Class connection </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#connection:close">connection:close ()</a></td>
+	<td class="summary">Close the connection.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:call">connection:call (object, method[, params[, timeout]])</a></td>
+	<td class="summary">Call an ubus method using an existing connection.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send">connection:send (event[, params])</a></td>
+	<td class="summary">Send an ubus event.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:reply">connection:reply (req[, msg])</a></td>
+	<td class="summary">Reply to a request.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:listen">connection:listen (event, cb)</a></td>
+	<td class="summary">Listen to ubus events.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:add">connection:add (object, defs)</a></td>
+	<td class="summary">Add a ubus object with method handlers.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:subscribe">connection:subscribe (path, cb[, auto=false])</a></td>
+	<td class="summary">Subscribe to notifications of an ubus object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:unsubscribe">connection:unsubscribe (subscriber)</a></td>
+	<td class="summary">Unsubscribe from an ubus object notifications.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:notify">connection:notify (object, method[, params])</a></td>
+	<td class="summary">Send a notification from an object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:objects">connection:objects ()</a></td>
+	<td class="summary">List ubus objects.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:signatures">connection:signatures (object)</a></td>
+	<td class="summary">Get the signatures of an ubus object.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "call"></a>
+    <strong>call (object, method[, params[, timeout]])</strong>
+    </dt>
+    <dd>
+    Call a ubus method (one-shot connection). </p>
+
+<p> This helper creates a temporary connection (via <a href="../modules/eco.ubus.html#connect">eco.ubus.connect</a>), performs
+ a call and closes the connection automatically.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         UBus object path (e.g. <code>&apos;network.interface.lan&apos;</code>).
+        </li>
+        <li><span class="parameter">method</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Method name.
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Parameters table.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Result table.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> ubus = <span class="global">require</span> <span class="string">'eco.ubus'</span>
+<span class="keyword">local</span> res, err = ubus.<span class="function-name">call</span>(<span class="string">'eco'</span>, <span class="string">'echo'</span>, { text = <span class="string">'hello'</span> }, <span class="number">3</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> res <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">'call failed:'</span>, err)
+<span class="keyword">else</span>
+    <span class="global">print</span>(res.text)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "send"></a>
+    <strong>send (event[, params])</strong>
+    </dt>
+    <dd>
+    Send an ubus event (one-shot connection). </p>
+
+<p> This helper creates a temporary connection (via <a href="../modules/eco.ubus.html#connect">eco.ubus.connect</a>), sends the event
+ and closes the connection automatically.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Event name.
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Event payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "objects"></a>
+    <strong>objects ()</strong>
+    </dt>
+    <dd>
+    List ubus objects (one-shot connection).
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        objects A map of <code>id -&gt; path</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "signatures"></a>
+    <strong>signatures (object)</strong>
+    </dt>
+    <dd>
+    Get the signatures of an ubus object (one-shot connection).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         UBus object path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        signatures
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connect"></a>
+    <strong>connect ([path[, auto_reconnect=false]])</strong>
+    </dt>
+    <dd>
+    Connect to ubus. </p>
+
+<p> This creates a connection object and starts a background coroutine to
+ dispatch events and call replies.</p>
+
+<p> Note: this implementation requires root privileges.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         UBus socket path.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">auto_reconnect</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Automatically reconnect when connection is lost.
+         (<em>default</em> false)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.ubus.html#Class_connection">connection</a></span>
+
+
+
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "STATUS_OK"></a>
+    <strong>STATUS_OK</strong>
+    </dt>
+    <dd>
+    Return status: success.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_INVALID_COMMAND"></a>
+    <strong>STATUS_INVALID_COMMAND</strong>
+    </dt>
+    <dd>
+    Return status: invalid command.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_INVALID_ARGUMENT"></a>
+    <strong>STATUS_INVALID_ARGUMENT</strong>
+    </dt>
+    <dd>
+    Return status: invalid argument.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_METHOD_NOT_FOUND"></a>
+    <strong>STATUS_METHOD_NOT_FOUND</strong>
+    </dt>
+    <dd>
+    Return status: method not found.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_NOT_FOUND"></a>
+    <strong>STATUS_NOT_FOUND</strong>
+    </dt>
+    <dd>
+    Return status: object not found.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_NO_DATA"></a>
+    <strong>STATUS_NO_DATA</strong>
+    </dt>
+    <dd>
+    Return status: no data.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_PERMISSION_DENIED"></a>
+    <strong>STATUS_PERMISSION_DENIED</strong>
+    </dt>
+    <dd>
+    Return status: permission denied.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_TIMEOUT"></a>
+    <strong>STATUS_TIMEOUT</strong>
+    </dt>
+    <dd>
+    Return status: timeout.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_NOT_SUPPORTED"></a>
+    <strong>STATUS_NOT_SUPPORTED</strong>
+    </dt>
+    <dd>
+    Return status: not supported.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_UNKNOWN_ERROR"></a>
+    <strong>STATUS_UNKNOWN_ERROR</strong>
+    </dt>
+    <dd>
+    Return status: unknown error.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STATUS_CONNECTION_FAILED"></a>
+    <strong>STATUS_CONNECTION_FAILED</strong>
+    </dt>
+    <dd>
+    Return status: connection failed.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ARRAY"></a>
+    <strong>ARRAY</strong>
+    </dt>
+    <dd>
+    Blob message policy type: array.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TABLE"></a>
+    <strong>TABLE</strong>
+    </dt>
+    <dd>
+    Blob message policy type: table.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STRING"></a>
+    <strong>STRING</strong>
+    </dt>
+    <dd>
+    Blob message policy type: string.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INT64"></a>
+    <strong>INT64</strong>
+    </dt>
+    <dd>
+    Blob message policy type: int64.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INT32"></a>
+    <strong>INT32</strong>
+    </dt>
+    <dd>
+    Blob message policy type: int32.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INT16"></a>
+    <strong>INT16</strong>
+    </dt>
+    <dd>
+    Blob message policy type: int16.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INT8"></a>
+    <strong>INT8</strong>
+    </dt>
+    <dd>
+    Blob message policy type: int8.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "DOUBLE"></a>
+    <strong>DOUBLE</strong>
+    </dt>
+    <dd>
+    Blob message policy type: double.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BOOLEAN"></a>
+    <strong>BOOLEAN</strong>
+    </dt>
+    <dd>
+    Blob message policy type: boolean.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_connection"></a>Class connection </h2>
+
+          <div class="section-description">
+          UBus connection returned by <a href="../modules/eco.ubus.html#connect">ubus.connect</a>. </p>
+
+<p> This object manages an ubus connection and dispatches events/call replies in
+ a background coroutine.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "connection:close"></a>
+    <strong>connection:close ()</strong>
+    </dt>
+    <dd>
+    Close the connection.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:call"></a>
+    <strong>connection:call (object, method[, params[, timeout]])</strong>
+    </dt>
+    <dd>
+    Call an ubus method using an existing connection.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         UBus object path.
+        </li>
+        <li><span class="parameter">method</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Method name.
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Parameters table.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Result table.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message (<code>&apos;timeout&apos;</code> or a libubus message).</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send"></a>
+    <strong>connection:send (event[, params])</strong>
+    </dt>
+    <dd>
+    Send an ubus event.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Event name.
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Event payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:reply"></a>
+    <strong>connection:reply (req[, msg])</strong>
+    </dt>
+    <dd>
+    Reply to a request. </p>
+
+<p> This is called from handlers registered via <a href="../modules/eco.ubus.html#connection:add">connection:add</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">req</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Request handle.
+        </li>
+        <li><span class="parameter">msg</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Reply message.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:listen"></a>
+    <strong>connection:listen (event, cb)</strong>
+    </dt>
+    <dd>
+    Listen to ubus events. </p>
+
+<p> When the connection is created with <code>auto_reconnect = true</code>, event listeners
+ added by this method are automatically re-registered after reconnect.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Event name, or <code>&apos;*&apos;</code> for all.
+        </li>
+        <li><span class="parameter">cb</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback <code>cb(event, msg, con)</code>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:add"></a>
+    <strong>connection:add (object, defs)</strong>
+    </dt>
+    <dd>
+    Add a ubus object with method handlers. </p>
+
+<p> <code>defs</code> is a table mapping method name to <code>{ cb, policy }</code>.</p>
+
+<p> When the connection is created with <code>auto_reconnect = true</code>, objects added by
+ this method are automatically added again after reconnect.</p>
+
+<p> The method callback is executed in a new coroutine as:</p>
+
+<p> <code>cb(req, msg, con)</code></p>
+
+<p> You usually send the reply using <a href="../modules/eco.ubus.html#connection:reply">connection:reply</a>.
+ The callback may return a numeric ubus status code; non-number return values
+ are treated as <code>0</code>.</p>
+
+<p> <code>policy</code> is a table mapping field name to policy type (e.g. <a href="../modules/eco.ubus.html#STRING">ubus.STRING</a>,
+ <a href="../modules/eco.ubus.html#INT32">ubus.INT32</a>).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Object name.
+        </li>
+        <li><span class="parameter">defs</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Method definition table.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">lightuserdata</span></span>
+        obj Object handle (opaque).
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> ubus = <span class="global">require</span> <span class="string">'eco.ubus'</span>
+<span class="keyword">local</span> con = <span class="global">assert</span>(ubus.<span class="function-name">connect</span>())
+
+<span class="keyword">local</span> defs = {
+    echo = {
+        <span class="keyword">function</span>(req, msg, con)
+            con:<span class="function-name">reply</span>(req, msg)
+        <span class="keyword">end</span>,
+        { text = ubus.STRING }
+    }
+}
+
+con:<span class="function-name">add</span>(<span class="string">'eco'</span>, defs)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "connection:subscribe"></a>
+    <strong>connection:subscribe (path, cb[, auto=false])</strong>
+    </dt>
+    <dd>
+    Subscribe to notifications of an ubus object.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Object path.
+        </li>
+        <li><span class="parameter">cb</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback <code>cb(method, msg, con)</code>.
+        </li>
+        <li><span class="parameter">auto</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Auto-subscribe when the object appears later.
+         (<em>default</em> false)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">lightuserdata</span></span>
+        subscriber Subscriber handle.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:unsubscribe"></a>
+    <strong>connection:unsubscribe (subscriber)</strong>
+    </dt>
+    <dd>
+    Unsubscribe from an ubus object notifications.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">subscriber</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Subscriber handle returned by <a href="../modules/eco.ubus.html#connection:subscribe">connection:subscribe</a>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:notify"></a>
+    <strong>connection:notify (object, method[, params])</strong>
+    </dt>
+    <dd>
+    Send a notification from an object.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Object handle returned by <a href="../modules/eco.ubus.html#connection:add">connection:add</a>.
+        </li>
+        <li><span class="parameter">method</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Notification method name.
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:objects"></a>
+    <strong>connection:objects ()</strong>
+    </dt>
+    <dd>
+    List ubus objects.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        objects A map of <code>id -&gt; path</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:signatures"></a>
+    <strong>connection:signatures (object)</strong>
+    </dt>
+    <dd>
+    Get the signatures of an ubus object.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         UBus object path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        signatures
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

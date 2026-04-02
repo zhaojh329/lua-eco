@@ -1,0 +1,887 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Tables">Tables</a></li>
+<li><a href="#Class_connection">Class connection </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><strong>eco.websocket</strong></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.websocket</code></h1>
+<p>WebSocket client/server helpers.</p>
+<p> This module implements basic WebSocket framing and the HTTP upgrade
+ handshake.</p>
+
+<p> It can be used in two ways:</p>
+
+<ul>
+    <li>Server side: call <a href="../modules/eco.websocket.html#upgrade">websocket.upgrade</a> from an <a href="../modules/eco.http.server.html#">eco.http.server</a> request handler.</li>
+    <li>Client side: call <a href="../modules/eco.websocket.html#connect">websocket.connect</a> to perform the upgrade handshake and obtain a
+    WebSocket connection.</li>
+</ul>
+
+<p> The returned <a href="../modules/eco.websocket.html#Class_connection">connection</a> object supports sending and receiving individual
+ WebSocket frames. Fragmented messages are not automatically reassembled; see
+ <a href="../modules/eco.websocket.html#connection:recv_frame">connection:recv_frame</a> for the <code>err == &apos;again&apos;</code> convention.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#upgrade">upgrade (con, req[, opts])</a></td>
+	<td class="summary">Upgrade an <a href="../modules/eco.http.server.html#">eco.http.server</a> connection to WebSocket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connect">connect (uri[, opts])</a></td>
+	<td class="summary">Connect to a WebSocket server.</td>
+	</tr>
+</table>
+<h2><a href="#Tables">Tables</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#WebSocketOptions">WebSocketOptions</a></td>
+	<td class="summary">Options table for WebSocket connections.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ConnectOptions">ConnectOptions</a></td>
+	<td class="summary">Options table for <a href="../modules/eco.websocket.html#connect">websocket.connect</a>.</td>
+	</tr>
+</table>
+<h2><a href="#Class_connection">Class connection </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#connection:recv_frame">connection:recv_frame ([timeout])</a></td>
+	<td class="summary">Receive a single WebSocket frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send_frame">connection:send_frame (fin, opcode[, payload])</a></td>
+	<td class="summary">Send a raw WebSocket frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send_text">connection:send_text ([data])</a></td>
+	<td class="summary">Send a text frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send_binary">connection:send_binary ([data])</a></td>
+	<td class="summary">Send a binary frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send_close">connection:send_close ([code[, msg]])</a></td>
+	<td class="summary">Send a close frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send_ping">connection:send_ping ([data])</a></td>
+	<td class="summary">Send a ping frame.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connection:send_pong">connection:send_pong ([data])</a></td>
+	<td class="summary">Send a pong frame.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "upgrade"></a>
+    <strong>upgrade (con, req[, opts])</strong>
+    </dt>
+    <dd>
+    Upgrade an <a href="../modules/eco.http.server.html#">eco.http.server</a> connection to WebSocket. </p>
+
+<p> This performs server-side validation of the WebSocket handshake and sends the
+ <code>101 Switching Protocols</code> response.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">con</span>
+            <span class="types"><a class="type" href="../modules/eco.websocket.html#Class_connection">connection</a></span>
+         HTTP server connection (from <a href="../modules/eco.http.server.html#">eco.http.server</a>).
+        </li>
+        <li><span class="parameter">req</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         HTTP request table (from <a href="../modules/eco.http.server.html#">eco.http.server</a>).
+        </li>
+        <li><span class="parameter">opts</span>
+            <span class="types"><span class="type">WebSocketOptions</span></span>
+         Options.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.websocket.html#Class_connection">connection</a></span>
+        ws WebSocket connection.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> websocket = <span class="global">require</span> <span class="string">'eco.websocket'</span>
+<span class="keyword">local</span> http = <span class="global">require</span> <span class="string">'eco.http.server'</span>
+<span class="keyword">local</span> eco = <span class="global">require</span> <span class="string">'eco'</span>
+
+<span class="keyword">local</span> <span class="keyword">function</span> <span class="function-name">handler</span>(con, req)
+  <span class="keyword">if</span> req.path == <span class="string">'/ws'</span> <span class="keyword">then</span>
+    <span class="keyword">local</span> ws, err = websocket.<span class="function-name">upgrade</span>(con, req, { max_payload_len = <span class="number">65535</span> })
+    <span class="keyword">if</span> <span class="keyword">not</span> ws <span class="keyword">then</span> <span class="keyword">return</span> <span class="keyword">nil</span>, err <span class="keyword">end</span>
+    <span class="keyword">local</span> data, typ = ws:<span class="function-name">recv_frame</span>()
+    <span class="keyword">if</span> typ == <span class="string">'ping'</span> <span class="keyword">then</span> ws:<span class="function-name">send_pong</span>(data) <span class="keyword">end</span>
+  <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>()
+    <span class="global">assert</span>(http.<span class="function-name">listen</span>(<span class="keyword">nil</span>, <span class="number">8080</span>, { reuseaddr = <span class="keyword">true</span> }, handler))
+<span class="keyword">end</span>)
+
+eco.<span class="function-name">loop</span>()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "connect"></a>
+    <strong>connect (uri[, opts])</strong>
+    </dt>
+    <dd>
+    Connect to a WebSocket server. </p>
+
+<p> This performs an HTTP upgrade handshake for <code>ws://</code> or <code>wss://</code> URIs and
+ returns a WebSocket connection on success.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">uri</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         WebSocket URI.
+        </li>
+        <li><span class="parameter">opts</span>
+            <span class="types"><span class="type">ConnectOptions</span></span>
+         Options.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.websocket.html#Class_connection">connection</a></span>
+        ws WebSocket connection.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> websocket = <span class="global">require</span> <span class="string">'eco.websocket'</span>
+<span class="keyword">local</span> eco = <span class="global">require</span> <span class="string">'eco'</span>
+
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>()
+    <span class="keyword">local</span> ws, err = websocket.<span class="function-name">connect</span>(<span class="string">'ws://127.0.0.1:8080/ws'</span>)
+    <span class="global">assert</span>(ws, err)
+    ws:<span class="function-name">send_text</span>(<span class="string">'hello'</span>)
+<span class="keyword">end</span>)
+
+eco.<span class="function-name">loop</span>()</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "WebSocketOptions"></a>
+    <strong>WebSocketOptions</strong>
+    </dt>
+    <dd>
+    Options table for WebSocket connections.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">max_payload_len</span>
+            <span class="types"><span class="type">integer</span></span>
+         Maximum payload length accepted/sent.
+         (<em>default</em> 65535)
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ConnectOptions"></a>
+    <strong>ConnectOptions</strong>
+    </dt>
+    <dd>
+    Options table for <a href="../modules/eco.websocket.html#connect">websocket.connect</a>.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">headers</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Extra HTTP headers to send during handshake.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">protocols</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         <code>Sec-WebSocket-Protocol</code> value.
+   If a table is provided, it will be joined using commas.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">origin</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         <code>Origin</code> header value.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">insecure</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Passed to <a href="../modules/eco.http.client.html#">eco.http.client</a> (TLS verify control).
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Request timeout in seconds (passed to HTTP client).
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">max_payload_len</span>
+            <span class="types"><span class="type">integer</span></span>
+         Maximum payload length accepted/sent.
+         (<em>default</em> 65535)
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_connection"></a>Class connection </h2>
+
+          <div class="section-description">
+          UBus connection returned by <a href="../modules/eco.ubus.html#connect">ubus.connect</a>. </p>
+
+<p> This object manages an ubus connection and dispatches events/call replies in
+ a background coroutine.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "connection:recv_frame"></a>
+    <strong>connection:recv_frame ([timeout])</strong>
+    </dt>
+    <dd>
+    Receive a single WebSocket frame. </p>
+
+<p> Return convention:</p>
+
+<ul>
+    <li>On success: <code>data, typ, err</code></li>
+    <li>On failure: <code>nil, nil, err</code></li>
+</ul>
+
+<p> <code>typ</code> is one of: <code>&apos;text&apos;</code>, <code>&apos;binary&apos;</code>, <code>&apos;continuation&apos;</code>, <code>&apos;close&apos;</code>, <code>&apos;ping&apos;</code>, <code>&apos;pong&apos;</code>.</p>
+
+<p> For <code>typ == &apos;close&apos;</code>, <code>err</code> carries the close status code (number) when
+ present, and <code>data</code> carries the close reason string.</p>
+
+<p> For fragmented messages, <code>err == &apos;again&apos;</code> indicates that more frames are
+ expected to complete the message.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        data Frame payload.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        typ Frame type.</li>
+        <li>
+           <span class="types"><span class="type">any</span></span>
+        err Extra information (<code>&apos;again&apos;</code> for fragmentation, or close code).</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        err Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send_frame"></a>
+    <strong>connection:send_frame (fin, opcode[, payload])</strong>
+    </dt>
+    <dd>
+
+<p>Send a raw WebSocket frame. </p>
+
+<p> <code>opcode</code> values follow RFC 6455:</p>
+
+<ul>
+    <li><code>0x1</code> text</li>
+    <li><code>0x2</code> binary</li>
+    <li><code>0x8</code> close</li>
+    <li><code>0x9</code> ping</li>
+    <li><code>0xA</code> pong</li>
+</ul>
+
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fin</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Whether this is the final fragment.
+        </li>
+        <li><span class="parameter">opcode</span>
+            <span class="types"><span class="type">integer</span></span>
+         Frame opcode.
+        </li>
+        <li><span class="parameter">payload</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Frame payload (will be converted to string if not already).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        bytes Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send_text"></a>
+    <strong>connection:send_text ([data])</strong>
+    </dt>
+    <dd>
+    Send a text frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Text payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        bytes Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send_binary"></a>
+    <strong>connection:send_binary ([data])</strong>
+    </dt>
+    <dd>
+    Send a binary frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Binary payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        bytes Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send_close"></a>
+    <strong>connection:send_close ([code[, msg]])</strong>
+    </dt>
+    <dd>
+    Send a close frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">code</span>
+            <span class="types"><span class="type">integer</span></span>
+         Close status code.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">msg</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Close reason.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        bytes Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send_ping"></a>
+    <strong>connection:send_ping ([data])</strong>
+    </dt>
+    <dd>
+    Send a ping frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        bytes Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connection:send_pong"></a>
+    <strong>connection:send_pong ([data])</strong>
+    </dt>
+    <dd>
+    Send a pong frame.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Payload.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        bytes Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

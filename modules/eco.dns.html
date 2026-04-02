@@ -1,0 +1,689 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><strong>eco.dns</strong></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.dns</code></h1>
+<p>DNS resolver utilities.</p>
+<p>
+
+
+<p> This module implements a simple DNS client over UDP.</p>
+
+<p> It resolves names using:</p>
+
+<ul>
+    <li><code>/etc/hosts</code> first</li>
+    <li>then DNS servers from <code>opts.nameservers</code> or <code>/etc/resolv.conf</code></li>
+</ul>
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#query">query (qname[, opts])</a></td>
+	<td class="summary">Resolve a DNS name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#type_name">type_name (n)</a></td>
+	<td class="summary">Convert RR type number to its mnemonic.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_A">TYPE_A</a></td>
+	<td class="summary">Resource record type: A.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_NS">TYPE_NS</a></td>
+	<td class="summary">Resource record type: NS.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_CNAME">TYPE_CNAME</a></td>
+	<td class="summary">Resource record type: CNAME.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_SOA">TYPE_SOA</a></td>
+	<td class="summary">Resource record type: SOA.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_PTR">TYPE_PTR</a></td>
+	<td class="summary">Resource record type: PTR.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_MX">TYPE_MX</a></td>
+	<td class="summary">Resource record type: MX.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_TXT">TYPE_TXT</a></td>
+	<td class="summary">Resource record type: TXT.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_AAAA">TYPE_AAAA</a></td>
+	<td class="summary">Resource record type: AAAA.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_SRV">TYPE_SRV</a></td>
+	<td class="summary">Resource record type: SRV.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPE_SPF">TYPE_SPF</a></td>
+	<td class="summary">Resource record type: SPF.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CLASS_IN">CLASS_IN</a></td>
+	<td class="summary">DNS class: IN (Internet).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SECTION_AN">SECTION_AN</a></td>
+	<td class="summary">DNS answer section: Answer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SECTION_NS">SECTION_NS</a></td>
+	<td class="summary">DNS answer section: Authority.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SECTION_AR">SECTION_AR</a></td>
+	<td class="summary">DNS answer section: Additional.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "query"></a>
+    <strong>query (qname[, opts])</strong>
+    </dt>
+    <dd>
+
+<p>Resolve a DNS name. </p>
+
+<p> The return value is an array of answer records. Record table fields depend
+ on the record type. Common fields:</p>
+
+<ul>
+    <li><code>name</code>, <a href="https://www.lua.org/manual/5.1/manual.html#pdf-type">type</a>, <code>class</code>, <code>ttl</code>, <code>section</code></li>
+</ul>
+
+<p> Type-specific fields include:</p>
+
+<ul>
+    <li><code>A/AAAA</code>: <code>address</code></li>
+    <li><code>CNAME</code>: <code>cname</code></li>
+    <li><code>MX</code>: <code>preference</code>, <code>exchange</code></li>
+    <li><code>SRV</code>: <code>priority</code>, <code>weight</code>, <code>port</code>, <code>target</code></li>
+    <li><code>NS</code>: <code>nsdname</code></li>
+    <li><code>TXT</code>: <code>txt</code> (string or array of strings)</li>
+    <li><code>SPF</code>: <code>spf</code> (string or array of strings)</li>
+    <li><code>PTR</code>: <code>ptrdname</code></li>
+    <li><code>SOA</code>: <code>mname</code>, <code>rname</code>, <code>serial</code>, <code>refresh</code>, <code>retry</code>, <code>expire</code>, <code>minimum</code></li>
+</ul>
+
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">qname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Domain name or IP address.
+        </li>
+        <li><span class="parameter">opts</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+
+<p> Options:</p>
+
+<ul>
+    <li><a href="https://www.lua.org/manual/5.1/manual.html#pdf-type">type</a> (int) RR type (default <a href="../modules/eco.dns.html#TYPE_A">TYPE_A</a>).</li>
+    <li><code>no_recurse</code> (boolean) Disable recursion desired (RD) flag.</li>
+    <li><code>nameservers</code> (table) Nameserver list. Each entry can be:</li>
+    <li><code>&quot;ip&quot;</code> string</li>
+    <li><code>{ ip, port }</code> table</li>
+    <li><code>mark</code> (number) SO_MARK for the UDP socket.</li>
+    <li><code>device</code> (string) SO_BINDTODEVICE for the UDP socket.</li>
+</ul>
+
+
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        answers
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "type_name"></a>
+    <strong>type_name (n)</strong>
+    </dt>
+    <dd>
+    Convert RR type number to its mnemonic.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+         RR type number.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "TYPE_A"></a>
+    <strong>TYPE_A</strong>
+    </dt>
+    <dd>
+    Resource record type: A.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_NS"></a>
+    <strong>TYPE_NS</strong>
+    </dt>
+    <dd>
+    Resource record type: NS.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_CNAME"></a>
+    <strong>TYPE_CNAME</strong>
+    </dt>
+    <dd>
+    Resource record type: CNAME.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_SOA"></a>
+    <strong>TYPE_SOA</strong>
+    </dt>
+    <dd>
+    Resource record type: SOA.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_PTR"></a>
+    <strong>TYPE_PTR</strong>
+    </dt>
+    <dd>
+    Resource record type: PTR.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_MX"></a>
+    <strong>TYPE_MX</strong>
+    </dt>
+    <dd>
+    Resource record type: MX.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_TXT"></a>
+    <strong>TYPE_TXT</strong>
+    </dt>
+    <dd>
+    Resource record type: TXT.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_AAAA"></a>
+    <strong>TYPE_AAAA</strong>
+    </dt>
+    <dd>
+    Resource record type: AAAA.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_SRV"></a>
+    <strong>TYPE_SRV</strong>
+    </dt>
+    <dd>
+    Resource record type: SRV.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPE_SPF"></a>
+    <strong>TYPE_SPF</strong>
+    </dt>
+    <dd>
+    Resource record type: SPF.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CLASS_IN"></a>
+    <strong>CLASS_IN</strong>
+    </dt>
+    <dd>
+    DNS class: IN (Internet).
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SECTION_AN"></a>
+    <strong>SECTION_AN</strong>
+    </dt>
+    <dd>
+    DNS answer section: Answer.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SECTION_NS"></a>
+    <strong>SECTION_NS</strong>
+    </dt>
+    <dd>
+    DNS answer section: Authority.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SECTION_AR"></a>
+    <strong>SECTION_AR</strong>
+    </dt>
+    <dd>
+    DNS answer section: Additional.
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

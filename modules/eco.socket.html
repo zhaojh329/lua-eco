@@ -1,0 +1,2389 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Class_socket">Class socket </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><strong>eco.socket</strong></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.socket</code></h1>
+<p>socket functions.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#socket">socket (family, domain[, protocol=0[, options]])</a></td>
+	<td class="summary">Create a socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socketpair">socketpair (family, domain[, protocol=0[, options]])</a></td>
+	<td class="summary">Create a pair of connected sockets.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tcp">tcp ()</a></td>
+	<td class="summary">Create a TCP (IPv4) stream socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tcp6">tcp6 ()</a></td>
+	<td class="summary">Create a TCP (IPv6) stream socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#udp">udp ()</a></td>
+	<td class="summary">Create a UDP (IPv4) datagram socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#udp6">udp6 ()</a></td>
+	<td class="summary">Create a UDP (IPv6) datagram socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#icmp">icmp ()</a></td>
+	<td class="summary">Create an ICMP (IPv4) socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#icmp6">icmp6 ()</a></td>
+	<td class="summary">Create an ICMP (IPv6) socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#unix">unix ()</a></td>
+	<td class="summary">Create a Unix stream socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#unix_dgram">unix_dgram ()</a></td>
+	<td class="summary">Create a Unix datagram socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#netlink">netlink (protocol)</a></td>
+	<td class="summary">Create a netlink raw socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#listen_tcp">listen_tcp ([ipaddr], port[, options])</a></td>
+	<td class="summary">Create, bind and listen on a TCP socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connect_tcp">connect_tcp (ipaddr, port[, options])</a></td>
+	<td class="summary">Create and connect a TCP socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#listen_udp">listen_udp ([ipaddr], port[, options])</a></td>
+	<td class="summary">Create and bind a UDP socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connect_udp">connect_udp (ipaddr, port[, options])</a></td>
+	<td class="summary">Create and connect a UDP socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#listen_unix">listen_unix (path[, options])</a></td>
+	<td class="summary">Create, bind and listen on a Unix domain socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connect_unix">connect_unix (server_path[, local_path])</a></td>
+	<td class="summary">Connect to a Unix domain socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#is_ip_address">is_ip_address (addr)</a></td>
+	<td class="summary">Check if a string is an IPv4/IPv6 address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#is_ipv4_address">is_ipv4_address (ip)</a></td>
+	<td class="summary">Check whether a string is a valid IPv4 address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#is_ipv6_address">is_ipv6_address (ip)</a></td>
+	<td class="summary">Check whether a string is a valid IPv6 address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inet_aton">inet_aton (ip)</a></td>
+	<td class="summary">Convert an IPv4 address string to an integer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inet_ntoa">inet_ntoa (addr)</a></td>
+	<td class="summary">Convert an IPv4 address integer to a string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inet_ntop">inet_ntop (family, addr)</a></td>
+	<td class="summary">Convert a binary network address to presentation format.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#inet_pton">inet_pton (family, ip)</a></td>
+	<td class="summary">Convert a presentation format address to binary.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#if_nametoindex">if_nametoindex (ifname)</a></td>
+	<td class="summary">Convert interface name to interface index.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#if_indextoname">if_indextoname (Interface)</a></td>
+	<td class="summary">Convert interface index to interface name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#htonl">htonl (n)</a></td>
+	<td class="summary">Convert 32-bit integer from host to network byte order.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#htons">htons (n)</a></td>
+	<td class="summary">Convert 16-bit integer from host to network byte order.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ntohl">ntohl (n)</a></td>
+	<td class="summary">Convert 32-bit integer from network to host byte order.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ntohs">ntohs (n)</a></td>
+	<td class="summary">Convert 16-bit integer from network to host byte order.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#AF_UNSPEC">AF_UNSPEC</a></td>
+	<td class="summary">Address family: unspecified.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#AF_INET">AF_INET</a></td>
+	<td class="summary">Address family: IPv4.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#AF_INET6">AF_INET6</a></td>
+	<td class="summary">Address family: IPv6.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#AF_UNIX">AF_UNIX</a></td>
+	<td class="summary">Address family: Unix domain sockets.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#AF_PACKET">AF_PACKET</a></td>
+	<td class="summary">Address family: packet interface (link layer).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#AF_NETLINK">AF_NETLINK</a></td>
+	<td class="summary">Address family: netlink.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SOCK_DGRAM">SOCK_DGRAM</a></td>
+	<td class="summary">Socket type: datagram.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SOCK_STREAM">SOCK_STREAM</a></td>
+	<td class="summary">Socket type: stream.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SOCK_RAW">SOCK_RAW</a></td>
+	<td class="summary">Socket type: raw.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#IPPROTO_ICMP">IPPROTO_ICMP</a></td>
+	<td class="summary">Protocol number: ICMP (IPv4).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#IPPROTO_ICMPV6">IPPROTO_ICMPV6</a></td>
+	<td class="summary">Protocol number: ICMPv6.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#IPPROTO_TCP">IPPROTO_TCP</a></td>
+	<td class="summary">Protocol number: TCP.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#IPPROTO_UDP">IPPROTO_UDP</a></td>
+	<td class="summary">Protocol number: UDP.</td>
+	</tr>
+</table>
+<h2><a href="#Class_socket">Class socket </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#socket:getfd">socket:getfd ()</a></td>
+	<td class="summary">Get underlying file descriptor.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:close">socket:close ()</a></td>
+	<td class="summary">Close the socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:closed">socket:closed ()</a></td>
+	<td class="summary">Check whether the socket is closed.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:setoption">socket:setoption (name, value)</a></td>
+	<td class="summary">Set a socket option.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:getsockname">socket:getsockname ()</a></td>
+	<td class="summary">Get local socket address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:getpeername">socket:getpeername ()</a></td>
+	<td class="summary">Get peer socket address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:bind">socket:bind ()</a></td>
+	<td class="summary">Bind to a local address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:listen">socket:listen ([backlog])</a></td>
+	<td class="summary">Start listening (server sockets).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:connect">socket:connect ()</a></td>
+	<td class="summary">Connect to a remote address.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:accept">socket:accept ([timeout])</a></td>
+	<td class="summary">Accept an incoming connection.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:send">socket:send (data[, timeout])</a></td>
+	<td class="summary">Send data on a connected stream socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:write">socket:write ()</a></td>
+	<td class="summary">Alias of <a href="../modules/eco.socket.html#socket:send">socket:send</a>.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:sendto">socket:sendto (data)</a></td>
+	<td class="summary">Send a datagram.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:sendfile">socket:sendfile (path[, len[, offset=0]])</a></td>
+	<td class="summary">Send file contents on a connected stream socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:recv">socket:recv ()</a></td>
+	<td class="summary">Alias of <a href="../modules/eco.socket.html#socket:read">socket:read</a>.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:read">socket:read ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:read">read</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:readfull">socket:readfull ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:readfull">readfull</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:readuntil">socket:readuntil ()</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:readuntil">readuntil</a></td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#socket:recvfrom">socket:recvfrom (n[, timeout])</a></td>
+	<td class="summary">Receive a datagram.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "socket"></a>
+    <strong>socket (family, domain[, protocol=0[, options]])</strong>
+    </dt>
+    <dd>
+    Create a socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">family</span>
+            <span class="types"><span class="type">int</span></span>
+         Address family (e.g. <a href="../modules/eco.socket.html#AF_INET">socket.AF_INET</a>).
+        </li>
+        <li><span class="parameter">domain</span>
+            <span class="types"><span class="type">int</span></span>
+         Socket type (e.g. <a href="../modules/eco.socket.html#SOCK_STREAM">socket.SOCK_STREAM</a>).
+        </li>
+        <li><span class="parameter">protocol</span>
+            <span class="types"><span class="type">int</span></span>
+         Protocol number.
+         (<em>default</em> 0)
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+
+<p> Options:</p>
+
+<ul>
+    <li><code>reuseaddr</code> (boolean)</li>
+    <li><code>reuseport</code> (boolean)</li>
+    <li><code>ipv6_v6only</code> (boolean)</li>
+    <li><code>mark</code> (int)</li>
+    <li><code>device</code> (string) bind to device name</li>
+</ul>
+
+
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socketpair"></a>
+    <strong>socketpair (family, domain[, protocol=0[, options]])</strong>
+    </dt>
+    <dd>
+    Create a pair of connected sockets.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">family</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+        <li><span class="parameter">domain</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+        <li><span class="parameter">protocol</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+         (<em>default</em> 0)
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock1</li>
+        <li>
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock2</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "tcp"></a>
+    <strong>tcp ()</strong>
+    </dt>
+    <dd>
+    Create a TCP (IPv4) stream socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "tcp6"></a>
+    <strong>tcp6 ()</strong>
+    </dt>
+    <dd>
+    Create a TCP (IPv6) stream socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "udp"></a>
+    <strong>udp ()</strong>
+    </dt>
+    <dd>
+    Create a UDP (IPv4) datagram socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "udp6"></a>
+    <strong>udp6 ()</strong>
+    </dt>
+    <dd>
+    Create a UDP (IPv6) datagram socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "icmp"></a>
+    <strong>icmp ()</strong>
+    </dt>
+    <dd>
+    Create an ICMP (IPv4) socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "icmp6"></a>
+    <strong>icmp6 ()</strong>
+    </dt>
+    <dd>
+    Create an ICMP (IPv6) socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "unix"></a>
+    <strong>unix ()</strong>
+    </dt>
+    <dd>
+    Create a Unix stream socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "unix_dgram"></a>
+    <strong>unix_dgram ()</strong>
+    </dt>
+    <dd>
+    Create a Unix datagram socket.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "netlink"></a>
+    <strong>netlink (protocol)</strong>
+    </dt>
+    <dd>
+    Create a netlink raw socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">protocol</span>
+            <span class="types"><span class="type">int</span></span>
+         Netlink protocol.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "listen_tcp"></a>
+    <strong>listen_tcp ([ipaddr], port[, options])</strong>
+    </dt>
+    <dd>
+    Create, bind and listen on a TCP socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ipaddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Local address (nil means ANY).
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">port</span>
+            <span class="types"><span class="type">int</span></span>
+         Local port.
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+
+<p> Options:</p>
+
+<ul>
+    <li><code>ipv6</code> (boolean) use IPv6 family</li>
+    <li><code>backlog</code> (int)</li>
+    <li><code>tcp_nodelay</code> (boolean)</li>
+    <li><code>keepalive</code> (boolean)</li>
+    <li><code>tcp_keepidle</code> (int)</li>
+    <li><code>tcp_keepcnt</code> (int)</li>
+    <li><code>tcp_keepintvl</code> (int)</li>
+    <li><code>tcp_fastopen</code> (int)</li>
+    <li>plus options accepted by <a href="../modules/eco.socket.html">socket</a></li>
+</ul>
+
+
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connect_tcp"></a>
+    <strong>connect_tcp (ipaddr, port[, options])</strong>
+    </dt>
+    <dd>
+    Create and connect a TCP socket. </p>
+
+<p> Address family is inferred from <code>ipaddr</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ipaddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Remote IPv4/IPv6 address.
+        </li>
+        <li><span class="parameter">port</span>
+            <span class="types"><span class="type">int</span></span>
+         Remote port.
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Options accepted by <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "listen_udp"></a>
+    <strong>listen_udp ([ipaddr], port[, options])</strong>
+    </dt>
+    <dd>
+    Create and bind a UDP socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ipaddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Local address.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">port</span>
+            <span class="types"><span class="type">int</span></span>
+         Local port.
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Options (<code>ipv6</code> + options accepted by <a href="../modules/eco.socket.html">socket</a>).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connect_udp"></a>
+    <strong>connect_udp (ipaddr, port[, options])</strong>
+    </dt>
+    <dd>
+    Create and connect a UDP socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ipaddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Remote address.
+        </li>
+        <li><span class="parameter">port</span>
+            <span class="types"><span class="type">int</span></span>
+         Remote port.
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Options accepted by <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "listen_unix"></a>
+    <strong>listen_unix (path[, options])</strong>
+    </dt>
+    <dd>
+    Create, bind and listen on a Unix domain socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Filesystem path.
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Options (<code>backlog</code> + options accepted by <a href="../modules/eco.socket.html">socket</a>).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connect_unix"></a>
+    <strong>connect_unix (server_path[, local_path])</strong>
+    </dt>
+    <dd>
+    Connect to a Unix domain socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">server_path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Server socket path.
+        </li>
+        <li><span class="parameter">local_path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Optional local bind path.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        sock
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "is_ip_address"></a>
+    <strong>is_ip_address (addr)</strong>
+    </dt>
+    <dd>
+    Check if a string is an IPv4/IPv6 address.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">addr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Address string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        ok
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "is_ipv4_address"></a>
+    <strong>is_ipv4_address (ip)</strong>
+    </dt>
+    <dd>
+    Check whether a string is a valid IPv4 address.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ip</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Address string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "is_ipv6_address"></a>
+    <strong>is_ipv6_address (ip)</strong>
+    </dt>
+    <dd>
+    Check whether a string is a valid IPv6 address.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ip</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Address string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "inet_aton"></a>
+    <strong>inet_aton (ip)</strong>
+    </dt>
+    <dd>
+    Convert an IPv4 address string to an integer. </p>
+
+<p> This is a wrapper around <code>inet_aton(3)</code> and returns <code>in_addr.s_addr</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ip</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         IPv4 address string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        IPv4 address as an integer (network byte order).
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "inet_ntoa"></a>
+    <strong>inet_ntoa (addr)</strong>
+    </dt>
+    <dd>
+    Convert an IPv4 address integer to a string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">addr</span>
+            <span class="types"><span class="type">int</span></span>
+         IPv4 address as an integer (network byte order).
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        IPv4 address string.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "inet_ntop"></a>
+    <strong>inet_ntop (family, addr)</strong>
+    </dt>
+    <dd>
+    Convert a binary network address to presentation format.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">family</span>
+            <span class="types"><span class="type">int</span></span>
+         Address family (e.g. <a href="../modules/eco.socket.html#AF_INET">AF_INET</a>, <a href="../modules/eco.socket.html#AF_INET6">AF_INET6</a>).
+        </li>
+        <li><span class="parameter">addr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Binary address.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Address string.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+        On failure.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "inet_pton"></a>
+    <strong>inet_pton (family, ip)</strong>
+    </dt>
+    <dd>
+    Convert a presentation format address to binary.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">family</span>
+            <span class="types"><span class="type">int</span></span>
+         Address family (e.g. <a href="../modules/eco.socket.html#AF_INET">AF_INET</a>, <a href="../modules/eco.socket.html#AF_INET6">AF_INET6</a>).
+        </li>
+        <li><span class="parameter">ip</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Address string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Binary address.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+        On failure.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "if_nametoindex"></a>
+    <strong>if_nametoindex (ifname)</strong>
+    </dt>
+    <dd>
+    Convert interface name to interface index.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ifname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Interface name.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Interface index.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+        If interface does not exist.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "if_indextoname"></a>
+    <strong>if_indextoname (Interface)</strong>
+    </dt>
+    <dd>
+    Convert interface index to interface name.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">Interface</span>
+            <span class="types"><span class="type">int</span></span>
+         index.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Interface name.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "htonl"></a>
+    <strong>htonl (n)</strong>
+    </dt>
+    <dd>
+    Convert 32-bit integer from host to network byte order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "htons"></a>
+    <strong>htons (n)</strong>
+    </dt>
+    <dd>
+    Convert 16-bit integer from host to network byte order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ntohl"></a>
+    <strong>ntohl (n)</strong>
+    </dt>
+    <dd>
+    Convert 32-bit integer from network to host byte order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ntohs"></a>
+    <strong>ntohs (n)</strong>
+    </dt>
+    <dd>
+    Convert 16-bit integer from network to host byte order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "AF_UNSPEC"></a>
+    <strong>AF_UNSPEC</strong>
+    </dt>
+    <dd>
+    Address family: unspecified.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "AF_INET"></a>
+    <strong>AF_INET</strong>
+    </dt>
+    <dd>
+    Address family: IPv4.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "AF_INET6"></a>
+    <strong>AF_INET6</strong>
+    </dt>
+    <dd>
+    Address family: IPv6.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "AF_UNIX"></a>
+    <strong>AF_UNIX</strong>
+    </dt>
+    <dd>
+    Address family: Unix domain sockets.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "AF_PACKET"></a>
+    <strong>AF_PACKET</strong>
+    </dt>
+    <dd>
+    Address family: packet interface (link layer).
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "AF_NETLINK"></a>
+    <strong>AF_NETLINK</strong>
+    </dt>
+    <dd>
+    Address family: netlink.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SOCK_DGRAM"></a>
+    <strong>SOCK_DGRAM</strong>
+    </dt>
+    <dd>
+    Socket type: datagram.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SOCK_STREAM"></a>
+    <strong>SOCK_STREAM</strong>
+    </dt>
+    <dd>
+    Socket type: stream.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SOCK_RAW"></a>
+    <strong>SOCK_RAW</strong>
+    </dt>
+    <dd>
+    Socket type: raw.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "IPPROTO_ICMP"></a>
+    <strong>IPPROTO_ICMP</strong>
+    </dt>
+    <dd>
+    Protocol number: ICMP (IPv4).
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "IPPROTO_ICMPV6"></a>
+    <strong>IPPROTO_ICMPV6</strong>
+    </dt>
+    <dd>
+    Protocol number: ICMPv6.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "IPPROTO_TCP"></a>
+    <strong>IPPROTO_TCP</strong>
+    </dt>
+    <dd>
+    Protocol number: TCP.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "IPPROTO_UDP"></a>
+    <strong>IPPROTO_UDP</strong>
+    </dt>
+    <dd>
+    Protocol number: UDP.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_socket"></a>Class socket </h2>
+
+          <div class="section-description">
+          Socket object returned by this module.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "socket:getfd"></a>
+    <strong>socket:getfd ()</strong>
+    </dt>
+    <dd>
+    Get underlying file descriptor.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        fd
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:close"></a>
+    <strong>socket:close ()</strong>
+    </dt>
+    <dd>
+    Close the socket.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:closed"></a>
+    <strong>socket:closed ()</strong>
+    </dt>
+    <dd>
+    Check whether the socket is closed.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:setoption"></a>
+    <strong>socket:setoption (name, value)</strong>
+    </dt>
+    <dd>
+    Set a socket option. </p>
+
+<p> Supported option names: <code>reuseaddr</code>, <code>reuseport</code>, <code>keepalive</code>,
+ <code>broadcast</code>, <code>mark</code>, <code>bindtodevice</code>, <code>tcp_nodelay</code>, <code>tcp_keepidle</code>, ...
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">name</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Option name.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><span class="type">any</span></span>
+         Option value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:getsockname"></a>
+    <strong>socket:getsockname ()</strong>
+    </dt>
+    <dd>
+
+<p>Get local socket address. </p>
+
+<p> Returned address is a table. Typical fields:</p>
+
+<ul>
+    <li><code>family</code></li>
+    <li>IPv4/IPv6: <code>ipaddr</code>, <code>port</code></li>
+    <li>Unix: <code>path</code></li>
+    <li>Netlink: <code>pid</code></li>
+</ul>
+
+
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        addr
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:getpeername"></a>
+    <strong>socket:getpeername ()</strong>
+    </dt>
+    <dd>
+    Get peer socket address. </p>
+
+<p> Address table format is the same as <a href="../modules/eco.socket.html#socket:getsockname">socket:getsockname</a>.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        addr
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:bind"></a>
+    <strong>socket:bind ()</strong>
+    </dt>
+    <dd>
+
+<p>Bind to a local address. </p>
+
+<p> Arguments depend on socket family:</p>
+
+<ul>
+    <li>IPv4/IPv6: <code>bind(ipaddr, port)</code> (<code>ipaddr</code> can be nil for ANY)</li>
+    <li>Unix: <code>bind(path)</code></li>
+    <li>Netlink: <code>bind(groups?, pid?)</code></li>
+    <li>Packet: <code>bind({ ifindex=..., ifname=... })</code></li>
+</ul>
+
+
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        self
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:listen"></a>
+    <strong>socket:listen ([backlog])</strong>
+    </dt>
+    <dd>
+    Start listening (server sockets).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">backlog</span>
+            <span class="types"><span class="type">int</span></span>
+         Listen backlog.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        self
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:connect"></a>
+    <strong>socket:connect ()</strong>
+    </dt>
+    <dd>
+    Connect to a remote address. </p>
+
+<p> Arguments depend on socket family (same as <a href="../modules/eco.socket.html#socket:bind">socket:bind</a>).
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        self
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:accept"></a>
+    <strong>socket:accept ([timeout])</strong>
+    </dt>
+    <dd>
+    Accept an incoming connection.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        client Accepted client socket.</li>
+        <li>
+           <span class="types"><a class="type" href="../modules/eco.socket.html#Class_socket">socket</a></span>
+        A new socket object.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Peer address table.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:send"></a>
+    <strong>socket:send (data[, timeout])</strong>
+    </dt>
+    <dd>
+    Send data on a connected stream socket. </p>
+
+<p> This method serializes concurrent writers using an internal mutex.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Data to send.
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:write"></a>
+    <strong>socket:write ()</strong>
+    </dt>
+    <dd>
+    Alias of <a href="../modules/eco.socket.html#socket:send">socket:send</a>.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:sendto"></a>
+    <strong>socket:sendto (data)</strong>
+    </dt>
+    <dd>
+    Send a datagram. </p>
+
+<p> For UDP/RAW sockets, destination address is provided after <code>data</code>.
+ Arguments follow the same conventions as <a href="../modules/eco.socket.html#socket:connect">socket:connect</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+
+
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Total bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:sendfile"></a>
+    <strong>socket:sendfile (path[, len[, offset=0]])</strong>
+    </dt>
+    <dd>
+    Send file contents on a connected stream socket.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         File path.
+        </li>
+        <li><span class="parameter">len</span>
+            <span class="types"><span class="type">int</span></span>
+         Bytes to send.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">offset</span>
+            <span class="types"><span class="type">int</span></span>
+         File offset.
+         (<em>default</em> 0)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Bytes sent.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:recv"></a>
+    <strong>socket:recv ()</strong>
+    </dt>
+    <dd>
+    Alias of <a href="../modules/eco.socket.html#socket:read">socket:read</a>.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:read"></a>
+    <strong>socket:read ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#reader:read">read</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:readfull"></a>
+    <strong>socket:readfull ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#reader:readfull">readfull</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:readuntil"></a>
+    <strong>socket:readuntil ()</strong>
+    </dt>
+    <dd>
+    See <a href="../modules/eco.html#reader:readuntil">readuntil</a>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "socket:recvfrom"></a>
+    <strong>socket:recvfrom (n[, timeout])</strong>
+    </dt>
+    <dd>
+    Receive a datagram.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+         Max bytes to receive.
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        data</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Peer address.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

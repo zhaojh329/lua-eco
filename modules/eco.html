@@ -1,0 +1,1328 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Class_io">Class io </a></li>
+<li><a href="#Class_reader">Class reader </a></li>
+<li><a href="#Class_writer">Class writer </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><strong>eco</strong></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco</code></h1>
+<p>Core runtime for lua-eco.</p>
+<p> This module implements the built-in event loop and cooperative coroutine
+ scheduler (epoll + timers). Most I/O in lua-eco is exposed as synchronous
+ looking Lua APIs, but is implemented using non-blocking file descriptors.
+ When an operation would block, the running coroutine yields and is resumed
+ automatically when the descriptor becomes ready.</p>
+
+<p> Exported constants:</p>
+
+<ul>
+    <li><code>VERSION_MAJOR</code>, <code>VERSION_MINOR</code>, <code>VERSION_PATCH</code>: semantic version parts.</li>
+    <li><code>VERSION</code>: full version string.</li>
+    <li><code>READ</code>, <code>WRITE</code>: event flags for use with <a href="../modules/eco.html#io:wait">io:wait</a>.</li>
+</ul>
+
+<p> This module is built into the <a href="../modules/eco.html#">eco</a> interpreter and is loaded
+ automatically into <code>_G.eco</code>. The interpreter also schedules user
+ scripts by creating a coroutine via <code>eco.run(...)</code> and starts the
+ scheduler with <code>eco.loop()</code> automatically.</p>
+    <h3>Usage:</h3>
+    <ul>
+    <pre class="example">#!/usr/bin/env eco
+
+<span class="keyword">local</span> time = <span class="global">require</span> <span class="string">'eco.time'</span>
+
+<span class="comment">-- <a href="../modules/eco.html#">eco</a> is injected into <code>_G</code> by the eco interpreter.
+</span>
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>(name)
+    <span class="keyword">local</span> co = <span class="global">coroutine</span>.<span class="function-name">running</span>()
+    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+        <span class="global">print</span>(time.<span class="function-name">now</span>(), name, co)
+        time.<span class="function-name">sleep</span>(<span class="number">1.0</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>, <span class="string">'eco1'</span>)
+
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>(name)
+    <span class="keyword">local</span> co = <span class="global">coroutine</span>.<span class="function-name">running</span>()
+    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+        <span class="global">print</span>(time.<span class="function-name">now</span>(), name, co)
+        time.<span class="function-name">sleep</span>(<span class="number">2.0</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>, <span class="string">'eco2'</span>)</pre>
+    </ul>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#io">io (fd)</a></td>
+	<td class="summary">Create a new async I/O object wrapping a file descriptor.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#reader">reader (fd[, read[, ctx]])</a></td>
+	<td class="summary">Create a new reader object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#writer">writer (fd[, write[, ctx]])</a></td>
+	<td class="summary">Create a new writer object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#sleep">sleep (delay)</a></td>
+	<td class="summary">Suspend the current coroutine for a given delay.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#run">run (func, ...)</a></td>
+	<td class="summary">Run a Lua function in a new coroutine.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#count">count ()</a></td>
+	<td class="summary">Get the number of currently tracked coroutines.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#all">all ()</a></td>
+	<td class="summary">Get a table of all currently tracked coroutines.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set_panic_hook">set_panic_hook ([func])</a></td>
+	<td class="summary">Set or clear the scheduler panic hook.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set_watchdog_timeout">set_watchdog_timeout (ms)</a></td>
+	<td class="summary">Set or clear coroutine resume watchdog timeout in milliseconds.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#loop">loop ()</a></td>
+	<td class="summary">Run the event loop of the eco scheduler.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#unloop">unloop ()</a></td>
+	<td class="summary">Stop the eco scheduler main loop.</td>
+	</tr>
+</table>
+<h2><a href="#Class_io">Class io </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#io:wait">io:wait (ev[, timeout])</a></td>
+	<td class="summary">Wait for the underlying file descriptor to become ready.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#io:cancel">io:cancel ()</a></td>
+	<td class="summary">Cancel a pending wait on this I/O object.</td>
+	</tr>
+</table>
+<h2><a href="#Class_reader">Class reader </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#reader:wait">reader:wait ([timeout])</a></td>
+	<td class="summary">Wait for the underlying file descriptor to become readable.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#reader:read">reader:read (format[, timeout])</a></td>
+	<td class="summary">Reads data from the underlying file descriptor in the given format.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#reader:readfull">reader:readfull (size[, timeout])</a></td>
+	<td class="summary">Reads exactly <code>size</code> bytes from the underlying file descriptor.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#reader:readuntil">reader:readuntil (needle[, timeout])</a></td>
+	<td class="summary">Read until the specified <code>needle</code> is found.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#reader:cancel">reader:cancel ()</a></td>
+	<td class="summary">Cancel a pending read operation.</td>
+	</tr>
+</table>
+<h2><a href="#Class_writer">Class writer </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#writer:wait">writer:wait ([timeout])</a></td>
+	<td class="summary">Wait for the underlying file descriptor to become writable.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#writer:write">writer:write (data[, timeout])</a></td>
+	<td class="summary">Write data to the writer's file descriptor.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#writer:sendfile">writer:sendfile (path, offset, len[, timeout])</a></td>
+	<td class="summary">Send a file's content to the writer's file descriptor.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#writer:cancel">writer:cancel ()</a></td>
+	<td class="summary">Cancel a pending write operation.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "io"></a>
+    <strong>io (fd)</strong>
+    </dt>
+    <dd>
+    Create a new async I/O object wrapping a file descriptor. </p>
+
+<p> This function sets the given file descriptor to non-blocking mode
+ and wraps it in an <a href="../modules/eco.html#io">eco.io</a> userdata object, allowing async I/O
+ operations via <code>io:wait()</code> and <code>io:cancel()</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fd</span>
+            <span class="types"><span class="type">int</span></span>
+         File descriptor to wrap.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.html#Class_io">io</a></span>
+        The new I/O object on success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> <span class="global">io</span> = eco.<span class="global">io</span>(fd)
+<span class="keyword">local</span> ok, err = <span class="global">io</span>:<span class="function-name">wait</span>(eco.READ, <span class="number">5</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span> <span class="global">print</span>(<span class="string">'I/O wait failed:'</span>, err) <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "reader"></a>
+    <strong>reader (fd[, read[, ctx]])</strong>
+    </dt>
+    <dd>
+    Create a new reader object. </p>
+
+<p> Wraps a file descriptor in an <a href="../modules/eco.html#reader">eco.reader</a> object for async I/O.
+ Optionally, a custom read function and context pointer can be provided.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fd</span>
+            <span class="types"><span class="type">int</span></span>
+         File descriptor to wrap
+        </li>
+        <li><span class="parameter">read</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Custom read function
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">ctx</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Context pointer for the read function
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.html#Class_reader">reader</a></span>
+        The reader object
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> rd = eco.<span class="function-name">reader</span>(fd)
+<span class="keyword">local</span> line, err = rd:<span class="function-name">read</span>(<span class="string">'l'</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> line <span class="keyword">then</span>
+    <span class="global">print</span>(<span class="string">'read fail:'</span>, err)
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+<span class="global">print</span>(line)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "writer"></a>
+    <strong>writer (fd[, write[, ctx]])</strong>
+    </dt>
+    <dd>
+    Create a new writer object. </p>
+
+<p> Wraps a file descriptor in an <a href="../modules/eco.html#writer">eco.writer</a> object for asynchronous
+ write operations. Optionally, a custom write function and context
+ pointer can be provided.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fd</span>
+            <span class="types"><span class="type">int</span></span>
+         File descriptor to wrap
+        </li>
+        <li><span class="parameter">write</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Custom write function
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">ctx</span>
+            <span class="types"><span class="type">lightuserdata</span></span>
+         Context pointer for the write function
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.html#Class_writer">writer</a></span>
+        The writer object
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> wr = eco.<span class="function-name">writer</span>(fd)
+wr:<span class="function-name">write</span>(<span class="string">'hello world'</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "sleep"></a>
+    <strong>sleep (delay)</strong>
+    </dt>
+    <dd>
+    Suspend the current coroutine for a given delay. </p>
+
+<p> This function yields the current Lua coroutine and resumes it
+ after <code>delay</code> seconds.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">delay</span>
+            <span class="types"><span class="type">number</span></span>
+         Number of seconds to sleep.
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="global">print</span>(<span class="string">'Sleeping for 1 second...'</span>)
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>()
+    eco.<span class="function-name">sleep</span>(<span class="number">1</span>)
+    <span class="global">print</span>(<span class="string">'Awake!'</span>)
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "run"></a>
+    <strong>run (func, ...)</strong>
+    </dt>
+    <dd>
+    Run a Lua function in a new coroutine. </p>
+
+<p> This function creates a new Lua coroutine, moves the provided function
+ and its arguments into it, and resumes the coroutine immediately.
+ The coroutine is tracked internally by <a href="../modules/eco.html#">eco</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">function</span></span>
+         Function to run in the new coroutine.
+        </li>
+        <li><span class="parameter">...</span>
+         Arguments to pass to the function.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">thread</span></span>
+        The newly created coroutine.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">eco.<span class="function-name">run</span>(<span class="keyword">function</span>(a, b)
+    <span class="global">print</span>(<span class="string">'Running in coroutine:v'</span>, a, b)
+    eco.<span class="function-name">sleep</span>(<span class="number">1</span>)
+    <span class="global">print</span>(<span class="string">'Done'</span>)
+<span class="keyword">end</span>, <span class="number">10</span>, <span class="number">20</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "count"></a>
+    <strong>count ()</strong>
+    </dt>
+    <dd>
+    Get the number of currently tracked coroutines.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Number of coroutines currently managed by <a href="../modules/eco.html#">eco</a>.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="global">print</span>(<span class="string">'Active coroutines:'</span>, eco.<span class="function-name">count</span>())</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "all"></a>
+    <strong>all ()</strong>
+    </dt>
+    <dd>
+    Get a table of all currently tracked coroutines.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Table of Lua coroutine objects.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">for</span> i, co <span class="keyword">in</span> <span class="global">ipairs</span>(eco.<span class="function-name">all</span>()) <span class="keyword">do</span>
+    <span class="global">print</span>(<span class="string">'Coroutine'</span>, i, co)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "set_panic_hook"></a>
+    <strong>set_panic_hook ([func])</strong>
+    </dt>
+    <dd>
+    Set or clear the scheduler panic hook. </p>
+
+<p> The hook is called when an uncaught error occurs inside a coroutine
+ managed by <a href="../modules/eco.html#">eco</a>.</p>
+
+<p> The callback receives two traceback strings:</p>
+
+<ol>
+    <li>traceback from the currently running coroutine (the one that failed)</li>
+    <li>traceback from the coroutine/context that resumed it</li>
+</ol>
+
+<p> Pass <code>nil</code> to clear a previously installed hook.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">function</span></span>
+         Panic callback <code>func(traceback1, traceback2)</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">eco.<span class="function-name">set_panic_hook</span>(<span class="keyword">function</span>(traceback1, traceback2)
+    <span class="global">print</span>(traceback1)
+    <span class="global">print</span>(traceback2)
+<span class="keyword">end</span>)
+
+<span class="comment">-- clear hook
+</span>eco.<span class="function-name">set_panic_hook</span>(<span class="keyword">nil</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "set_watchdog_timeout"></a>
+    <strong>set_watchdog_timeout (ms)</strong>
+    </dt>
+    <dd>
+    Set or clear coroutine resume watchdog timeout in milliseconds. </p>
+
+<p> If a single <code>resume</code> runs longer than this timeout, eco triggers panic
+ and prints traceback via the existing panic path.</p>
+
+<p> Pass <code>0</code> to disable timeout checks.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ms</span>
+            <span class="types"><span class="type">int</span></span>
+         Timeout in milliseconds, <code>0</code> means disabled.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "loop"></a>
+    <strong>loop ()</strong>
+    </dt>
+    <dd>
+    Run the event loop of the eco scheduler. </p>
+
+<p> This function drives the scheduler, processing timers, I/O events,
+ and resuming coroutines as needed. <code>eco.loop()</code> returns when <code>eco.unloop()</code>
+ is called, when interrupted by SIGINT, or when there are no monitorable
+ events left (no pending I/O watchers and no scheduled timers).
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+        If the loop exits normally
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "unloop"></a>
+    <strong>unloop ()</strong>
+    </dt>
+    <dd>
+    Stop the eco scheduler main loop.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_io"></a>Class io </h2>
+
+          <div class="section-description">
+          io handle returned by <a href="../modules/eco.html#io">eco.io</a>.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "io:wait"></a>
+    <strong>io:wait (ev[, timeout])</strong>
+    </dt>
+    <dd>
+    Wait for the underlying file descriptor to become ready. </p>
+
+<p> Suspends the current coroutine until the file descriptor is ready
+ for reading (EPOLLIN) or writing (EPOLLOUT), or until an optional timeout.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ev</span>
+            <span class="types"><span class="type">int</span></span>
+         Event mask: <code>eco.READ</code>, <code>eco.WRITE</code>, or a combination.
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true If the underlying file descriptor to become ready.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "io:cancel"></a>
+    <strong>io:cancel ()</strong>
+    </dt>
+    <dd>
+    Cancel a pending wait on this I/O object. </p>
+
+<p> If a coroutine is currently suspended in <code>io:wait()</code>, it will be resumed
+ immediately and <code>io:wait()</code> will return nil, "canceled".
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+
+
+
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> <span class="global">io</span> = eco.<span class="global">io</span>(fd)
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>()
+    <span class="keyword">local</span> ok, err = <span class="global">io</span>:<span class="function-name">wait</span>(eco.READ)
+    <span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span> <span class="global">print</span>(<span class="string">'Wait failed or canceled:'</span>, err) <span class="keyword">end</span>
+<span class="keyword">end</span>)
+
+<span class="global">io</span>:<span class="function-name">cancel</span>()</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_reader"></a>Class reader </h2>
+
+          <div class="section-description">
+          reader object created by <a href="../modules/eco.html#reader">eco.reader</a>.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "reader:wait"></a>
+    <strong>reader:wait ([timeout])</strong>
+    </dt>
+    <dd>
+    Wait for the underlying file descriptor to become readable.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true If the underlying file descriptor to become readable.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "reader:read"></a>
+    <strong>reader:read (format[, timeout])</strong>
+    </dt>
+    <dd>
+
+<p>Reads data from the underlying file descriptor in the given format. </p>
+
+<p> The available formats are:</p>
+
+<ul>
+    <li><code>&quot;a&quot;</code>: reads the whole file or reads from socket until the connection closed.</li>
+    <li><code>&quot;l&quot;</code>: reads the next line skipping the end of line(The line is terminated by a
+    Line Feed (LF) character (ASCII 10), optionally preceded by a Carriage
+    Return (CR) character (ASCII 13). The CR and LF characters are not included
+    in the returned line).</li>
+    <li><code>&quot;L&quot;</code>: reads the next line keeping the end-of-line character.</li>
+    <li><code>int</code>: reads a string with up to this number of bytes.</li>
+</ul>
+
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">format</span>
+            <span class="types"><span class="type">int</span> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+
+
+
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout)
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Data read from the file descriptor
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error or EOF</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message or "eof"</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> data, err = reader:<span class="function-name">read</span>(<span class="number">1024</span>, <span class="number">5</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> data <span class="keyword">then</span> <span class="global">print</span>(<span class="string">"Read failed:"</span>, err) <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "reader:readfull"></a>
+    <strong>reader:readfull (size[, timeout])</strong>
+    </dt>
+    <dd>
+    Reads exactly <code>size</code> bytes from the underlying file descriptor. </p>
+
+<p> This method will not return until it reads exactly this size of data or an error occurs.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">size</span>
+            <span class="types"><span class="type">int</span></span>
+
+
+
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout)
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Data read from the file descriptor
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error or EOF</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message or "eof"</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "reader:readuntil"></a>
+    <strong>reader:readuntil (needle[, timeout])</strong>
+    </dt>
+    <dd>
+    Read until the specified <code>needle</code> is found. </p>
+
+<p> This function can be called multiple times. It returns data as it arrives.
+ When <code>needle</code> is seen, it returns the data preceding it and a boolean <code>true</code>.
+ The <code>needle</code> itself is consumed and not included in returned data.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">needle</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Non-empty delimiter.
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout)
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Data read from the file descriptor</li>
+        <li>
+           <span class="types"><span class="type">boolean</span></span>
+        true when delimiter is found.</li>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error or EOF</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message or "eof"</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "reader:cancel"></a>
+    <strong>reader:cancel ()</strong>
+    </dt>
+    <dd>
+    Cancel a pending read operation. </p>
+
+<p> If a coroutine is currently suspended in <a href="../modules/eco.html#reader:read">read</a>, <code>read2b</code> or <a href="../modules/eco.html#io:wait">wait</a>, it will be
+ resumed immediately and return nil with error "canceled".
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_writer"></a>Class writer </h2>
+
+          <div class="section-description">
+          writer object created by <a href="../modules/eco.html#writer">eco.writer</a>.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "writer:wait"></a>
+    <strong>writer:wait ([timeout])</strong>
+    </dt>
+    <dd>
+    Wait for the underlying file descriptor to become writable.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true If the underlying file descriptor to become writable.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "writer:write"></a>
+    <strong>writer:write (data[, timeout])</strong>
+    </dt>
+    <dd>
+    Write data to the writer's file descriptor. </p>
+
+<p> Writes the given string <code>data</code> to the file descriptor wrapped by
+ this <a href="../modules/eco.html#writer">eco.writer</a>. If the write would block, the coroutine is
+ suspended and resumed automatically when the descriptor is writable.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Data to write
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout)
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Number of bytes written
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "writer:sendfile"></a>
+    <strong>writer:sendfile (path, offset, len[, timeout])</strong>
+    </dt>
+    <dd>
+    Send a file's content to the writer's file descriptor. </p>
+
+<p> Uses the <a href="../modules/eco.html#writer:sendfile">sendfile</a> system call to send <code>len</code> bytes starting from
+ <code>offset</code> of the file at <code>path</code> to the writer's file descriptor.
+ If the operation would block, the coroutine is suspended and resumed
+ automatically when the descriptor is writable.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Path to the file
+        </li>
+        <li><span class="parameter">offset</span>
+            <span class="types"><span class="type">int</span></span>
+         Offset in the file to start sending
+        </li>
+        <li><span class="parameter">len</span>
+            <span class="types"><span class="type">int</span></span>
+         Number of bytes to send
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds (default nil = no timeout)
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        Number of bytes sent
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On error</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> wr = eco.<span class="function-name">writer</span>(fd)
+<span class="keyword">local</span> n, err = wr:<span class="function-name">sendfile</span>(<span class="string">'/tmp/file.txt'</span>, <span class="number">0</span>, <span class="number">1024</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> n <span class="keyword">then</span> <span class="global">print</span>(<span class="string">'Sendfile failed:'</span>, err) <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "writer:cancel"></a>
+    <strong>writer:cancel ()</strong>
+    </dt>
+    <dd>
+    Cancel a pending write operation. </p>
+
+<p> If a coroutine is currently suspended in <a href="../modules/eco.html#writer:write">write</a>, <a href="../modules/eco.html#writer:sendfile">sendfile</a> or <a href="../modules/eco.html#io:wait">wait</a>, it will be
+ resumed immediately and return nil with error "canceled".
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

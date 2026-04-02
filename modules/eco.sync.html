@@ -1,0 +1,701 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Class_cond">Class cond </a></li>
+<li><a href="#Class_waitgroup">Class waitgroup </a></li>
+<li><a href="#Class_mutex">Class mutex </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><strong>eco.sync</strong></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.sync</code></h1>
+<p>Coroutine synchronization primitives.</p>
+<p> This module provides a small set of synchronization primitives designed for
+ <a href="../modules/eco.html#">eco</a>'s cooperative coroutines (not OS threads):</p>
+
+<ul>
+    <li>condition variables (<a href="../modules/eco.sync.html#cond">cond</a>)</li>
+    <li>wait groups (<a href="../modules/eco.sync.html#waitgroup">waitgroup</a>)</li>
+    <li>mutual exclusion locks (<a href="../modules/eco.sync.html#mutex">mutex</a>)</li>
+</ul>
+
+<p> All timeouts are expressed in seconds.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#cond">cond ()</a></td>
+	<td class="summary">Create a condition variable.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#waitgroup">waitgroup ()</a></td>
+	<td class="summary">Create a wait group.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#mutex">mutex ()</a></td>
+	<td class="summary">Create a mutex.</td>
+	</tr>
+</table>
+<h2><a href="#Class_cond">Class cond </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#cond:wait">cond:wait ([timeout])</a></td>
+	<td class="summary">Wait until signaled.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cond:signal">cond:signal ([data])</a></td>
+	<td class="summary">Wake one waiting coroutine.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cond:broadcast">cond:broadcast ()</a></td>
+	<td class="summary">Wake all waiting coroutines.</td>
+	</tr>
+</table>
+<h2><a href="#Class_waitgroup">Class waitgroup </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#waitgroup:add">waitgroup:add (delta)</a></td>
+	<td class="summary">Add delta to the wait group counter.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#waitgroup:done">waitgroup:done ()</a></td>
+	<td class="summary">Decrement the wait group counter by one.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#waitgroup:wait">waitgroup:wait ([timeout])</a></td>
+	<td class="summary">Wait until the counter becomes zero.</td>
+	</tr>
+</table>
+<h2><a href="#Class_mutex">Class mutex </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#mutex:lock">mutex:lock ([timeout])</a></td>
+	<td class="summary">Lock the mutex.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#mutex:unlock">mutex:unlock ()</a></td>
+	<td class="summary">Unlock the mutex.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "cond"></a>
+    <strong>cond ()</strong>
+    </dt>
+    <dd>
+    Create a condition variable.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.sync.html#Class_cond">cond</a></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "waitgroup"></a>
+    <strong>waitgroup ()</strong>
+    </dt>
+    <dd>
+    Create a wait group. </p>
+
+<p> One coroutine calls <a href="../modules/eco.sync.html#waitgroup:add">waitgroup:add</a> to set the number of coroutines to wait
+ for. Then each of those coroutines runs and calls <a href="../modules/eco.sync.html#waitgroup:done">waitgroup:done</a> when
+ finished. Meanwhile, <a href="../modules/eco.sync.html#waitgroup:wait">waitgroup:wait</a> can be used to block until all of
+ them have finished.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.sync.html#Class_waitgroup">waitgroup</a></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "mutex"></a>
+    <strong>mutex ()</strong>
+    </dt>
+    <dd>
+    Create a mutex.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.sync.html#Class_mutex">mutex</a></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_cond"></a>Class cond </h2>
+
+          <div class="section-description">
+          Condition variable returned by <a href="../modules/eco.sync.html#cond">sync.cond</a>. </p>
+
+<p> A condition variable is a rendezvous point for coroutines waiting for, or
+ announcing, the occurrence of an event.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "cond:wait"></a>
+    <strong>cond:wait ([timeout])</strong>
+    </dt>
+    <dd>
+    Wait until signaled. </p>
+
+<p> If signaled with a non-nil <em>truthy</em> <code>data</code>, returns that <code>data</code>.
+ Otherwise returns <code>true</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">any</span></span>
+        Data passed to <a href="../modules/eco.sync.html#cond:signal">cond:signal</a>, or <code>true</code>.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On timeout.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message (<code>&apos;timeout&apos;</code>).</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "cond:signal"></a>
+    <strong>cond:signal ([data])</strong>
+    </dt>
+    <dd>
+    Wake one waiting coroutine. </p>
+
+<p> If <code>data</code> is provided and is truthy, the waiter will receive <code>data</code> as the
+ return value of <a href="../modules/eco.sync.html#cond:wait">cond:wait</a>; otherwise it will receive <code>true</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><span class="type">any</span></span>
+         Data passed to the awakened waiter.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        <code>true</code> if a waiter was awakened.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "cond:broadcast"></a>
+    <strong>cond:broadcast ()</strong>
+    </dt>
+    <dd>
+    Wake all waiting coroutines. </p>
+
+<p> All awakened waiters will receive <code>true</code> as the return value of <a href="../modules/eco.sync.html#cond:wait">cond:wait</a>.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        n Number of awakened coroutines.
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_waitgroup"></a>Class waitgroup </h2>
+
+          <div class="section-description">
+          Wait group returned by <a href="../modules/eco.sync.html#waitgroup">sync.waitgroup</a>. </p>
+
+<p> A wait group waits for a collection of coroutines to finish.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "waitgroup:add"></a>
+    <strong>waitgroup:add (delta)</strong>
+    </dt>
+    <dd>
+    Add delta to the wait group counter. </p>
+
+<p> A positive <code>delta</code> increments the number of workers to wait for.
+ A negative <code>delta</code> decrements it.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">delta</span>
+            <span class="types"><span class="type">integer</span></span>
+
+
+
+        </li>
+    </ul>
+
+
+    <h3>Raises:</h3>
+    If the counter would become negative.
+
+
+
+</dd>
+    <dt>
+    <a name = "waitgroup:done"></a>
+    <strong>waitgroup:done ()</strong>
+    </dt>
+    <dd>
+    Decrement the wait group counter by one. </p>
+
+<p> When the counter reaches zero, all waiters are awakened.
+
+
+
+
+    <h3>Raises:</h3>
+    If the counter would become negative.
+
+
+
+</dd>
+    <dt>
+    <a name = "waitgroup:wait"></a>
+    <strong>waitgroup:wait ([timeout])</strong>
+    </dt>
+    <dd>
+    Wait until the counter becomes zero.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true When the counter becomes zero.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On timeout.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message (<code>&apos;timeout&apos;</code>).</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_mutex"></a>Class mutex </h2>
+
+          <div class="section-description">
+          Mutex returned by <a href="../modules/eco.sync.html#mutex">sync.mutex</a>. </p>
+
+<p> A mutex provides mutual exclusion between coroutines.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "mutex:lock"></a>
+    <strong>mutex:lock ([timeout])</strong>
+    </dt>
+    <dd>
+    Lock the mutex. </p>
+
+<p> If the mutex is already locked, the current coroutine waits until it becomes
+ available or <code>timeout</code> expires.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On timeout.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message (<code>&apos;timeout&apos;</code>).</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "mutex:unlock"></a>
+    <strong>mutex:unlock ()</strong>
+    </dt>
+    <dd>
+    Unlock the mutex. </p>
+
+<p> Wakes one coroutine waiting in <a href="../modules/eco.sync.html#mutex:lock">mutex:lock</a>.
+
+
+
+
+    <h3>Raises:</h3>
+    If the mutex is not locked.
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

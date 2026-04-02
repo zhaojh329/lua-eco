@@ -1,0 +1,929 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Class_client">Class client </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><strong>eco.mqtt</strong></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eco.mqtt</code></h1>
+<p>MQTT 3.1.1 client.</p>
+<p>
+
+
+<p> This module implements a small MQTT client that integrates with lua-eco's
+ coroutine scheduler.</p>
+
+<p> Create a client with <a href="../modules/eco.mqtt.html#new">new</a>, register event handlers with <code>client:on</code>, then
+ call <code>client:run</code> to connect and start processing packets.</p>
+
+<p> Events are delivered via callbacks registered by <code>client:on</code>. A handler is
+ called as <code>handler(data, client)</code>.</p>
+
+<p> Known events:</p>
+
+<ul>
+    <li><code>conack</code>: CONNACK received. <code>data = { rc = integer, reason = string, session_present = boolean }</code></li>
+    <li><code>suback</code>: SUBACK received. <code>data = { rc = integer, topic = string }</code></li>
+    <li><code>unsuback</code>: UNSUBACK received. <code>data = topic</code> (string)</li>
+    <li><a href="../modules/eco.mqtt.html#methods:publish">publish</a>: PUBLISH received. <code>data = { topic = string, payload = string, qos = integer, dup = boolean, retain = boolean }</code></li>
+    <li><a href="https://www.lua.org/manual/5.1/manual.html#pdf-error">error</a>: network/protocol errors and timeouts. <code>data = err</code> (string)</li>
+</ul>
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#new">new ([opts])</a></td>
+	<td class="summary">Create a new MQTT client.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#QOS0">QOS0</a></td>
+	<td class="summary">QoS 0: at most once.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#QOS1">QOS1</a></td>
+	<td class="summary">QoS 1: at least once.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#QOS2">QOS2</a></td>
+	<td class="summary">QoS 2: exactly once.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SUBACK_FAILURE">SUBACK_FAILURE</a></td>
+	<td class="summary">SUBACK failure return code.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONNACK_ACCEPTED">CONNACK_ACCEPTED</a></td>
+	<td class="summary">CONNACK return code: connection accepted.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONNACK_REFUSED_PROTOCOL_VERSION">CONNACK_REFUSED_PROTOCOL_VERSION</a></td>
+	<td class="summary">CONNACK return code: unacceptable protocol version.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONNACK_REFUSED_IDENTIFIER_REJECTED">CONNACK_REFUSED_IDENTIFIER_REJECTED</a></td>
+	<td class="summary">CONNACK return code: identifier rejected.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONNACK_REFUSED_SERVER_UNAVAILABLE">CONNACK_REFUSED_SERVER_UNAVAILABLE</a></td>
+	<td class="summary">CONNACK return code: server unavailable.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD">CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD</a></td>
+	<td class="summary">CONNACK return code: bad username or password.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONNACK_REFUSED_NOT_AUTHORIZED">CONNACK_REFUSED_NOT_AUTHORIZED</a></td>
+	<td class="summary">CONNACK return code: not authorized.</td>
+	</tr>
+</table>
+<h2><a href="#Class_client">Class client </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#methods:publish">methods:publish (topic, payload[, qos=mqtt.QOS0[, retain]])</a></td>
+	<td class="summary">Publish a message.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:subscribe">methods:subscribe (topic[, qos=mqtt.QOS0])</a></td>
+	<td class="summary">Subscribe to a topic.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:unsubscribe">methods:unsubscribe (topic)</a></td>
+	<td class="summary">Unsubscribe from a topic.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:disconnect">methods:disconnect ()</a></td>
+	<td class="summary">Send DISCONNECT.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:close">methods:close ()</a></td>
+	<td class="summary">Close the underlying network socket.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:on">methods:on (event, handler, handlers)</a></td>
+	<td class="summary">Register event handler(s).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:set">methods:set (name, value)</a></td>
+	<td class="summary">Set one option on the client.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#methods:run">methods:run ()</a></td>
+	<td class="summary">Connect and start handling packets.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "new"></a>
+    <strong>new ([opts])</strong>
+    </dt>
+    <dd>
+    Create a new MQTT client.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">opts</span> Options table.
+        <ul>
+        <li><span class="parameter">ipaddr</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Broker address.
+         (<em>default</em> '127.0.0.1')
+        </li>
+        <li><span class="parameter">port</span>
+            <span class="types"><span class="type">int</span></span>
+         Broker port. (Default <code>1883</code> (plain) or <code>8883</code> (TLS) depending on <a href="../modules/eco.ssl.html">ssl</a>)
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">ssl</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Enable MQTT over TLS.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">ca</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         CA certificate path for TLS.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">cert</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Client certificate path for TLS.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">key</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Client private key path for TLS.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">insecure</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Disable TLS certificate verification.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">mark</span>
+            <span class="types"><span class="type">int</span></span>
+         Set <code>SO_MARK</code> on the socket.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">device</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Set <code>SO_BINDTODEVICE</code> on the socket.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">id</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Client id. Randomly generated if absent.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">keepalive</span>
+            <span class="types"><span class="type">int</span></span>
+         keepalive seconds.
+         (<em>default</em> 30)
+        </li>
+        <li><span class="parameter">clean_session</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Clean session flag.
+         (<em>default</em> false)
+        </li>
+        <li><span class="parameter">will</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Last will message: <code>topic</code> (string) <code>message</code> (string) <code>qos</code> (int)
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">username</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+
+
+
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">password</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+
+
+
+         (<em>optional</em>)
+        </li>
+        </li></ul>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/eco.mqtt.html#Class_client">client</a></span>
+
+
+
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "QOS0"></a>
+    <strong>QOS0</strong>
+    </dt>
+    <dd>
+    QoS 0: at most once.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "QOS1"></a>
+    <strong>QOS1</strong>
+    </dt>
+    <dd>
+    QoS 1: at least once.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "QOS2"></a>
+    <strong>QOS2</strong>
+    </dt>
+    <dd>
+    QoS 2: exactly once.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SUBACK_FAILURE"></a>
+    <strong>SUBACK_FAILURE</strong>
+    </dt>
+    <dd>
+    SUBACK failure return code.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONNACK_ACCEPTED"></a>
+    <strong>CONNACK_ACCEPTED</strong>
+    </dt>
+    <dd>
+    CONNACK return code: connection accepted.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONNACK_REFUSED_PROTOCOL_VERSION"></a>
+    <strong>CONNACK_REFUSED_PROTOCOL_VERSION</strong>
+    </dt>
+    <dd>
+    CONNACK return code: unacceptable protocol version.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONNACK_REFUSED_IDENTIFIER_REJECTED"></a>
+    <strong>CONNACK_REFUSED_IDENTIFIER_REJECTED</strong>
+    </dt>
+    <dd>
+    CONNACK return code: identifier rejected.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONNACK_REFUSED_SERVER_UNAVAILABLE"></a>
+    <strong>CONNACK_REFUSED_SERVER_UNAVAILABLE</strong>
+    </dt>
+    <dd>
+    CONNACK return code: server unavailable.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD"></a>
+    <strong>CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD</strong>
+    </dt>
+    <dd>
+    CONNACK return code: bad username or password.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONNACK_REFUSED_NOT_AUTHORIZED"></a>
+    <strong>CONNACK_REFUSED_NOT_AUTHORIZED</strong>
+    </dt>
+    <dd>
+    CONNACK return code: not authorized.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_client"></a>Class client </h2>
+
+          <div class="section-description">
+          MQTT client object. </p>
+
+<p> A client instance is created by calling <a href="../modules/eco.mqtt.html#new">mqtt.new</a>.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "methods:publish"></a>
+    <strong>methods:publish (topic, payload[, qos=mqtt.QOS0[, retain]])</strong>
+    </dt>
+    <dd>
+    Publish a message. </p>
+
+<p> For QoS 1 and 2, the client will keep the packet for retransmission until
+ an acknowledgement is received.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">topic</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Topic name.
+        </li>
+        <li><span class="parameter">payload</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Message payload.
+        </li>
+        <li><span class="parameter">qos</span>
+            <span class="types"><span class="type">integer</span></span>
+         One of <a href="../modules/eco.mqtt.html#QOS0">mqtt.QOS0</a>, <a href="../modules/eco.mqtt.html#QOS1">mqtt.QOS1</a>, <a href="../modules/eco.mqtt.html#QOS2">mqtt.QOS2</a>.
+         (<em>default</em> mqtt.QOS0)
+        </li>
+        <li><span class="parameter">retain</span>
+            <span class="types"><span class="type">boolean</span></span>
+         Set the RETAIN flag.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:subscribe"></a>
+    <strong>methods:subscribe (topic[, qos=mqtt.QOS0])</strong>
+    </dt>
+    <dd>
+    Subscribe to a topic. </p>
+
+<p> This sends a SUBSCRIBE packet and later triggers the <code>suback</code> event.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">topic</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Topic filter.
+        </li>
+        <li><span class="parameter">qos</span>
+            <span class="types"><span class="type">integer</span></span>
+         Requested QoS.
+         (<em>default</em> mqtt.QOS0)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:unsubscribe"></a>
+    <strong>methods:unsubscribe (topic)</strong>
+    </dt>
+    <dd>
+    Unsubscribe from a topic. </p>
+
+<p> This sends an UNSUBSCRIBE packet and later triggers the <code>unsuback</code> event.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">topic</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Topic filter.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:disconnect"></a>
+    <strong>methods:disconnect ()</strong>
+    </dt>
+    <dd>
+    Send DISCONNECT. </p>
+
+<p> This only sends the packet; the underlying socket is not closed here.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true On success
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:close"></a>
+    <strong>methods:close ()</strong>
+    </dt>
+    <dd>
+    Close the underlying network socket.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:on"></a>
+    <strong>methods:on (event, handler, handlers)</strong>
+    </dt>
+    <dd>
+    Register event handler(s). </p>
+
+<p> This function supports two calling forms:</p>
+
+<ul>
+    <li><code>client:on(event, handler)</code></li>
+    <li><code>client:on({ event1 = handler1, event2 = handler2 })</code></li>
+</ul>
+
+<p> The handler is called as <code>handler(data, client)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Event name (when using the 2-argument form).
+        </li>
+        <li><span class="parameter">handler</span>
+            <span class="types"><span class="type">function</span></span>
+         Callback (when using the 2-argument form).
+        </li>
+        <li><span class="parameter">handlers</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         A table of <code>{ event = handler }</code> pairs (when using the 1-argument form).
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:set"></a>
+    <strong>methods:set (name, value)</strong>
+    </dt>
+    <dd>
+    Set one option on the client. </p>
+
+<p> This is equivalent to providing the field in <a href="../modules/eco.mqtt.html#new">new</a>'s <code>opts</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">name</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Option name.
+        </li>
+        <li><span class="parameter">value</span>
+            <span class="types"><span class="type">any</span></span>
+         Option value.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "methods:run"></a>
+    <strong>methods:run ()</strong>
+    </dt>
+    <dd>
+    Connect and start handling packets. </p>
+
+<p> This call returns when the network connection is closed or an error occurs.
+ Any termination reason is reported through the <a href="https://www.lua.org/manual/5.1/manual.html#pdf-error">error</a> event.
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-02 13:50:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>
