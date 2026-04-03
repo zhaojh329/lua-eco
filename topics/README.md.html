@@ -1,0 +1,545 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+    <style type="text/css">
+        :root {
+            --ldoc-nav-width: 16em;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
+        }
+        #navigation {
+            float: none;
+            flex: 0 0 var(--ldoc-nav-width);
+            width: var(--ldoc-nav-width);
+            min-width: var(--ldoc-nav-width);
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        #content {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-left: 0;
+            width: auto;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: auto;
+            overscroll-behavior: contain;
+        }
+        #about {
+            flex: 0 0 auto;
+            clear: none;
+        }
+        #ldoc-search {
+            position: relative;
+            margin: 8px 0 14px 0;
+        }
+        #ldoc-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        #ldoc-search-results {
+            display: none;
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            max-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .ldoc-search-item {
+            display: block;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: inherit;
+            text-decoration: none;
+        }
+        .ldoc-search-item:hover {
+            background: #f7f7f7;
+        }
+        .ldoc-search-item:last-child {
+            border-bottom: none;
+        }
+        .ldoc-search-title {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .ldoc-search-meta {
+            display: block;
+            margin-top: 2px;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #666;
+        }
+        .ldoc-search-empty {
+            padding: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-eco</h1>
+
+<div id="ldoc-search">
+    <input id="ldoc-search-input" type="text" placeholder="Search symbols (functions, constants)..." autocomplete="off" />
+    <div id="ldoc-search-results"></div>
+</div>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Why_lua_eco">Why lua-eco </a></li>
+<li><a href="#Quick_start">Quick start </a></li>
+<li><a href="#How_it_works">How it works </a></li>
+<li><a href="#Modules">Modules </a></li>
+<li><a href="#Requirements">Requirements </a></li>
+<li><a href="#Build">Build </a></li>
+<li><a href="#Documentation">Documentation </a></li>
+<li><a href="#________Donation__https___zhaojh329_github_io_zhaojh329__">❤️ [Donation](https://zhaojh329.github.io/zhaojh329/) </a></li>
+</ul>
+
+
+<h2>Topics</h2>
+<ul class="">
+  <li><strong>README</strong></li>
+</ul>
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eco.html">eco</a></li>
+  <li><a href="../modules/eco.time.html">eco.time</a></li>
+  <li><a href="../modules/eco.log.html">eco.log</a></li>
+  <li><a href="../modules/eco.file.html">eco.file</a></li>
+  <li><a href="../modules/eco.sys.html">eco.sys</a></li>
+  <li><a href="../modules/eco.sync.html">eco.sync</a></li>
+  <li><a href="../modules/eco.channel.html">eco.channel</a></li>
+  <li><a href="../modules/eco.shared.html">eco.shared</a></li>
+  <li><a href="../modules/eco.uci.html">eco.uci</a></li>
+  <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
+  <li><a href="../modules/eco.socket.html">eco.socket</a></li>
+  <li><a href="../modules/eco.packet.html">eco.packet</a></li>
+  <li><a href="../modules/eco.dns.html">eco.dns</a></li>
+  <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
+  <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
+  <li><a href="../modules/eco.nl.html">eco.nl</a></li>
+  <li><a href="../modules/eco.genl.html">eco.genl</a></li>
+  <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
+  <li><a href="../modules/eco.ip.html">eco.ip</a></li>
+  <li><a href="../modules/eco.nl80211.html">eco.nl80211</a></li>
+  <li><a href="../modules/eco.websocket.html">eco.websocket</a></li>
+  <li><a href="../modules/eco.termios.html">eco.termios</a></li>
+  <li><a href="../modules/eco.ssh.html">eco.ssh</a></li>
+  <li><a href="../modules/eco.http.server.html">eco.http.server</a></li>
+  <li><a href="../modules/eco.http.client.html">eco.http.client</a></li>
+  <li><a href="../modules/eco.encoding.hex.html">eco.encoding.hex</a></li>
+  <li><a href="../modules/eco.encoding.base64.html">eco.encoding.base64</a></li>
+  <li><a href="../modules/eco.hash.md5.html">eco.hash.md5</a></li>
+  <li><a href="../modules/eco.hash.sha1.html">eco.hash.sha1</a></li>
+  <li><a href="../modules/eco.hash.sha256.html">eco.hash.sha256</a></li>
+  <li><a href="../modules/eco.hash.hmac.html">eco.hash.hmac</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/channel.lua.html">channel.lua</a></li>
+  <li><a href="../examples/coroutine.lua.html">coroutine.lua</a></li>
+  <li><a href="../examples/dns.lua.html">dns.lua</a></li>
+  <li><a href="../examples/base64.lua.html">base64.lua</a></li>
+  <li><a href="../examples/hex.lua.html">hex.lua</a></li>
+  <li><a href="../examples/env.lua.html">env.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/dir.lua.html">dir.lua</a></li>
+  <li><a href="../examples/file.lua.html">file.lua</a></li>
+  <li><a href="../examples/flock.lua.html">flock.lua</a></li>
+  <li><a href="../examples/inotify.lua.html">inotify.lua</a></li>
+  <li><a href="../examples/walk.lua.html">walk.lua</a></li>
+  <li><a href="../examples/hmac.lua.html">hmac.lua</a></li>
+  <li><a href="../examples/md5.lua.html">md5.lua</a></li>
+  <li><a href="../examples/sha1.lua.html">sha1.lua</a></li>
+  <li><a href="../examples/sha256.lua.html">sha256.lua</a></li>
+  <li><a href="../examples/hook.lua.html">hook.lua</a></li>
+  <li><a href="../examples/download_file.lua.html">download_file.lua</a></li>
+  <li><a href="../examples/get.lua.html">get.lua</a></li>
+  <li><a href="../examples/post.lua.html">post.lua</a></li>
+  <li><a href="../examples/post_file.lua.html">post_file.lua</a></li>
+  <li><a href="../examples/post_form.lua.html">post_form.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
+  <li><a href="../examples/log.lua.html">log.lua</a></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
+  <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
+  <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
+  <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
+  <li><a href="../examples/ip-addr-del.lua.html">ip-addr-del.lua</a></li>
+  <li><a href="../examples/ip-addr-get.lua.html">ip-addr-get.lua</a></li>
+  <li><a href="../examples/ip-link.lua.html">ip-link.lua</a></li>
+  <li><a href="../examples/link_del.lua.html">link_del.lua</a></li>
+  <li><a href="../examples/link_dump.lua.html">link_dump.lua</a></li>
+  <li><a href="../examples/link_event.lua.html">link_event.lua</a></li>
+  <li><a href="../examples/nl80211_add_interface.lua.html">nl80211_add_interface.lua</a></li>
+  <li><a href="../examples/nl80211_del_interface.lua.html">nl80211_del_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_interface.lua.html">nl80211_dump_interface.lua</a></li>
+  <li><a href="../examples/nl80211_dump_station.lua.html">nl80211_dump_station.lua</a></li>
+  <li><a href="../examples/nl80211_get_freqlist.lua.html">nl80211_get_freqlist.lua</a></li>
+  <li><a href="../examples/nl80211_get_interface.lua.html">nl80211_get_interface.lua</a></li>
+  <li><a href="../examples/nl80211_get_station.lua.html">nl80211_get_station.lua</a></li>
+  <li><a href="../examples/nl80211_scan.lua.html">nl80211_scan.lua</a></li>
+  <li><a href="../examples/nl80211_set_interface.lua.html">nl80211_set_interface.lua</a></li>
+  <li><a href="../examples/route_event.lua.html">route_event.lua</a></li>
+  <li><a href="../examples/panic_hook.lua.html">panic_hook.lua</a></li>
+  <li><a href="../examples/send-at-command.lua.html">send-at-command.lua</a></li>
+  <li><a href="../examples/shared.lua.html">shared.lua</a></li>
+  <li><a href="../examples/signal.lua.html">signal.lua</a></li>
+  <li><a href="../examples/ping.lua.html">ping.lua</a></li>
+  <li><a href="../examples/ping6.lua.html">ping6.lua</a></li>
+  <li><a href="../examples/recver.lua.html">recver.lua</a></li>
+  <li><a href="../examples/sender.lua.html">sender.lua</a></li>
+  <li><a href="../examples/arp-scan.lua.html">arp-scan.lua</a></li>
+  <li><a href="../examples/arping.lua.html">arping.lua</a></li>
+  <li><a href="../examples/capture.lua.html">capture.lua</a></li>
+  <li><a href="../examples/send_tcp.lua.html">send_tcp.lua</a></li>
+  <li><a href="../examples/send_udp.lua.html">send_udp.lua</a></li>
+  <li><a href="../examples/socketpair_dgram.lua.html">socketpair_dgram.lua</a></li>
+  <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
+  <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/dgram_client.lua.html">dgram_client.lua</a></li>
+  <li><a href="../examples/dgram_server.lua.html">dgram_server.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/spawn.lua.html">spawn.lua</a></li>
+  <li><a href="../examples/exec.lua.html">exec.lua</a></li>
+  <li><a href="../examples/scp_recv.lua.html">scp_recv.lua</a></li>
+  <li><a href="../examples/scp_send.lua.html">scp_send.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+  <li><a href="../examples/cond.lua.html">cond.lua</a></li>
+  <li><a href="../examples/mutex.lua.html">mutex.lua</a></li>
+  <li><a href="../examples/wait_group.lua.html">wait_group.lua</a></li>
+  <li><a href="../examples/termios.lua.html">termios.lua</a></li>
+  <li><a href="../examples/timer.lua.html">timer.lua</a></li>
+  <li><a href="../examples/signatures.lua.html">signatures.lua</a></li>
+  <li><a href="../examples/subscribe.lua.html">subscribe.lua</a></li>
+  <li><a href="../examples/ubus.lua.html">ubus.lua</a></li>
+  <li><a href="../examples/client.lua.html">client.lua</a></li>
+  <li><a href="../examples/server.lua.html">server.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+
+<h1>lua-eco(<a href="README_ZH.md">中文</a>)</h1>
+
+
+<p><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg?style=plastic" alt="license"/></a>
+<a href="https://github.com/zhaojh329/lua-eco/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=plastic" alt="PRs Welcome"/></a>
+<a href="https://github.com/zhaojh329/lua-eco/issues/new"><img src="https://img.shields.io/badge/Issues-welcome-brightgreen.svg?style=plastic" alt="Issue Welcome"/></a>
+<a href="https://github.com/zhaojh329/lua-eco/releases"><img src="https://img.shields.io/badge/release-3.17.0-blue.svg?style=plastic" alt="Release Version"/></a>
+<img src="https://github.com/zhaojh329/lua-eco/workflows/build/badge.svg" alt="Build Status"/>
+<a href="https://deepwiki.com/zhaojh329/lua-eco"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
+<img src="https://visitor-badge.laobi.icu/badge?page_id=zhaojh329.lua-eco" alt="visitors"/></p>
+
+
+<p>Lua-eco is a coroutine-first runtime environment for Lua 5.4.</p>
+
+<p>At its core is an <strong>I/O-event-driven coroutine scheduler</strong> (Linux <code>epoll</code> + timers): all I/O APIs use <strong>non-blocking file descriptors</strong> under the hood while exposing a <strong>synchronous</strong> programming style in Lua.</p>
+
+<p>This means you can write code like "connect -> read -> write -> sleep" in a single coroutine, and Lua-eco will automatically yield and resume it based on I/O readiness.</p>
+
+<p><a name="Why_lua_eco"></a></p>
+<h2>Why lua-eco</h2>
+
+<ul>
+    <li><strong>Synchronous APIs, non-blocking internals</strong>: write straightforward code (no callbacks or state machines); coroutines yield on <code>EAGAIN</code> and resume when ready.</li>
+    <li><strong>High concurrency with lightweight coroutines</strong>: run thousands of tasks in a single OS thread.</li>
+    <li><strong>Practical built-in modules</strong>: sockets, TLS, HTTP/WebSocket, MQTT, DNS, logging, filesystem, sync primitives, netlink, OpenWrt integrations, and more. All I/O modules share the same coroutine scheduler.</li>
+</ul>
+
+<p><a name="Quick_start"></a></p>
+<h2>Quick start</h2>
+
+<p>Lua-eco is designed to run Lua programs with the <a href="../modules/eco.html#">eco</a> interpreter
+(<code>#!/usr/bin/env eco</code>). The <a href="../modules/eco.html#">eco</a> module is built into this interpreter.</p>
+
+<p>When the <a href="../modules/eco.html#">eco</a> interpreter starts:</p>
+
+<ul>
+    <li>the <a href="../modules/eco.html#">eco</a> module is loaded and injected into <code>_G</code> automatically.</li>
+    <li>your entry script runs in a coroutine created internally via <code>eco.run(...)</code>.</li>
+    <li>the scheduler starts internally via <code>eco.loop()</code>.</li>
+</ul>
+
+<p>At script top level:</p>
+
+<ul>
+    <li>you should not call <code>eco.loop()</code> yourself.</li>
+    <li>you usually do not need to call <code>eco.run()</code> to wrap the entry script.</li>
+    <li>you may still call <code>local eco = require &apos;eco&apos;</code>; it returns the already loaded <code>_G.eco</code>.
+
+<pre>
+This is useful <span class="keyword">for</span> avoiding Lua LSP warnings such as <span class="backtick"><code>Undefined global &apos;eco&apos;</code></span>.
+</pre>
+
+Minimal script:</li>
+</ul>
+
+
+<pre>
+#!/usr/bin/env eco
+
+<span class="keyword">local</span> time = <span class="global">require</span> <span class="string">'eco.time'</span>
+
+time.<span class="function-name">sleep</span>(<span class="number">1.0</span>)
+<span class="global">print</span>(<span class="string">'hello from eco runtime'</span>)
+</pre>
+
+
+<p>Starting additional coroutines explicitly:</p>
+
+
+<pre>
+#!/usr/bin/env eco
+
+<span class="keyword">local</span> time = <span class="global">require</span> <span class="string">'eco.time'</span>
+<span class="keyword">local</span> eco = <span class="global">require</span> <span class="string">'eco'</span> <span class="comment">-- optional: avoids LSP "Undefined global 'eco'"
+</span>
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>(name)
+    <span class="keyword">local</span> co = <span class="global">coroutine</span>.<span class="function-name">running</span>()
+    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+        <span class="global">print</span>(time.<span class="function-name">now</span>(), name, co)
+        time.<span class="function-name">sleep</span>(<span class="number">1.0</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>, <span class="string">'eco1'</span>)
+
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>(name)
+    <span class="keyword">local</span> co = <span class="global">coroutine</span>.<span class="function-name">running</span>()
+    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+        <span class="global">print</span>(time.<span class="function-name">now</span>(), name, co)
+        time.<span class="function-name">sleep</span>(<span class="number">2.0</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>, <span class="string">'eco2'</span>)
+</pre>
+
+
+<p>Simple HTTPS request (still written synchronously):</p>
+
+
+<pre>
+#!/usr/bin/env eco
+
+<span class="keyword">local</span> http = <span class="global">require</span> <span class="string">'eco.http.client'</span>
+<span class="keyword">local</span> eco = <span class="global">require</span> <span class="string">'eco'</span> <span class="comment">-- optional: avoids LSP "Undefined global 'eco'"
+</span>
+eco.<span class="function-name">run</span>(<span class="keyword">function</span>()
+    <span class="keyword">local</span> resp, err = http.<span class="function-name">get</span>(<span class="string">'https://example.com'</span>, { timeout = <span class="number">10.0</span> })
+    <span class="global">assert</span>(resp, err)
+    <span class="global">print</span>(<span class="string">'status:'</span>, resp.code)
+    <span class="global">print</span>(resp.body)
+<span class="keyword">end</span>)
+</pre>
+
+
+<p><a name="How_it_works"></a></p>
+<h2>How it works</h2>
+
+<ul>
+    <li>Lua-eco creates non-blocking FDs for sockets/files.</li>
+    <li>When a coroutine calls an I/O method and the FD is not ready, Lua-eco registers the FD in <code>epoll</code>, then yields.</li>
+    <li>The main loop waits for readiness/timers and resumes the coroutine automatically.</li>
+</ul>
+
+<p>As long as you use lua-eco modules, your I/O code naturally follows a concurrent model with automatic coroutine scheduling.</p>
+
+<p><a name="Modules"></a></p>
+<h2>Modules</h2>
+
+<p>Core primitives:</p>
+
+<ul>
+    <li><a href="../modules/eco.html#">eco</a>: scheduler (<code>run</code>, <code>loop</code>, <code>sleep</code>, <a href="https://www.lua.org/manual/5.1/manual.html#5.7">io</a>, <code>reader</code>, <code>writer</code>, ...)</li>
+    <li><code>time</code>: timers and time helpers</li>
+    <li><code>log</code>: structured logging</li>
+    <li><code>sys</code>: signals, process utilities, spawn/exec helpers</li>
+    <li><code>file</code>: filesystem helpers + inotify wrappers</li>
+    <li><code>sync</code>: coroutine sync primitives (cond/mutex/...)</li>
+    <li><code>channel</code>: coroutine communication channel</li>
+</ul>
+
+<p>Networking:</p>
+
+<ul>
+    <li><code>socket</code>: TCP/UDP/UNIX/ICMP/raw packet sockets</li>
+    <li><code>ssl</code>: TLS client/server built on top of TCP sockets (OpenSSL/WolfSSL/MbedTLS backend)</li>
+    <li><code>http</code>: HTTP client/server (<a href="../modules/eco.http.client.html#">eco.http.client</a>, <a href="../modules/eco.http.server.html#">eco.http.server</a>, <code>eco.http.url</code>)</li>
+    <li><code>websocket</code>: WebSocket client/server (HTTP upgrade)</li>
+    <li><code>mqtt</code>: MQTT 3.1.1 client implementation</li>
+    <li><code>dns</code>: UDP DNS resolver</li>
+</ul>
+
+<p>Linux / system integrations:</p>
+
+<ul>
+    <li><code>packet</code>: low-level packet construction/parsing helpers</li>
+    <li><code>nl</code>, <code>genl</code>, <code>rtnl</code>, <code>nl80211</code>: netlink helpers and Wi-Fi (nl80211)</li>
+    <li><code>termios</code>: terminal/serial I/O bindings</li>
+    <li><code>ip</code>, <code>net</code>: network utilities built on top of netlink/socket</li>
+    <li><code>shared</code>: shared-memory dictionary over <code>mmap(MAP_SHARED)</code> (<code>/dev/shm</code>)</li>
+</ul>
+
+<p>OpenWrt:</p>
+
+<ul>
+    <li><code>ubus</code>: integration with OpenWrt [ubus]</li>
+    <li><code>uci</code>: bindings for UCI config (optional)</li>
+</ul>
+
+<p>Hash / encoding:</p>
+
+<ul>
+    <li><code>eco.hash</code>: <code>md5</code>, <code>sha1</code>, <code>sha256</code>, <code>hmac</code></li>
+    <li><code>eco.encoding</code>: <code>base64</code>, <code>hex</code></li>
+</ul>
+
+<p><a name="Requirements"></a></p>
+<h2>Requirements</h2>
+
+<ul>
+    <li>Linux (Lua-eco scheduler uses <code>epoll</code>)</li>
+    <li>Lua 5.4</li>
+</ul>
+
+<p>Optional dependencies (auto-detected; missing deps will skip the module):</p>
+
+<ul>
+    <li>TLS backend: OpenSSL, WolfSSL, or MbedTLS</li>
+    <li><code>ubus</code>: libubus + libubox (+ json-c)</li>
+    <li><code>uci</code>: libuci</li>
+    <li><code>ssh</code>: libssh2</li>
+</ul>
+
+<p><a name="Build"></a></p>
+<h2>Build</h2>
+
+<h3>Ubuntu</h3>
+
+
+<pre>
+sudo apt install -y liblua5.<span class="number">4</span>-dev
+git clone <span class="comment">--recursive https://github.com/zhaojh329/lua-eco.git
+</span>cd lua-eco &amp;&amp; mkdir build &amp;&amp; cd build
+cmake .. &amp;&amp; sudo make install
+</pre>
+
+<p>If you want TLS support via OpenSSL on Ubuntu:</p>
+
+
+<pre>
+sudo apt install -y libssl-dev
+</pre>
+
+<p>Disable optional modules if you don't need them:</p>
+
+
+<pre>
+cmake .. -DECO_SSL_SUPPORT=OFF -DECO_UBUS_SUPPORT=OFF -DECO_UCI_SUPPORT=OFF -DECO_SSH_SUPPORT=OFF
+</pre>
+
+<h3>OpenWrt</h3>
+
+
+<pre>
+Languages  <span class="comment">---&gt;
+</span>    Lua  <span class="comment">---&gt;
+</span>        -*- lua-eco............... A Lua interpreter with a built-<span class="keyword">in</span> event loop
+        -*- lua-eco-base64................................ base64 support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-dns...................................... dns support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-file.............................. file utils support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-http.............................. http/https support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-log................................ log utils support <span class="keyword">for</span> lua-eco
+         &lt;*&gt; lua-eco-mqtt.................................... mqtt support <span class="keyword">for</span> lua-eco
+         &lt;*&gt; lua-eco-network.............................. network support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-sha1.................................... sha1 support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-socket................................ socket support <span class="keyword">for</span> lua-eco
+         -*- lua-eco-ssl...................................... ssl support <span class="keyword">for</span> lua-eco
+            SSL <span class="function-name">Library</span> (mbedTLS)  <span class="comment">---&gt;
+</span>        ......
+</pre>
+
+<p><a name="Documentation"></a></p>
+<h2>Documentation</h2>
+
+<ul>
+    <li>Browse the generated API docs at https://zhaojh329.github.io/lua-eco/.</li>
+    <li>See runnable scripts in <a href="examples">examples</a> and <a href="tests">tests</a>.</li>
+</ul>
+
+<p><a name="________Donation__https___zhaojh329_github_io_zhaojh329__"></a></p>
+<h2>❤️ <a href="https://zhaojh329.github.io/zhaojh329/">Donation</a></h2>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2026-04-03 01:12:49 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+<script type="text/javascript" src="../ldoc_search_data.js"></script>
+<script type="text/javascript" src="../ldoc_search.js"></script>
+</body>
+</html>

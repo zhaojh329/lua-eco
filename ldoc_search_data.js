@@ -461,5 +461,6 @@ window.ldocSearchData = [
   {"symbol":"new","title":"new (hash, key)","url":"modules/eco.hash.hmac.html#new","module":"eco.hash.hmac","kind":"Functions","summary":"Create a new HMAC context."},
   {"symbol":"sum","title":"sum (hash, key, data)","url":"modules/eco.hash.hmac.html#sum","module":"eco.hash.hmac","kind":"Functions","summary":"One-shot HMAC."},
   {"symbol":"hmac:update","title":"hmac:update (data)","url":"modules/eco.hash.hmac.html#hmac:update","module":"eco.hash.hmac","kind":"Class hmac ","summary":"Update HMAC with more data."},
-  {"symbol":"hmac:final","title":"hmac:final ()","url":"modules/eco.hash.hmac.html#hmac:final","module":"eco.hash.hmac","kind":"Class hmac ","summary":"Finalize and return the HMAC digest."}
+  {"symbol":"hmac:final","title":"hmac:final ()","url":"modules/eco.hash.hmac.html#hmac:final","module":"eco.hash.hmac","kind":"Class hmac ","summary":"Finalize and return the HMAC digest."},
+  {"symbol":"dumbo","title":"dumbo ()","url":"topics/README.md.html#dumbo","module":"README","kind":"Why lua-eco ","summary":""}
 ];
