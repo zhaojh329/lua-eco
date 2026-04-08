@@ -236,6 +236,7 @@ window.ldocSearchData = [
   {"symbol":"socket:sendfile","title":"socket:sendfile (path[, len[, offset=0]])","url":"modules/eco.socket.html#socket:sendfile","module":"eco.socket","kind":"Class socket ","summary":"Send file contents on a connected stream socket."},
   {"symbol":"socket:recv","title":"socket:recv ()","url":"modules/eco.socket.html#socket:recv","module":"eco.socket","kind":"Class socket ","summary":"Alias of @{socket:read}."},
   {"symbol":"socket:read","title":"socket:read ()","url":"modules/eco.socket.html#socket:read","module":"eco.socket","kind":"Class socket ","summary":"See @{eco.reader:read}"},
+  {"symbol":"socket:recvfull","title":"socket:recvfull ()","url":"modules/eco.socket.html#socket:recvfull","module":"eco.socket","kind":"Class socket ","summary":"Alias of @{socket:readfull}."},
   {"symbol":"socket:readfull","title":"socket:readfull ()","url":"modules/eco.socket.html#socket:readfull","module":"eco.socket","kind":"Class socket ","summary":"See @{eco.reader:readfull}"},
   {"symbol":"socket:readuntil","title":"socket:readuntil ()","url":"modules/eco.socket.html#socket:readuntil","module":"eco.socket","kind":"Class socket ","summary":"See @{eco.reader:readuntil}"},
   {"symbol":"socket:recvfrom","title":"socket:recvfrom (n[, timeout])","url":"modules/eco.socket.html#socket:recvfrom","module":"eco.socket","kind":"Class socket ","summary":"Receive a datagram."},
