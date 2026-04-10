@@ -47,7 +47,7 @@ local client = mqtt.new({
 })
 
 -- And you can set an option individually
-client:set('keepalive', 5.0)
+client:set('keepalive', 5)
 
 -- You can add multiple event handlers at once
 client:on({
