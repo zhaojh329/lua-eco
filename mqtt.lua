@@ -35,7 +35,6 @@ local PKT_UNSUBACK    = 11
 local PKT_PINGREQ     = 12
 local PKT_DISCONNECT  = 14
 
-local retransmit_interval = 5.0
 local read_timeout = 5.0
 
 local function check_will_option(will)
@@ -159,6 +158,11 @@ local function get_next_mid(self)
     return self.mid
 end
 
+local function get_next_tx_seq(self)
+    self.tx_seq = self.tx_seq + 1
+    return self.tx_seq
+end
+
 local function on_event(self, ev, data)
     local cb = self.handlers[ev]
     if cb then
@@ -175,24 +179,31 @@ local function send_pkt(self, data)
     return ok
 end
 
-local function handle_retransmit(tmr, self)
-    for _, w in pairs(self.wait_for_suback) do
-        send_pkt(self, w.data)
+local function retransmit_unack_packets(self)
+    local packets = {}
+
+    local function add_waiting_packets(waiting)
+        for _, w in pairs(waiting) do
+            packets[#packets + 1] = w
+        end
     end
 
-    for _, w in pairs(self.wait_for_unsuback) do
-        send_pkt(self, w.data)
+    add_waiting_packets(self.wait_for_puback)
+    add_waiting_packets(self.wait_for_pubrec)
+    add_waiting_packets(self.wait_for_pubcomp)
+
+    table.sort(packets, function(a, b)
+        return a.seq < b.seq
+    end)
+
+    for _, w in ipairs(packets) do
+        local ok, err = send_pkt(self, w.data)
+        if not ok then
+            return nil, err
+        end
     end
 
-    for _, w in pairs(self.wait_for_puback) do
-        send_pkt(self, w.data)
-    end
-
-    for _, w in pairs(self.wait_for_pubrec) do
-        send_pkt(self, w.data)
-    end
-
-    tmr:set(retransmit_interval)
+    return true
 end
 
 local max_mult = 128 * 128 * 128 * 128
@@ -272,7 +283,12 @@ local function handle_packet(self)
 
             self.connected = true
 
-            self.retransmit_timer:set(retransmit_interval)
+            if not opts.clean_session and session_present then
+                local ok, retransmit_err = retransmit_unack_packets(self)
+                if not ok then
+                    return false, retransmit_err
+                end
+            end
 
             if opts.keepalive > 0 then
                 self.ping_tmr:set(opts.keepalive)
@@ -325,7 +341,10 @@ local function handle_packet(self)
         self.wait_for_pubrec[mid] = nil
 
         data = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid):data()
-        self.wait_for_pubcomp[mid] = { data = data }
+        self.wait_for_pubcomp[mid] = {
+            data = data,
+            seq = get_next_tx_seq(self)
+        }
         return send_pkt(self, data)
     elseif pt == PKT_PUBCOMP then
         local mid = string.unpack('>I2', data)
@@ -513,9 +532,15 @@ function methods:publish(topic, payload, qos, retain)
         pkt:change_flags(flags | 1 << 3)
 
         if qos == M.QOS1 then
-            self.wait_for_puback[mid] = { data = pkt:data() }
+            self.wait_for_puback[mid] = {
+                data = pkt:data(),
+                seq = get_next_tx_seq(self)
+            }
         else
-            self.wait_for_pubrec[mid] = { data = pkt:data() }
+            self.wait_for_pubrec[mid] = {
+                data = pkt:data(),
+                seq = get_next_tx_seq(self)
+            }
         end
     end
 
@@ -555,7 +580,8 @@ function methods:subscribe(topic, qos)
 
     self.wait_for_suback[mid] = {
         topic = topic,
-        data = data
+        data = data,
+        seq = get_next_tx_seq(self)
     }
 
     local ok, err = send_pkt(self, data)
@@ -585,7 +611,8 @@ function methods:unsubscribe(topic)
 
     self.wait_for_unsuback[mid] = {
         topic = topic,
-        data = data
+        data = data,
+        seq = get_next_tx_seq(self)
     }
 
     local ok, err = send_pkt(self, data)
@@ -654,7 +681,6 @@ function methods:run()
 
     on_event(self, 'error', err)
 
-    self.retransmit_timer:cancel()
     self.ping_tmr:cancel()
     self.wait_pingresp:cancel()
     self.sock:close()
@@ -700,6 +726,7 @@ function M.new(opts)
 
     local o = {
         mid = 0,
+        tx_seq = 0,
         opts = opts,
         handlers = {},
         wait_for_suback = {},
@@ -709,8 +736,6 @@ function M.new(opts)
         wait_for_pubrel = {},
         wait_for_pubcomp = {}
     }
-
-    o.retransmit_timer = time.timer(handle_retransmit, o)
 
     o.wait_conack = time.timer(function()
         on_event(o, 'error', 'wait CONACK timeout')
