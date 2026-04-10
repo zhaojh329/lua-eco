@@ -237,27 +237,31 @@ local function read_packet(sock)
         end
     until byte & 0x80 == 0
 
+    if remlen == 0 then
+        return { type = typ, flags = flags }
+    end
+
     local data, err = sock:readfull(remlen, read_timeout)
     if not data then
         return nil, 'network: ' .. err
     end
 
-    return typ, flags, data
+    return { type = typ, flags = flags, data = data }
 end
 
 local function handle_packet(self)
-    local pt, flags, data = read_packet(self.sock)
-    if not pt then
-        return false, flags
+    local pkt, err = read_packet(self.sock)
+    if not pkt then
+        return false, err
     end
 
-    if not self.connected and pt ~= PKT_CONNACK then
-        return false, 'expecting CONNACK but received ' .. pt
+    if not self.connected and pkt.type ~= PKT_CONNACK then
+        return false, 'expecting CONNACK but received ' .. pkt.type
     end
 
     self.wait_pingresp:cancel()
 
-    if pt == PKT_CONNACK then
+    if pkt.type == PKT_CONNACK then
         if self.connected then
             on_event(self, 'error', 'unexpecting CONNACK received')
             return true
@@ -274,9 +278,9 @@ local function handle_packet(self)
             'connection refused: not authorised'
         }
 
-        local rc = str_byte(data, 2)
+        local rc = str_byte(pkt.data, 2)
         local reason = reasons[rc + 1] or ('connection refused: unknown reason code ' .. rc)
-        local session_present = str_byte(data) & 0x01 == 1
+        local session_present = str_byte(pkt.data) & 0x01 == 1
 
         if rc == M.CONNACK_ACCEPTED then
             local opts = self.opts
@@ -296,8 +300,8 @@ local function handle_packet(self)
         end
 
         on_event(self, 'conack', { rc = rc, reason = reason, session_present = session_present })
-    elseif pt == PKT_SUBACK then
-        local mid, rc = string.unpack('>I2B', data)
+    elseif pkt.type == PKT_SUBACK then
+        local mid, rc = string.unpack('>I2B', pkt.data)
         local w = self.wait_for_suback[mid]
         if not w then
             return true
@@ -310,24 +314,24 @@ local function handle_packet(self)
         else
             on_event(self, 'suback', { rc = rc, topic = w.topic })
         end
-    elseif pt == PKT_UNSUBACK then
-        local mid = string.unpack('>I2', data)
+    elseif pkt.type == PKT_UNSUBACK then
+        local mid = string.unpack('>I2', pkt.data)
         local w = self.wait_for_unsuback[mid]
         if not w then
             return true
         end
         self.wait_for_unsuback[mid] = nil
         on_event(self, 'unsuback', w.topic)
-    elseif pt == PKT_PUBACK then
-        local mid = string.unpack('>I2', data)
+    elseif pkt.type == PKT_PUBACK then
+        local mid = string.unpack('>I2', pkt.data)
         local w = self.wait_for_puback[mid]
         if not w then
             return true
         end
         self.wait_for_puback[mid] = nil
         return true
-    elseif pt == PKT_PUBREC then
-        local mid = string.unpack('>I2', data)
+    elseif pkt.type == PKT_PUBREC then
+        local mid = string.unpack('>I2', pkt.data)
 
         -- check if this is a duplicate
         if self.wait_for_pubcomp[mid] then
@@ -340,32 +344,32 @@ local function handle_packet(self)
         end
         self.wait_for_pubrec[mid] = nil
 
-        data = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid):data()
+        local data = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid):data()
         self.wait_for_pubcomp[mid] = {
             data = data,
             seq = get_next_tx_seq(self)
         }
         return send_pkt(self, data)
-    elseif pt == PKT_PUBCOMP then
-        local mid = string.unpack('>I2', data)
+    elseif pkt.type == PKT_PUBCOMP then
+        local mid = string.unpack('>I2', pkt.data)
         local w = self.wait_for_pubcomp[mid]
         if not w then
             return true
         end
         self.wait_for_pubcomp[mid] = nil
-    elseif pt == PKT_PUBREL then
-        local mid = string.unpack('>I2', data)
+    elseif pkt.type == PKT_PUBREL then
+        local mid = string.unpack('>I2', pkt.data)
         self.wait_for_pubrel[mid] = nil
-        data = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid):data()
+        local data = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid):data()
         return send_pkt(self, data)
-    elseif pt == PKT_PUBLISH then
-        local topic_len = string.unpack('>I2', data)
-        local topic = data:sub(3, 3 + topic_len - 1)
-        local dup = (flags >> 3) & 0x1 == 0x1
-        local qos = (flags >> 1) & 0x3
-        local retain = flags & 0x1 == 0x1
+    elseif pkt.type == PKT_PUBLISH then
+        local topic_len = string.unpack('>I2', pkt.data)
+        local topic = pkt.data:sub(3, 3 + topic_len - 1)
+        local dup = (pkt.flags >> 3) & 0x1 == 0x1
+        local qos = (pkt.flags >> 1) & 0x3
+        local retain = pkt.flags & 0x1 == 0x1
 
-        data = data:sub(3 + topic_len)
+        local data = pkt.data:sub(3 + topic_len)
 
         if qos > 0 then
             local mid = string.unpack('>I2', data)
@@ -381,7 +385,7 @@ local function handle_packet(self)
                 if w then
                     return true
                 else
-                    local pkt = mqtt_packet(PKT_PUBREC, 0x00, 2):add_u16(mid)
+                    pkt = mqtt_packet(PKT_PUBREC, 0x00, 2):add_u16(mid)
                     self.wait_for_pubrel[mid] = { data = pkt:data() }
                     local ok, err = send_pkt(self, pkt:data())
                     if not ok then
