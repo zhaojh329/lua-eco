@@ -139,6 +139,26 @@ static int lua_log_set_flags(lua_State *L)
     return 0;
 }
 
+static int lua_log_set_roll_size(lua_State *L)
+{
+    lua_Integer size = luaL_checkinteger(L, 1);
+
+    luaL_argcheck(L, size >= 0, 1, "size must be >= 0");
+
+    set_log_roll_size((size_t)size);
+
+    return 0;
+}
+
+static int lua_log_set_roll_count(lua_State *L)
+{
+    int count = luaL_checkinteger(L, 1);
+
+    set_log_roll_count(count);
+
+    return 0;
+}
+
 static int lua_log_set_ident(lua_State *L)
 {
     const char *ident = luaL_checkstring(L, 1);
@@ -156,6 +176,8 @@ static const luaL_Reg funcs[] = {
     {"log", lua_log},
     {"set_path", lua_log_set_path},
     {"set_flags", lua_log_set_flags},
+    {"set_roll_size", lua_log_set_roll_size},
+    {"set_roll_count", lua_log_set_roll_count},
     {"set_ident", lua_log_set_ident},
     {NULL, NULL}
 };
