@@ -237,6 +237,10 @@ local function read_packet(sock)
         end
     until byte & 0x80 == 0
 
+    if remlen == 0 then
+        return typ, flags, ''
+    end
+
     local data, err = sock:readfull(remlen, read_timeout)
     if not data then
         return nil, 'network: ' .. err
