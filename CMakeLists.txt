@@ -69,6 +69,10 @@ add_library(socket MODULE socket.c)
 target_link_libraries(socket PRIVATE ${LUA54_LIBRARIES} ${LIBEV_LIBRARY} libeco)
 set_target_properties(socket PROPERTIES OUTPUT_NAME socket PREFIX "")
 
+add_library(dns MODULE dns.c)
+target_link_libraries(dns PRIVATE ${LUA54_LIBRARIES})
+set_target_properties(dns PROPERTIES OUTPUT_NAME dns PREFIX "")
+
 add_library(termios MODULE termios.c)
 target_link_libraries(termios PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
@@ -204,7 +208,7 @@ install(
 )
 
 install(
-    TARGETS sys file time nl genl socket nl80211
+    TARGETS sys file time nl genl socket nl80211 dns
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/core
 )
 
