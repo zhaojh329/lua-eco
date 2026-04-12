@@ -33,18 +33,91 @@ local resolver_errstrs = {
 
 local soa_int32_fields = { 'serial', 'refresh', 'retry', 'expire', 'minimum' }
 
+local RESOLV_CONF_PATH = '/etc/resolv.conf'
+local HOSTS_PATH = '/etc/hosts'
+
+local resolv_cache = {
+    version = nil,
+    conf = nil
+}
+
+local hosts_cache = {
+    version = nil,
+    index = nil
+}
+
 local transaction_id_init
 
+local function get_file_version(path)
+    if not file.access(path, 'r') then
+        return nil
+    end
+
+    local st = file.stat(path)
+    if not st then
+        return nil
+    end
+
+    return st.mtime
+end
+
+local function build_hosts_index()
+    local index = {
+        [M.TYPE_A] = {},
+        [M.TYPE_AAAA] = {}
+    }
+
+    for line in io.lines(HOSTS_PATH) do
+        if line:sub(1, 1) ~= '#' and line ~= '' then
+            local fields = {}
+
+            for field in line:gmatch('%S+') do
+                fields[#fields + 1] = field
+            end
+
+            local address = fields[1]
+            local address_type
+
+            if socket.is_ipv4_address(address) then
+                address_type = M.TYPE_A
+            elseif socket.is_ipv6_address(address) then
+                address_type = M.TYPE_AAAA
+            end
+
+            if address_type and #fields > 1 then
+                local names = index[address_type]
+
+                for i = 2, #fields do
+                    local name = fields[i]
+                    if name:sub(1, 1) == '#' then
+                        break
+                    end
+
+                    if not names[name] then
+                        names[name] = address
+                    end
+                end
+            end
+        end
+    end
+
+    return index
+end
+
 local function parse_resolvconf()
+    local version = get_file_version(RESOLV_CONF_PATH)
+    if not version then
+        return
+    end
+
+    if version == resolv_cache.version then
+        return resolv_cache.conf
+    end
+
     local nameservers = {}
     local conf = {}
 
-    if not file.access('/etc/resolv.conf') then
-        conf.nameservers = {{ '127.0.0.1', 53 }}
-        return conf
-    end
-
-    for line in io.lines('/etc/resolv.conf') do
+    for line in io.lines(RESOLV_CONF_PATH) do
         if line:match('search') then
             local search = line:match('search%s+(%S+)')
             if not search:match('%.') then
@@ -65,6 +138,9 @@ local function parse_resolvconf()
     end
 
     conf.nameservers = nameservers
+
+    resolv_cache.version = version
+    resolv_cache.conf = conf
 
     return conf
 end
@@ -412,13 +488,13 @@ local function parse_response(buf, id)
         return nil, resolver_errstrs[code] or 'unknown'
     end
 
-    local err
+    local new_pos, perr = parse_section(answers, M.SECTION_AN, buf, pos, nan)
 
-    pos, err = parse_section(answers, M.SECTION_AN, buf, pos, nan)
-
-    if not pos then
-        return nil, err
+    if not new_pos then
+        return nil, perr
     end
+
+    pos = new_pos
 
     return answers
 end
@@ -439,36 +515,24 @@ local function query(s, id, req, nameserver)
 end
 
 local function name_from_hosts(qname, opts)
+    local version = get_file_version(HOSTS_PATH)
+    if not version then
+        return
+    end
+
+    if hosts_cache.version ~= version then
+        hosts_cache.version = version
+        hosts_cache.index = build_hosts_index()
+    end
+
     local typ = opts.type or M.TYPE_A
+    local address = hosts_cache.index[typ][qname]
 
-    for line in io.lines('/etc/hosts') do
-        if line:sub(1, 1) ~= '#' and line ~= '' then
-            local fields = {}
-
-            for field in line:gmatch('%S+') do
-                fields[#fields + 1] = field
-            end
-
-            local address = fields[1]
-            local address_type
-
-            if socket.is_ipv4_address(address) then
-                address_type = M.TYPE_A
-            elseif socket.is_ipv6_address(address) then
-                address_type = M.TYPE_AAAA
-            end
-
-            if address_type == typ and #fields > 1 then
-                for i = 2, #fields do
-                    if fields[i] == qname then
-                        return {{
-                            type = typ,
-                            address = address
-                        }}
-                    end
-                end
-            end
-        end
+    if address then
+        return {{
+            type = typ,
+            address = address
+        }}
     end
 end
 
@@ -531,7 +595,7 @@ function M.query(qname, opts)
         nameservers[#nameservers + 1] = { host, port, socket.is_ipv6_address(host) }
     end
 
-    local resolvconf = parse_resolvconf()
+    local resolvconf = parse_resolvconf() or { nameservers = {{ '127.0.0.1', 53 }} }
 
     if #nameservers == 0 then
         for _, nameserver in ipairs(resolvconf.nameservers) do
