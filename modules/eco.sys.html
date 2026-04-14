@@ -139,9 +139,8 @@
 <h2>Contents</h2>
 <ul>
 <li><a href="#Functions">Functions</a></li>
-<li><a href="#Fields">Fields</a></li>
 <li><a href="#Class_process">Class process </a></li>
-<li><a href="#Class_signal">Class signal </a></li>
+<li><a href="#Class_signal_handle">Class signal_handle </a></li>
 </ul>
 
 
@@ -280,9 +279,8 @@
 
 <h1>Module <code>eco.sys</code></h1>
 <p>System and process related utilities.</p>
-<p>
-
-</p>
+<p> All signal constants are available on this module via <code>sys.*</code>
+ (for example, <code>sys.SIGINT</code>, <code>sys.SIGTERM</code>, <code>sys.SIGHUP</code>, ...).</p>
 
 
 <h2><a href="#Functions">Functions</a></h2>
@@ -344,21 +342,6 @@
 	<td class="summary">Convert errno value to message.</td>
 	</tr>
 </table>
-<h2><a href="#Fields">Fields</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#SIGINT">SIGINT</a></td>
-	<td class="summary">Signal number for interrupt from keyboard.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#SIGTERM">SIGTERM</a></td>
-	<td class="summary">Signal number for termination.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#SIGHUP">SIGHUP</a></td>
-	<td class="summary">Signal number for terminal line hangup.</td>
-	</tr>
-</table>
 <h2><a href="#Class_process">Class process </a></h2>
 <table class="function_list">
 	<tr>
@@ -390,10 +373,10 @@
 	<td class="summary">Read from process stderr.</td>
 	</tr>
 </table>
-<h2><a href="#Class_signal">Class signal </a></h2>
+<h2><a href="#Class_signal_handle">Class signal_handle </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#signal:close">signal:close ()</a></td>
+	<td class="name" nowrap><a href="#signal_handle:close">signal_handle:close ()</a></td>
 	<td class="summary">Stop listening for the signal and release resources.</td>
 	</tr>
 </table>
@@ -539,14 +522,14 @@
     <ul>
         <pre class="example"><span class="keyword">local</span> out, err = sys.<span class="function-name">sh</span>({ <span class="string">'echo'</span>, <span class="string">'hello'</span> })
 <span class="keyword">if</span> <span class="keyword">not</span> out <span class="keyword">then</span>
-    <span class="global">print</span>(<span class="string">"Command failed:"</span>, e)
+    <span class="global">print</span>(<span class="string">'Command failed:'</span>, e)
 <span class="keyword">else</span>
-    <span class="global">print</span>(<span class="string">"stdout:"</span>, out)
-    <span class="global">print</span>(<span class="string">"stderr:"</span>, err)
+    <span class="global">print</span>(<span class="string">'stdout:'</span>, out)
+    <span class="global">print</span>(<span class="string">'stderr:'</span>, err)
 <span class="keyword">end</span>
 
 <span class="comment">-- Table form with program and arguments
-</span><span class="keyword">local</span> out, err, e = sys.<span class="function-name">sh</span>({ <span class="string">"ls"</span>, <span class="string">"-l"</span>, <span class="string">"/tmp"</span> })</pre>
+</span><span class="keyword">local</span> out, err, e = sys.<span class="function-name">sh</span>({ <span class="string">'ls'</span>, <span class="string">'-l'</span>, <span class="string">'/tmp'</span> })</pre>
     </ul>
 
 </dd>
@@ -611,7 +594,7 @@
  read the signal. When the specified signal <code>sig</code> is received, the
  callback <code>cb</code> is invoked with any additional arguments.</p>
 
-<p> The returned <a href="../modules/eco.sys.html#signal">signal</a> object controls the listener lifetime.
+<p> The returned <a href="../modules/eco.sys.html#Class_signal_handle">signal_handle</a> object controls the listener lifetime.
  Call <code>sig:close()</code> to stop listening.</p>
 
 <p> Internally this function blocks <code>signum</code> in the process mask and uses
@@ -625,8 +608,8 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">signum</span>
-            <span class="types"><span class="type">int</span></span>
-         Signal number to listen for (e.g., <a href="../modules/eco.sys.html#SIGINT">sys.SIGINT</a>).
+            <span class="types"><span class="type">integer</span></span>
+         Signal number to listen for (e.g., <code>sys.SIGINT</code>).
         </li>
         <li><span class="parameter">cb</span>
             <span class="types"><span class="type">function</span></span>
@@ -641,8 +624,8 @@
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="../modules/eco.sys.html#Class_signal">signal</a></span>
-        Signal object (use <a href="../modules/eco.sys.html#signal:close">signal:close</a> to stop listening).
+           <span class="types"><span class="type">signal_handle</span></span>
+        Signal object (use <a href="../modules/eco.sys.html#signal_handle:close">signal_handle:close</a> to stop listening).
     </ol>
      <h3>Or</h3>
     <ol>
@@ -681,7 +664,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         Uptime in seconds.
     </ol>
 
@@ -702,7 +685,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">pid</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          Process id to wait for. Use <code>-1</code> for any child.
         </li>
     </ul>
@@ -710,7 +693,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
         <li>
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         pid The pid that changed state, or <code>0</code> if none.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
@@ -742,7 +725,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         pid
     </ol>
 
@@ -762,7 +745,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         pid
     </ol>
 
@@ -817,11 +800,11 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">pid</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          Target pid.
         </li>
         <li><span class="parameter">sig</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          Signal number.
         </li>
     </ul>
@@ -858,7 +841,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         Child pid in parent, 0 in child.
     </ol>
      <h3>Or</h3>
@@ -888,11 +871,11 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">option</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          prctl option.
         </li>
         <li><span class="parameter">arg</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          Option-specific argument.
          (<em>optional</em>)
         </li>
@@ -930,7 +913,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         n
     </ol>
 
@@ -949,7 +932,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">errno</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          Error number.
         </li>
     </ul>
@@ -960,52 +943,6 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         message
     </ol>
-
-
-
-
-</dd>
-</dl>
-    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
-
-    <dl class="function">
-    <dt>
-    <a name = "SIGINT"></a>
-    <strong>SIGINT</strong>
-    </dt>
-    <dd>
-    Signal number for interrupt from keyboard.
-
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "SIGTERM"></a>
-    <strong>SIGTERM</strong>
-    </dt>
-    <dd>
-    Signal number for termination.
-
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "SIGHUP"></a>
-    <strong>SIGHUP</strong>
-    </dt>
-    <dd>
-    Signal number for terminal line hangup.
-
-
-
 
 
 
@@ -1057,10 +994,10 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
         <li>
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         pid Process id.</li>
         <li>
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         status Exit status.</li>
     </ol>
      <h3>Or</h3>
@@ -1088,7 +1025,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">sig</span>
-            <span class="types"><span class="type">int</span></span>
+            <span class="types"><span class="type">integer</span></span>
          Signal number.
         </li>
     </ul>
@@ -1165,7 +1102,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
     <h3>Returns:</h3>
     <ol>
         <li>
-           <span class="types"><span class="type">int</span></span>
+           <span class="types"><span class="type">integer</span></span>
         pid Process id.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
@@ -1218,20 +1155,20 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
 
 </dd>
 </dl>
-    <h2 class="section-header has-description"><a name="Class_signal"></a>Class signal </h2>
+    <h2 class="section-header has-description"><a name="Class_signal_handle"></a>Class signal_handle </h2>
 
           <div class="section-description">
           Signal handle returned by <a href="../modules/eco.sys.html#signal">sys.signal</a>. </p>
 
 <p> This object represents one signal listener created by <a href="../modules/eco.sys.html#signal">sys.signal</a>.</p>
 
-<p> Call <a href="../modules/eco.sys.html#signal:close">signal:close</a> to stop listening and release underlying resources.
+<p> Call <a href="../modules/eco.sys.html#signal_handle:close">signal_handle:close</a> to stop listening and release underlying resources.
  The close operation is idempotent.
           </div>
     <dl class="function">
     <dt>
-    <a name = "signal:close"></a>
-    <strong>signal:close ()</strong>
+    <a name = "signal_handle:close"></a>
+    <strong>signal_handle:close ()</strong>
     </dt>
     <dd>
     Stop listening for the signal and release resources. </p>
@@ -1254,7 +1191,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
-<i style="float:right;">Last updated 2026-04-14 13:50:17 </i>
+<i style="float:right;">Last updated 2026-04-14 14:29:51 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 <script type="text/javascript" src="../ldoc_search_data.js"></script>
