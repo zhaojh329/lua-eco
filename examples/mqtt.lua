@@ -15,7 +15,10 @@ local function on_conack(ack, client)
         return
     end
 
-    client:subscribe('test', mqtt.QOS2)
+    client:subscribe(
+        'test', mqtt.QOS2,
+        'tes1', mqtt.QOS1
+    )
 
     client:publish('eco', 'I am lua-eco MQTT', mqtt.QOS2)
 end

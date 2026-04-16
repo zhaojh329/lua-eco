@@ -154,7 +154,27 @@ test.run_case_sync('mqtt on and unconnected api semantics', function()
     end)
 
     test.expect_error(function()
+        c:subscribe('t', mqtt.QOS0, 't2')
+    end)
+
+    test.expect_error(function()
+        c:subscribe('t', mqtt.QOS0, '', mqtt.QOS1)
+    end)
+
+    test.expect_error(function()
+        c:subscribe('t', mqtt.QOS0, 't2', 9)
+    end)
+
+    test.expect_error(function()
         c:unsubscribe('')
+    end)
+
+    test.expect_error(function()
+        c:unsubscribe('t', '')
+    end)
+
+    test.expect_error(function()
+        c:unsubscribe('t', 1)
     end)
 
     local ok, err = c:publish('t', 'x', mqtt.QOS1)
@@ -203,21 +223,23 @@ test.run_case_sync('mqtt pending queue sequence semantics', function()
 
     assert(q2 and q2.seq > q1.seq)
 
-    ok, err = c:subscribe('seq/topic', mqtt.QOS1)
+    ok, err = c:subscribe('seq/topic', mqtt.QOS1, 'seq/topic/2', mqtt.QOS2)
     assert(ok and err == nil)
 
     local sub_mid = c.mid
     local sub = c.wait_for_suback[sub_mid]
 
     assert(sub and sub.seq > q2.seq)
+    assert(type(sub.topics) == 'table' and #sub.topics == 2)
 
-    ok, err = c:unsubscribe('seq/topic')
+    ok, err = c:unsubscribe('seq/topic', 'seq/topic/2')
     assert(ok and err == nil)
 
     local unsub_mid = c.mid
     local unsub = c.wait_for_unsuback[unsub_mid]
 
     assert(unsub and unsub.seq > sub.seq)
+    assert(type(unsub.topics) == 'table' and #unsub.topics == 2)
 
     local before_seq = c.tx_seq
 
@@ -396,11 +418,16 @@ test.run_case_sync('mqtt broker lifecycle semantics', function()
         suback = function(ack, self)
             assert(self == client)
 
-            if ack.topic ~= topic then
+            local results = ack.results
+            assert(type(results) == 'table' and #results == 1)
+
+            local r = results[1]
+
+            if r.topic ~= topic then
                 return
             end
 
-            if ack.rc == mqtt.SUBACK_FAILURE then
+            if r.rc == mqtt.SUBACK_FAILURE then
                 fail('suback failure for topic: ' .. topic)
                 return
             end

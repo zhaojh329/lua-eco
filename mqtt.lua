@@ -337,7 +337,7 @@ local function handle_packet(self)
 
         on_event(self, 'conack', { rc = rc, reason = reason, session_present = session_present })
     elseif pt == PKT_SUBACK then
-        local mid, rc = string.unpack('>I2B', data)
+        local mid = string.unpack('>I2', data)
         local w = self.wait_for_suback[mid]
         if not w then
             return true
@@ -345,10 +345,25 @@ local function handle_packet(self)
 
         self.wait_for_suback[mid] = nil
 
-        if rc ~= M.QOS0 and rc ~= M.QOS1 and rc ~= M.QOS2 and rc ~= M.SUBACK_FAILURE then
-            on_event(self, 'error', 'SUBACK for topic "' .. w.topic .. '" with invalid return code ' .. rc)
-        else
-            on_event(self, 'suback', { rc = rc, topic = w.topic })
+        local suback_count = #data - 2
+        local topic_count = #w.topics
+
+        if suback_count ~= topic_count then
+            on_event(self, 'error',
+                'SUBACK return code count mismatch: expecting ' .. topic_count .. ', got ' .. suback_count)
+            return true
+        end
+
+        for i = 1, topic_count do
+            local rc = str_byte(data, 2 + i)
+            local topic = w.topics[i].topic
+
+            if rc ~= M.QOS0 and rc ~= M.QOS1 and rc ~= M.QOS2 and rc ~= M.SUBACK_FAILURE then
+                on_event(self, 'error', 'SUBACK for topic "' .. topic .. '" with invalid return code ' .. rc)
+                return true
+            end
+
+            on_event(self, 'suback', { rc = rc, topic = topic })
         end
     elseif pt == PKT_UNSUBACK then
         local mid = string.unpack('>I2', data)
@@ -357,7 +372,10 @@ local function handle_packet(self)
             return true
         end
         self.wait_for_unsuback[mid] = nil
-        on_event(self, 'unsuback', w.topic)
+
+        for _, topic in ipairs(w.topics) do
+            on_event(self, 'unsuback', topic)
+        end
     elseif pt == PKT_PUBACK then
         local mid = string.unpack('>I2', data)
         local w = self.wait_for_puback[mid]
@@ -618,35 +636,71 @@ function methods:publish(topic, payload, qos, retain)
     return true
 end
 
---- Subscribe to a topic.
+--- Subscribe to topic(s).
 --
 -- This sends a SUBSCRIBE packet and later triggers the `suback` event.
 --
+-- Arguments are accepted as `(topic, qos, topic2, qos2, ...)`, and must be in pairs.
+--
 -- @tparam string topic Topic filter.
 -- @tparam[opt=mqtt.QOS0] integer qos Requested QoS.
+-- @param ... Optional additional `(topic, qos)` pairs.
 -- @treturn boolean true On success
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function methods:subscribe(topic, qos)
-    assert(type(topic) == 'string' and #topic > 0)
-    assert(qos == nil or qos == M.QOS0 or qos == M.QOS1 or qos == M.QOS2)
+function methods:subscribe(topic, qos, ...)
+    assert(type(topic) == 'string' and #topic > 0, 'expecting topic to be a non-empty string')
+    assert(qos == nil or qos == M.QOS0 or qos == M.QOS1 or qos == M.QOS2,
+           'expecting qos to be 0 or 1 or 2')
+
+    local extra_nargs = select('#', ...)
+    assert(extra_nargs % 2 == 0, 'expecting topic and qos to appear in pairs')
+
+    local topics = {
+        {
+            topic = topic,
+            qos = qos
+        }
+    }
+
+    for i = 1, extra_nargs, 2 do
+        local t = select(i, ...)
+        local q = select(i + 1, ...)
+        local idx = #topics + 1
+
+        assert(type(t) == 'string' and #t > 0,
+               'expecting topic #' .. idx .. ' to be a non-empty string')
+        assert(q == nil or q == M.QOS0 or q == M.QOS1 or q == M.QOS2,
+               'expecting qos #' .. idx .. ' to be 0 or 1 or 2')
+
+        topics[idx] = {
+            topic = t,
+            qos = q
+        }
+    end
 
     if not self.connected then
         return nil, 'unconnected'
     end
 
-    local remlen = 2 + 2 + #topic + 1
+    local remlen = 2
+
+    for _, sub in ipairs(topics) do
+        remlen = remlen + 2 + #sub.topic + 1
+    end
 
     local mid = get_next_mid(self)
     local pkt = mqtt_packet(PKT_SUBSCRIBE, 0x02, remlen):add_u16(mid)
 
-    pkt:add_string(topic)
-    pkt:add_u8(qos or M.QOS0)
+    for _, sub in ipairs(topics) do
+        pkt:add_string(sub.topic)
+        pkt:add_u8(sub.qos or M.QOS0)
+    end
 
     local data = pkt:data()
 
     self.wait_for_suback[mid] = {
-        topic = topic,
+        topics = topics,
         data = data,
         seq = get_next_tx_seq(self)
     }
@@ -660,32 +714,52 @@ function methods:subscribe(topic, qos)
     return true
 end
 
---- Unsubscribe from a topic.
+--- Unsubscribe from topic(s).
 --
 -- This sends an UNSUBSCRIBE packet and later triggers the `unsuback` event.
 --
 -- @tparam string topic Topic filter.
+-- @param ... Optional additional topic filters.
 -- @treturn boolean true On success
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function methods:unsubscribe(topic)
-    assert(type(topic) == 'string' and #topic > 0)
+function methods:unsubscribe(topic, ...)
+    assert(type(topic) == 'string' and #topic > 0, 'expecting topic to be a non-empty string')
+
+    local topics = { topic }
+    local extra_nargs = select('#', ...)
+
+    for i = 1, extra_nargs do
+        local t = select(i, ...)
+
+        assert(type(t) == 'string' and #t > 0,
+               'expecting topic #' .. (#topics + 1) .. ' to be a non-empty string')
+
+        topics[#topics + 1] = t
+    end
 
     if not self.connected then
         return nil, 'unconnected'
     end
 
-    local remlen = 2 + 2 + #topic
+    local remlen = 2
+
+    for _, t in ipairs(topics) do
+        remlen = remlen + 2 + #t
+    end
 
     local mid = get_next_mid(self)
     local pkt = mqtt_packet(PKT_UNSUBSCRIBE, 0x02, remlen):add_u16(mid)
 
-    pkt:add_string(topic)
+    for _, t in ipairs(topics) do
+        pkt:add_string(t)
+    end
 
     local data = pkt:data()
 
     self.wait_for_unsuback[mid] = {
         topic = topic,
+        topics = topics,
         data = data,
         seq = get_next_tx_seq(self)
     }
