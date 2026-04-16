@@ -58,6 +58,9 @@ add_library(dns MODULE dns.c)
 target_link_libraries(dns PRIVATE ${LUA54_LIBRARIES})
 set_target_properties(dns PROPERTIES OUTPUT_NAME dns PREFIX "")
 
+add_library(shared MODULE shared.c)
+set_target_properties(shared PROPERTIES OUTPUT_NAME shared PREFIX "")
+
 add_library(termios MODULE termios.c)
 set_target_properties(termios PROPERTIES OUTPUT_NAME termios PREFIX "")
 
@@ -152,7 +155,7 @@ install(
 )
 
 install(
-    TARGETS log termios
+    TARGETS log termios shared
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
@@ -173,7 +176,7 @@ install(
 
 install(
     FILES time.lua sys.lua file.lua dns.lua socket.lua
-        packet.lua mqtt.lua websocket.lua sync.lua channel.lua shared.lua net.lua
+        packet.lua mqtt.lua websocket.lua sync.lua channel.lua net.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
