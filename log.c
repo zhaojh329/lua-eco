@@ -43,6 +43,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "log/log.h"
 #include "eco.h"
@@ -62,6 +63,32 @@ static int lua_log_set_level(lua_State *L)
     set_log_level(level);
 
     return 0;
+}
+
+static void lua_log_emit_lines(const char *filename, int line, int priority,
+                               const char *message)
+{
+    const char *start = message;
+
+    while (1) {
+        const char *newline = strchr(start, '\n');
+        size_t len;
+
+        if (newline)
+            len = newline - start;
+        else
+            len = strlen(start);
+
+        if (len > 0 && start[len - 1] == '\r')
+            len--;
+
+        ___log(filename, line, priority, "%.*s", (int)len, start);
+
+        if (!newline)
+            break;
+
+        start = newline + 1;
+    }
 }
 
 static void __lua_log(lua_State *L, int priority)
@@ -133,7 +160,7 @@ static void __lua_log(lua_State *L, int priority)
         }
     }
 
-    ___log(filename, line, priority, "%s", buf);
+    lua_log_emit_lines(filename, line, priority, buf);
 }
 
 /**
