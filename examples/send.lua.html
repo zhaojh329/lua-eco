@@ -166,7 +166,7 @@
   <li><a href="../examples/server.lua.html">server.lua</a></li>
   <li><a href="../examples/server_multiprocess.lua.html">server_multiprocess.lua</a></li>
   <li><a href="../examples/log.lua.html">log.lua</a></li>
-  <li><strong>mqtt.lua</strong></li>
+  <li><a href="../examples/mqtt.lua.html">mqtt.lua</a></li>
   <li><a href="../examples/custom-proto.lua.html">custom-proto.lua</a></li>
   <li><a href="../examples/genl_get_family.lua.html">genl_get_family.lua</a></li>
   <li><a href="../examples/ip-addr-add.lua.html">ip-addr-add.lua</a></li>
@@ -203,7 +203,7 @@
   <li><a href="../examples/socketpair_fork.lua.html">socketpair_fork.lua</a></li>
   <li><a href="../examples/socketpair_stream.lua.html">socketpair_stream.lua</a></li>
   <li><a href="../examples/recv.lua.html">recv.lua</a></li>
-  <li><a href="../examples/send.lua.html">send.lua</a></li>
+  <li><strong>send.lua</strong></li>
   <li><a href="../examples/client.lua.html">client.lua</a></li>
   <li><a href="../examples/server.lua.html">server.lua</a></li>
   <li><a href="../examples/client.lua.html">client.lua</a></li>
@@ -273,85 +273,29 @@
 
 <div id="content">
 
-    <h2>mqtt.lua</h2>
+    <h2>send.lua</h2>
 <pre>
 #!/usr/bin/env eco
 
-<span class="comment">-- Using emqx for testing
-</span><span class="comment">-- docker run -d --name emqx -p 1883:1883 -p 8083:8083 -p 8084:8084 -p 8883:8883 -p 18083:18083 emqx/emqx:latest
-</span>
-<span class="keyword">local</span> mqtt = <span class="global">require</span> <span class="string">'eco.mqtt'</span>
-<span class="keyword">local</span> time = <span class="global">require</span> <span class="string">'eco.time'</span>
+<span class="keyword">local</span> socket = <span class="global">require</span> <span class="string">'eco.socket'</span>
+<span class="keyword">local</span> packet = <span class="global">require</span> <span class="string">'eco.packet'</span>
 
-<span class="keyword">local</span> auto_reconnect = <span class="keyword">false</span>
+<span class="comment">--[[
+sudo ip tuntap add dev tap0 mode tap
+sudo ip link set tap0 up
+sudo tcpdump -i tap0 -n
+--]]</span>
 
-<span class="keyword">local</span> <span class="keyword">function</span> <span class="function-name">on_conack</span>(ack, client)
-    <span class="global">print</span>(<span class="string">'conack:'</span>, ack.rc, <span class="string">'reason:'</span>, ack.reason, <span class="string">'session_present:'</span>, ack.session_present)
-
-    <span class="keyword">if</span> ack.rc ~= mqtt.CONNACK_ACCEPTED <span class="keyword">then</span>
-        <span class="keyword">return</span>
-    <span class="keyword">end</span>
-
-    client:<span class="function-name">subscribe</span>(
-        <span class="string">'test'</span>, mqtt.QOS2,
-        <span class="string">'tes1'</span>, mqtt.QOS1
-    )
-
-    client:<span class="function-name">publish</span>(<span class="string">'eco'</span>, <span class="string">'I am lua-eco MQTT'</span>, mqtt.QOS2)
+<span class="keyword">local</span> sock, err = socket.<span class="function-name">open_tun</span>(<span class="string">'tap0'</span>, { tap = <span class="keyword">true</span>, no_pi = <span class="keyword">true</span> })
+<span class="keyword">if</span> <span class="keyword">not</span> sock <span class="keyword">then</span>
+    <span class="global">error</span>(<span class="string">'create tun socket failed: '</span> .. err)
 <span class="keyword">end</span>
 
-<span class="keyword">local</span> <span class="keyword">function</span> <span class="function-name">on_suback</span>(ack)
-    <span class="keyword">if</span> ack.rc == mqtt.SUBACK_FAILURE <span class="keyword">then</span>
-        <span class="global">print</span>(<span class="string">'suback:'</span>, ack.topic, <span class="string">'fail'</span>)
-    <span class="keyword">else</span>
-        <span class="global">print</span>(<span class="string">'suback:'</span>, ack.topic, <span class="string">'rc:'</span>, ack.rc)
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
+<span class="keyword">local</span> udp_pkt = packet.<span class="function-name">udp</span>(<span class="number">2345</span>, <span class="number">6766</span>, <span class="string">'hello'</span>)
+<span class="keyword">local</span> ip_pkt = packet.<span class="function-name">ip</span>(<span class="string">'192.168.1.2'</span>, <span class="string">'192.168.1.3'</span>, socket.IPPROTO_UDP, udp_pkt)
+<span class="keyword">local</span> eth_pkt = packet.<span class="function-name">ether</span>(<span class="string">'00:15:5d:de:28:a4'</span>, <span class="string">'00:15:5d:fc:5a:53'</span>, socket.ETH_P_IP, ip_pkt)
 
-<span class="keyword">local</span> <span class="keyword">function</span> <span class="function-name">on_unsuback</span>(topic)
-    <span class="global">print</span>(<span class="string">'unsuback:'</span>, topic)
-<span class="keyword">end</span>
-
-<span class="keyword">local</span> <span class="keyword">function</span> <span class="function-name">on_publish</span>(msg, client)
-    <span class="global">print</span>(<span class="string">'message:'</span>, msg.topic, msg.payload)
-    client:<span class="function-name">unsubscribe</span>(<span class="string">'test'</span>)
-<span class="keyword">end</span>
-
-<span class="keyword">local</span> <span class="keyword">function</span> <span class="function-name">on_error</span>(err)
-    <span class="global">print</span>(<span class="string">'error:'</span>, err)
-<span class="keyword">end</span>
-
-<span class="keyword">local</span> client = mqtt.<span class="function-name">new</span>({
-    ipaddr = <span class="string">'127.0.0.1'</span>,
-    clean_session = <span class="keyword">true</span>
-})
-
-<span class="comment">-- And you can set an option individually
-</span>client:<span class="function-name">set</span>(<span class="string">'keepalive'</span>, <span class="number">5</span>)
-
-<span class="comment">-- You can add multiple event handlers at once
-</span>client:<span class="function-name">on</span>({
-    conack = on_conack,
-    suback = on_suback,
-    unsuback = on_unsuback,
-    publish = on_publish
-})
-
-<span class="comment">-- Or add one event handler at a time
-</span>client:<span class="function-name">on</span>(<span class="string">'error'</span>, on_error)
-
-<span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
-    <span class="comment">-- Start handling events until the network connection is closed
-</span>    client:<span class="function-name">run</span>()
-
-    <span class="keyword">if</span> <span class="keyword">not</span> auto_reconnect <span class="keyword">then</span>
-        <span class="keyword">break</span>
-    <span class="keyword">end</span>
-
-    <span class="global">print</span>(<span class="string">'reconnect in 5s...'</span>)
-
-    time.<span class="function-name">sleep</span>(<span class="number">5</span>)
-<span class="keyword">end</span></pre>
+sock:<span class="function-name">send</span>(eth_pkt)</pre>
 
 
 </div> <!-- id="content" -->
