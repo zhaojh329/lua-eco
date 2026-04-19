@@ -5,6 +5,7 @@
 -- @module eco.socket
 
 local socket = require 'eco.internal.socket'
+local file = require 'eco.internal.file'
 local sync = require 'eco.sync'
 local eco = require 'eco'
 
@@ -715,6 +716,82 @@ function M.connect_unix(server_path, local_path)
     end
 
     return sock:connect(server_path)
+end
+
+local tun_methods = {}
+
+function tun_methods:close()
+    if self:closed() then
+        return
+    end
+
+    file.close(self.fd)
+    self.fd = -1
+end
+
+function tun_methods:closed()
+    return self.fd < 0
+end
+
+function tun_methods:getfd()
+    return self.fd
+end
+
+local tun_metatable = {
+    __index = tun_methods,
+    __gc = tun_methods.close,
+    __close = tun_methods.close
+}
+
+local function open_tun(dev, flags)
+    local fd, name = socket.open_tun(dev, flags)
+    if not fd then
+        return nil, name
+    end
+
+    return setmetatable({ fd = fd }, tun_metatable), name
+end
+
+--- Open or attach a Linux TUN/TAP interface.
+--
+-- This creates (or attaches to) a Linux TUN/TAP interface.
+--
+-- @function open_tun
+-- @tparam[opt] string dev Interface name to create/attach.
+-- @tparam[opt] table opts Open options.
+-- @tparam[opt=false] boolean opts.tun Open as TUN device (`IFF_TUN`).
+-- @tparam[opt=false] boolean opts.tap Open as TAP device (`IFF_TAP`).
+-- @tparam[opt=false] boolean opts.no_pi Request no packet information header (`IFF_NO_PI`).
+-- If neither `opts.tun` nor `opts.tap` is set, defaults to `IFF_TUN | IFF_NO_PI`.
+-- @treturn socket sock TUN/TAP file descriptor wrapped as a socket-like object.
+-- @treturn string name Actual interface name.
+-- @treturn[3] nil On failure.
+-- @treturn[3] string Error message.
+function M.open_tun(dev, opts)
+    opts = opts or {}
+
+    local flags = 0
+
+    if opts.tun then
+        flags = flags | socket.IFF_TUN
+    elseif opts.tap then
+        flags = flags | socket.IFF_TAP
+    end
+
+    if opts.no_pi then
+        flags = flags | socket.IFF_NO_PI
+    end
+
+    if flags == 0 then
+        flags = socket.IFF_TUN | socket.IFF_NO_PI
+    end
+
+    local sock, name = open_tun(dev, flags)
+    if not sock then
+        return nil, name
+    end
+
+    return socket_init(sock), name
 end
 
 --- Check if a string is an IPv4/IPv6 address.
