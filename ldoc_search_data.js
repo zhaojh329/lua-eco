@@ -193,6 +193,7 @@ window.ldocSearchData = [
   {"symbol":"connect_udp","title":"connect_udp (ipaddr, port[, options])","url":"modules/eco.socket.html#connect_udp","module":"eco.socket","kind":"Functions","summary":"Create and connect a UDP socket."},
   {"symbol":"listen_unix","title":"listen_unix (path[, options])","url":"modules/eco.socket.html#listen_unix","module":"eco.socket","kind":"Functions","summary":"Create, bind and listen on a Unix domain socket."},
   {"symbol":"connect_unix","title":"connect_unix (server_path[, local_path])","url":"modules/eco.socket.html#connect_unix","module":"eco.socket","kind":"Functions","summary":"Connect to a Unix domain socket."},
+  {"symbol":"open_tun","title":"open_tun ([dev[, opts]])","url":"modules/eco.socket.html#open_tun","module":"eco.socket","kind":"Functions","summary":"Open or attach a Linux TUN/TAP interface. This creates (or attaches to) a Linux TUN/TAP interface."},
   {"symbol":"is_ip_address","title":"is_ip_address (addr)","url":"modules/eco.socket.html#is_ip_address","module":"eco.socket","kind":"Functions","summary":"Check if a string is an IPv4/IPv6 address."},
   {"symbol":"is_ipv4_address","title":"is_ipv4_address (ip)","url":"modules/eco.socket.html#is_ipv4_address","module":"eco.socket","kind":"Functions","summary":"Check whether a string is a valid IPv4 address."},
   {"symbol":"is_ipv6_address","title":"is_ipv6_address (ip)","url":"modules/eco.socket.html#is_ipv6_address","module":"eco.socket","kind":"Functions","summary":"Check whether a string is a valid IPv6 address."},
