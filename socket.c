@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -24,6 +25,7 @@
 #include <netinet/tcp.h>
 #include <linux/icmpv6.h>
 #include <linux/icmp.h>
+#include <linux/if_tun.h>
 
 #include "eco.h"
 
@@ -660,6 +662,39 @@ static int lua_socketpair(lua_State *L)
     return 2;
 }
 
+static int lua_open_tun(lua_State *L)
+{
+    int flags = luaL_optinteger(L, 2, IFF_TUN | IFF_NO_PI);
+    struct ifreq ifr = {
+        .ifr_flags = flags
+    };
+    int fd;
+
+    if (!lua_isnoneornil(L, 1)) {
+        const char *dev = luaL_checkstring(L, 1);
+
+        if (strlen(dev) >= IFNAMSIZ)
+            luaL_argerror(L, 1, "device name too long");
+
+        strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+    }
+
+    fd = open("/dev/net/tun", O_RDWR | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0)
+        return push_errno(L, errno);
+
+    if (ioctl(fd, TUNSETIFF, &ifr)) {
+        push_errno(L, errno);
+        close(fd);
+        return 2;
+    }
+
+    lua_pushinteger(L, fd);
+    lua_pushstring(L, ifr.ifr_name);
+
+    return 2;
+}
+
 /**
  * Check whether a string is a valid IPv4 address.
  *
@@ -878,6 +913,7 @@ static int lua_ntohs(lua_State *L)
 static const luaL_Reg funcs[] = {
     {"socket", lua_socket},
     {"socketpair", lua_socketpair},
+    {"open_tun", lua_open_tun},
     {"is_ipv4_address", lua_is_ipv4_address},
     {"is_ipv6_address", lua_is_ipv6_address},
     {"inet_aton", lua_inet_aton},
@@ -942,6 +978,10 @@ int luaopen_eco_internal_socket(lua_State *L)
 
     lua_add_constant(L, "ICMPV6_ECHO_REQUEST", ICMPV6_ECHO_REQUEST);
     lua_add_constant(L, "ICMPV6_ECHO_REPLY", ICMPV6_ECHO_REPLY);
+
+    lua_add_constant(L, "IFF_TUN", IFF_TUN);
+    lua_add_constant(L, "IFF_TAP", IFF_TAP);
+    lua_add_constant(L, "IFF_NO_PI", IFF_NO_PI);
 
     return 1;
 }
