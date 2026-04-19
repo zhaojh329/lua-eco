@@ -178,7 +178,7 @@ local function mqtt_packet(typ, flags, remlen)
         buf[#buf + 1] = str_char(byte)
     until remlen == 0
 
-    return setmetatable({ buf = buf }, pkt_metatable)
+    return setmetatable({ type = typ, buf = buf }, pkt_metatable)
 end
 
 local function get_next_mid(self)
@@ -207,6 +207,10 @@ local function send_pkt(self, pkt)
     local ok, err = self.sock:send(pkt:data())
     if not ok then
         return nil, 'network: ' .. err
+    end
+
+    if pkt.type ~= PKT_DISCONNECT then
+        self.ping_tmr:set(self.opts.keepalive)
     end
 
     return ok
@@ -923,8 +927,6 @@ function M.new(opts)
         if not ok then
             o.wait_pingresp:cancel()
             on_event(o, 'error', err)
-        else
-            tmr:set(o.opts.keepalive)
         end
     end)
 
