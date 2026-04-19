@@ -203,8 +203,8 @@ local function on_event(self, ev, data)
     end
 end
 
-local function send_pkt(self, data)
-    local ok, err = self.sock:send(data)
+local function send_pkt(self, pkt)
+    local ok, err = self.sock:send(pkt:data())
     if not ok then
         return nil, 'network: ' .. err
     end
@@ -230,7 +230,7 @@ local function retransmit_unack_packets(self)
     end)
 
     for _, w in ipairs(packets) do
-        local ok, err = send_pkt(self, w.data)
+        local ok, err = send_pkt(self, w.pkt)
         if not ok then
             return nil, err
         end
@@ -398,12 +398,12 @@ local function handle_packet(self)
         end
         self.wait_for_pubrec[mid] = nil
 
-        data = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid):data()
+        local pkt = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid)
         self.wait_for_pubcomp[mid] = {
-            data = data,
+            pkt = pkt,
             seq = get_next_tx_seq(self)
         }
-        return send_pkt(self, data)
+        return send_pkt(self, pkt)
     elseif pt == PKT_PUBCOMP then
         local mid = string.unpack('>I2', data)
         local w = self.wait_for_pubcomp[mid]
@@ -414,8 +414,8 @@ local function handle_packet(self)
     elseif pt == PKT_PUBREL then
         local mid = string.unpack('>I2', data)
         self.wait_for_pubrel[mid] = nil
-        data = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid):data()
-        return send_pkt(self, data)
+        local pkt = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid)
+        return send_pkt(self, pkt)
     elseif pt == PKT_PUBLISH then
         local topic_len = string.unpack('>I2', data)
         local topic = data:sub(3, 3 + topic_len - 1)
@@ -429,7 +429,8 @@ local function handle_packet(self)
             local mid = string.unpack('>I2', data)
 
             if qos == M.QOS1 then
-                local ok, err = send_pkt(self, mqtt_packet(PKT_PUBACK, 0x00, 2):add_u16(mid):data())
+                local pkt = mqtt_packet(PKT_PUBACK, 0x00, 2):add_u16(mid)
+                local ok, err = send_pkt(self, pkt)
                 if not ok then
                     return false, err
                 end
@@ -440,8 +441,8 @@ local function handle_packet(self)
                     return true
                 else
                     local pkt = mqtt_packet(PKT_PUBREC, 0x00, 2):add_u16(mid)
-                    self.wait_for_pubrel[mid] = { data = pkt:data() }
-                    local ok, err = send_pkt(self, pkt:data())
+                    self.wait_for_pubrel[mid] = { pkt = pkt }
+                    local ok, err = send_pkt(self, pkt)
                     if not ok then
                         return false, err
                     end
@@ -538,7 +539,7 @@ local function mqtt_connect(self)
 
     self.wait_conack:set(3)
 
-    return send_pkt(self, pkt:data())
+    return send_pkt(self, pkt)
 end
 
 --- MQTT client object.
@@ -601,26 +602,24 @@ function methods:publish(topic, payload, qos, retain)
 
     pkt:add_data(payload)
 
-    local data = pkt:data()
-
     if qos > 0 then
         -- set dup flag
         pkt:change_flags(flags | 1 << 3)
 
         if qos == M.QOS1 then
             self.wait_for_puback[mid] = {
-                data = pkt:data(),
+                pkt = pkt,
                 seq = get_next_tx_seq(self)
             }
         else
             self.wait_for_pubrec[mid] = {
-                data = pkt:data(),
+                pkt = pkt,
                 seq = get_next_tx_seq(self)
             }
         end
     end
 
-    local ok, err = send_pkt(self, data)
+    local ok, err = send_pkt(self, pkt)
     if not ok then
         if qos > 0 then
             if qos == M.QOS1 then
@@ -697,15 +696,13 @@ function methods:subscribe(topic, qos, ...)
         pkt:add_u8(sub.qos or M.QOS0)
     end
 
-    local data = pkt:data()
-
     self.wait_for_suback[mid] = {
         topics = topics,
-        data = data,
+        pkt = pkt,
         seq = get_next_tx_seq(self)
     }
 
-    local ok, err = send_pkt(self, data)
+    local ok, err = send_pkt(self, pkt)
     if not ok then
         self.wait_for_suback[mid] = nil
         return nil, err
@@ -755,16 +752,14 @@ function methods:unsubscribe(topic, ...)
         pkt:add_string(t)
     end
 
-    local data = pkt:data()
-
     self.wait_for_unsuback[mid] = {
         topic = topic,
         topics = topics,
-        data = data,
+        pkt = pkt,
         seq = get_next_tx_seq(self)
     }
 
-    local ok, err = send_pkt(self, data)
+    local ok, err = send_pkt(self, pkt)
     if not ok then
         self.wait_for_unsuback[mid] = nil
         return nil, err
@@ -786,7 +781,7 @@ function methods:disconnect()
     end
 
     local pkt = mqtt_packet(PKT_DISCONNECT)
-    return send_pkt(self, pkt:data())
+    return send_pkt(self, pkt)
 end
 
 
@@ -924,7 +919,7 @@ function M.new(opts)
     o.ping_tmr = time.timer(function(tmr)
         o.wait_pingresp:set(3)
 
-        local ok, err = send_pkt(o, mqtt_packet(PKT_PINGREQ):data())
+        local ok, err = send_pkt(o, mqtt_packet(PKT_PINGREQ))
         if not ok then
             o.wait_pingresp:cancel()
             on_event(o, 'error', err)
