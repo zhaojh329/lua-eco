@@ -124,7 +124,6 @@ local params = parse_arg()
 if params.dev then
     local ok, err = sock:bind({ ifname = params.dev })
     if not ok then
-        print(err)
         error(err)
     end
 
@@ -146,6 +145,10 @@ local function dump_pkt(data, addr)
     elseif link_type == socket.ARPHRD_IEEE80211_RADIOTAP then
         pkt = packet.from_radiotap(data)
     else
+        return
+    end
+
+    if not pkt then
         return
     end
 
