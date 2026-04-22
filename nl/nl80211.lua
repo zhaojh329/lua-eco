@@ -786,10 +786,14 @@ local function parse_bss_ie(info, data, keep_elems)
     local elems = {}
 
     while #data > 1 do
-        local typ, elem_data, i = string.unpack('Bs1', data)
-        if not typ then
+        local typ = str_byte(data, 1)
+        local elem_len = str_byte(data, 2)
+
+        if #data < 2 + elem_len then
             break
         end
+
+        local elem_data = data:sub(3, 2 + elem_len)
 
         if typ == M.WLAN_EID_SSID or typ == M.WLAN_EID_MESH_ID then
             info.ssid = elem_data
@@ -808,7 +812,7 @@ local function parse_bss_ie(info, data, keep_elems)
             elem[#elem + 1] = elem_data
         end
 
-        data = data:sub(i)
+        data = data:sub(3 + elem_len)
     end
 
     if keep_elems then
