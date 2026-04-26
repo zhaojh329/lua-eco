@@ -72,8 +72,13 @@ local PKT_DISCONNECT  = 14
 local read_timeout = 5.0
 
 local function check_will_option(will)
+    -- for backward compatibility, we still support `message` as the payload field, but `payload` is preferred.
+    if will.message ~= nil then
+        will.payload = will.message
+    end
+
     assert(type(will.topic) == 'string', 'expecting will.topic to be a string')
-    assert(type(will.message) == 'string', 'expecting will.message to be a string')
+    assert(type(will.payload) == 'string', 'expecting will.payload to be a string')
     assert(will.retain == nil or type(will.retain) == 'boolean', 'expecting will.retain to be a boolean')
 
     if will.qos ~= nil then
@@ -537,7 +542,7 @@ local function mqtt_connect(self)
 
     if will then
         remlen = remlen + #will.topic + 2
-        remlen = remlen + #will.message + 2
+        remlen = remlen + #will.payload + 2
 
         flags = flags | 1 << 2
 
@@ -572,7 +577,7 @@ local function mqtt_connect(self)
 
     if will then
         pkt:add_string(will.topic)
-        pkt:add_string(will.message)
+        pkt:add_string(will.payload)
     end
 
     if opts.username then
@@ -927,7 +932,7 @@ local metatable = {
 -- @tparam[opt] string opts.id Client id. Randomly generated if absent.
 -- @tparam[opt=30] int opts.keepalive keepalive seconds.
 -- @tparam[opt=false] boolean opts.clean_session Clean session flag.
--- @tparam[opt] table opts.will Last will message: `topic` (string) `message` (string) `qos` (int)
+-- @tparam[opt] table opts.will Last will message: `topic` (string) `payload` (string) `qos` (int)
 -- @tparam[opt] string opts.username
 -- @tparam[opt] string opts.password
 -- @treturn client
