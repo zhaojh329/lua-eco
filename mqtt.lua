@@ -725,7 +725,6 @@ function M.new(opts)
 
     for name, value in pairs(opts) do
         check_option(name, value)
-        opts[name] = value
     end
 
     local o = {
