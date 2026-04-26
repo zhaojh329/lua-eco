@@ -66,6 +66,7 @@ local PKT_SUBACK      = 9
 local PKT_UNSUBSCRIBE = 10
 local PKT_UNSUBACK    = 11
 local PKT_PINGREQ     = 12
+local PKT_PINGRESP    = 13
 local PKT_DISCONNECT  = 14
 
 local read_timeout = 5.0
@@ -286,14 +287,212 @@ local function read_packet(sock)
     return typ, flags, data
 end
 
+local function handle_conack(self, flags, data)
+    if self.connected then
+        on_event(self, 'error', 'unexpecting CONNACK received')
+        return true
+    end
+
+    self.wait_conack:cancel()
+
+    local reasons = {
+        'connection accepted',
+        'connection refused: unacceptable protocol version',
+        'connection refused: identifier rejected',
+        'connection refused: server unavailable',
+        'connection refused: bad user name or password',
+        'connection refused: not authorised'
+    }
+
+    local rc = str_byte(data, 2)
+    local reason = reasons[rc + 1] or ('connection refused: unknown reason code ' .. rc)
+    local session_present = str_byte(data) & 0x01 == 1
+
+    if rc == M.CONNACK_ACCEPTED then
+        local opts = self.opts
+
+        self.connected = true
+
+        if not opts.clean_session and session_present then
+            local ok, retransmit_err = retransmit_unack_packets(self)
+            if not ok then
+                return false, retransmit_err
+            end
+        end
+
+        if opts.keepalive > 0 then
+            self.ping_tmr:set(opts.keepalive)
+        end
+    end
+
+    on_event(self, 'conack', { rc = rc, reason = reason, session_present = session_present })
+
+    return true
+end
+
+local function handle_publish(self, flags, data)
+    local topic_len = string.unpack('>I2', data)
+    local topic = data:sub(3, 3 + topic_len - 1)
+    local dup = (flags >> 3) & 0x1 == 0x1
+    local qos = (flags >> 1) & 0x3
+    local retain = flags & 0x1 == 0x1
+
+    data = data:sub(3 + topic_len)
+
+    if qos > 0 then
+        local mid = string.unpack('>I2', data)
+
+        if qos == M.QOS1 then
+            local pkt = mqtt_packet(PKT_PUBACK, 0x00, 2):add_u16(mid)
+            local ok, err = send_pkt(self, pkt)
+            if not ok then
+                return false, err
+            end
+        elseif qos == M.QOS2 then
+            -- check if this is a duplicate
+            local w = self.wait_for_pubrel[mid]
+            if w then
+                return true
+            else
+                local pkt = mqtt_packet(PKT_PUBREC, 0x00, 2):add_u16(mid)
+                self.wait_for_pubrel[mid] = { pkt = pkt }
+                local ok, err = send_pkt(self, pkt)
+                if not ok then
+                    return false, err
+                end
+            end
+        else
+            on_event(self, 'error', 'invalid PUBLISH received with unknown qos number ' .. qos)
+            return true
+        end
+
+        data = data:sub(3)
+    end
+
+    on_event(self, 'publish', { topic = topic, payload = data, qos = qos, dup = dup, retain = retain })
+
+    return true
+end
+
+local function handle_puback(self, flags, data)
+    local mid = string.unpack('>I2', data)
+    local w = self.wait_for_puback[mid]
+    if not w then
+        return true
+    end
+    self.wait_for_puback[mid] = nil
+    return true
+end
+
+local function handle_pubrec(self, flags, data)
+    local mid = string.unpack('>I2', data)
+
+    -- check if this is a duplicate
+    if self.wait_for_pubcomp[mid] then
+        return true
+    end
+
+    local w = self.wait_for_pubrec[mid]
+    if not w then
+        return true
+    end
+    self.wait_for_pubrec[mid] = nil
+
+    local pkt = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid)
+    self.wait_for_pubcomp[mid] = {
+        pkt = pkt,
+        seq = get_next_tx_seq(self)
+    }
+    return send_pkt(self, pkt)
+end
+
+local function handle_pubrel(self, flags, data)
+    local mid = string.unpack('>I2', data)
+    self.wait_for_pubrel[mid] = nil
+    local pkt = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid)
+    return send_pkt(self, pkt)
+end
+
+local function handle_pubcomp(self, flags, data)
+    local mid = string.unpack('>I2', data)
+    local w = self.wait_for_pubcomp[mid]
+    if not w then
+        return true
+    end
+    self.wait_for_pubcomp[mid] = nil
+    return true
+end
+
+local function handle_suback(self, flags, data)
+    local mid = string.unpack('>I2', data)
+    local w = self.wait_for_suback[mid]
+    if not w then
+        return true
+    end
+
+    self.wait_for_suback[mid] = nil
+
+    local suback_count = #data - 2
+    local topic_count = #w.topics
+
+    if suback_count ~= topic_count then
+        on_event(self, 'error',
+            'SUBACK return code count mismatch: expecting ' .. topic_count .. ', got ' .. suback_count)
+        return true
+    end
+
+    for i = 1, topic_count do
+        local rc = str_byte(data, 2 + i)
+        local topic = w.topics[i].topic
+
+        if rc ~= M.QOS0 and rc ~= M.QOS1 and rc ~= M.QOS2 and rc ~= M.SUBACK_FAILURE then
+            on_event(self, 'error', 'SUBACK for topic "' .. topic .. '" with invalid return code ' .. rc)
+            return true
+        end
+
+        on_event(self, 'suback', { rc = rc, topic = topic })
+    end
+
+    return true
+end
+
+local function handle_unsuback(self, flags, data)
+    local mid = string.unpack('>I2', data)
+    local w = self.wait_for_unsuback[mid]
+    if not w then
+        return true
+    end
+
+    self.wait_for_unsuback[mid] = nil
+
+    for _, topic in ipairs(w.topics) do
+        on_event(self, 'unsuback', topic)
+    end
+
+    return true
+end
+
+local function handle_pingresp(self, flags, data)
+    return true
+end
+
+local handlers = {
+    [PKT_CONNACK] = handle_conack,
+    [PKT_PUBLISH] = handle_publish,
+    [PKT_PUBACK] = handle_puback,
+    [PKT_PUBREC] = handle_pubrec,
+    [PKT_PUBREL] = handle_pubrel,
+    [PKT_PUBCOMP] = handle_pubcomp,
+    [PKT_SUBACK] = handle_suback,
+    [PKT_UNSUBACK] = handle_unsuback,
+    [PKT_PINGRESP] = handle_pingresp,
+}
+
 local function handle_packet(self)
     local pt, flags, data = read_packet(self.sock)
     if not pt then
         return false, flags
     end
-
-    -- To eliminate Lua LSP warnings: when `bt` is true, `data` must also be true.
-    data = assert(data)
 
     if not self.connected and pt ~= PKT_CONNACK then
         return false, 'expecting CONNACK but received ' .. pt
@@ -301,168 +500,13 @@ local function handle_packet(self)
 
     self.wait_pingresp:cancel()
 
-    if pt == PKT_CONNACK then
-        if self.connected then
-            on_event(self, 'error', 'unexpecting CONNACK received')
-            return true
-        end
-
-        self.wait_conack:cancel()
-
-        local reasons = {
-            'connection accepted',
-            'connection refused: unacceptable protocol version',
-            'connection refused: identifier rejected',
-            'connection refused: server unavailable',
-            'connection refused: bad user name or password',
-            'connection refused: not authorised'
-        }
-
-        local rc = str_byte(data, 2)
-        local reason = reasons[rc + 1] or ('connection refused: unknown reason code ' .. rc)
-        local session_present = str_byte(data) & 0x01 == 1
-
-        if rc == M.CONNACK_ACCEPTED then
-            local opts = self.opts
-
-            self.connected = true
-
-            if not opts.clean_session and session_present then
-                local ok, retransmit_err = retransmit_unack_packets(self)
-                if not ok then
-                    return false, retransmit_err
-                end
-            end
-
-            if opts.keepalive > 0 then
-                self.ping_tmr:set(opts.keepalive)
-            end
-        end
-
-        on_event(self, 'conack', { rc = rc, reason = reason, session_present = session_present })
-    elseif pt == PKT_SUBACK then
-        local mid = string.unpack('>I2', data)
-        local w = self.wait_for_suback[mid]
-        if not w then
-            return true
-        end
-
-        self.wait_for_suback[mid] = nil
-
-        local suback_count = #data - 2
-        local topic_count = #w.topics
-
-        if suback_count ~= topic_count then
-            on_event(self, 'error',
-                'SUBACK return code count mismatch: expecting ' .. topic_count .. ', got ' .. suback_count)
-            return true
-        end
-
-        for i = 1, topic_count do
-            local rc = str_byte(data, 2 + i)
-            local topic = w.topics[i].topic
-
-            if rc ~= M.QOS0 and rc ~= M.QOS1 and rc ~= M.QOS2 and rc ~= M.SUBACK_FAILURE then
-                on_event(self, 'error', 'SUBACK for topic "' .. topic .. '" with invalid return code ' .. rc)
-                return true
-            end
-
-            on_event(self, 'suback', { rc = rc, topic = topic })
-        end
-    elseif pt == PKT_UNSUBACK then
-        local mid = string.unpack('>I2', data)
-        local w = self.wait_for_unsuback[mid]
-        if not w then
-            return true
-        end
-        self.wait_for_unsuback[mid] = nil
-
-        for _, topic in ipairs(w.topics) do
-            on_event(self, 'unsuback', topic)
-        end
-    elseif pt == PKT_PUBACK then
-        local mid = string.unpack('>I2', data)
-        local w = self.wait_for_puback[mid]
-        if not w then
-            return true
-        end
-        self.wait_for_puback[mid] = nil
+    local handler = handlers[pt]
+    if not handler then
+        on_event(self, 'error', 'unknown packet type ' .. pt)
         return true
-    elseif pt == PKT_PUBREC then
-        local mid = string.unpack('>I2', data)
-
-        -- check if this is a duplicate
-        if self.wait_for_pubcomp[mid] then
-            return true
-        end
-
-        local w = self.wait_for_pubrec[mid]
-        if not w then
-            return true
-        end
-        self.wait_for_pubrec[mid] = nil
-
-        local pkt = mqtt_packet(PKT_PUBREL, 0x02, 2):add_u16(mid)
-        self.wait_for_pubcomp[mid] = {
-            pkt = pkt,
-            seq = get_next_tx_seq(self)
-        }
-        return send_pkt(self, pkt)
-    elseif pt == PKT_PUBCOMP then
-        local mid = string.unpack('>I2', data)
-        local w = self.wait_for_pubcomp[mid]
-        if not w then
-            return true
-        end
-        self.wait_for_pubcomp[mid] = nil
-    elseif pt == PKT_PUBREL then
-        local mid = string.unpack('>I2', data)
-        self.wait_for_pubrel[mid] = nil
-        local pkt = mqtt_packet(PKT_PUBCOMP, 0x00, 2):add_u16(mid)
-        return send_pkt(self, pkt)
-    elseif pt == PKT_PUBLISH then
-        local topic_len = string.unpack('>I2', data)
-        local topic = data:sub(3, 3 + topic_len - 1)
-        local dup = (flags >> 3) & 0x1 == 0x1
-        local qos = (flags >> 1) & 0x3
-        local retain = flags & 0x1 == 0x1
-
-        data = data:sub(3 + topic_len)
-
-        if qos > 0 then
-            local mid = string.unpack('>I2', data)
-
-            if qos == M.QOS1 then
-                local pkt = mqtt_packet(PKT_PUBACK, 0x00, 2):add_u16(mid)
-                local ok, err = send_pkt(self, pkt)
-                if not ok then
-                    return false, err
-                end
-            elseif qos == M.QOS2 then
-                -- check if this is a duplicate
-                local w = self.wait_for_pubrel[mid]
-                if w then
-                    return true
-                else
-                    local pkt = mqtt_packet(PKT_PUBREC, 0x00, 2):add_u16(mid)
-                    self.wait_for_pubrel[mid] = { pkt = pkt }
-                    local ok, err = send_pkt(self, pkt)
-                    if not ok then
-                        return false, err
-                    end
-                end
-            else
-                on_event(self, 'error', 'invalid PUBLISH received with unknown qos number ' .. qos)
-                return true
-            end
-
-            data = data:sub(3)
-        end
-
-        on_event(self, 'publish', { topic = topic, payload = data, qos = qos, dup = dup, retain = retain })
     end
 
-    return true
+    return handler(self, flags, data)
 end
 
 local function mqtt_connect(self)
