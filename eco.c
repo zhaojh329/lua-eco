@@ -828,12 +828,9 @@ int main(int argc, char *const argv[])
 
     ev_set_userdata(loop, L);
 
-    luaopen_eco(L);
-    lua_setglobal(L, "eco");
+    luaL_requiref(L, "eco", luaopen_eco, 1);
 
-    lua_getglobal(L, "eco");
     lua_getfield(L, -1, "run");
-    lua_remove(L, -2);
 
     if (has_e) {
          error = luaL_loadstring(L, argv[script]) || lua_pcall(L, 1, 0, 0);
