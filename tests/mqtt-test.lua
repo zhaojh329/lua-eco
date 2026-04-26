@@ -51,8 +51,8 @@ test.run_case_sync('mqtt new and set validations', function()
     end, 'expecting will.topic to be a string')
 
     test.expect_error_contains(function()
-        mqtt.new({ will = { topic = 't', message = 1 } })
-    end, 'expecting will.message to be a string')
+        mqtt.new({ will = { topic = 't', payload = 1 } })
+    end, 'expecting will.payload to be a string')
 
     test.expect_error_contains(function()
         mqtt.new({ will = { topic = 't', message = 'm', retain = 1 } })
