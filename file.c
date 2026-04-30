@@ -379,8 +379,6 @@ static int lua_file_dir(lua_State *L)
     luaL_setmetatable(L, ECO_FILE_DIR_MT);
 
     *d = opendir(path);
-    if (!*d)
-        return luaL_error(L, "%s", strerror(errno));
 
     lua_rotate(L, 1, 1);
 
