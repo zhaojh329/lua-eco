@@ -130,6 +130,7 @@ function pkt_methods:change_flags(flags)
     local buf = self.buf
     local byte = str_byte(buf[1])
     self.buf[1] = str_char((byte & 0xf0) | flags)
+    self.data = nil
     return self
 end
 
@@ -658,9 +659,6 @@ function methods:publish(topic, payload, qos, retain)
     pkt:add_data(payload)
 
     if qos > 0 then
-        -- set dup flag
-        pkt:change_flags(flags | 1 << 3)
-
         if qos == M.QOS1 then
             self.wait_for_puback[mid] = {
                 pkt = pkt,
@@ -685,6 +683,11 @@ function methods:publish(topic, payload, qos, retain)
         end
 
         return nil, err
+    end
+
+    if qos > 0 then
+        -- set dup flag
+        pkt:change_flags(flags | 1 << 3)
     end
 
     return true
