@@ -76,6 +76,9 @@ end
 -- @function socket:close
 function methods:close()
     self.sock:close()
+    if self.rd then
+        self.rd:cancel()
+    end
 end
 
 --- Check whether the socket is closed.
