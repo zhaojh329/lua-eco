@@ -568,10 +568,10 @@ local function mqtt_connect(self)
 
     if opts.username then
         flags = flags | 1 << 7
+    end
 
-        if opts.password then
-            flags = flags | 1 << 6
-        end
+    if opts.password then
+        flags = flags | 1 << 6
     end
 
     local pkt = mqtt_packet(PKT_CONNECT, 0)
@@ -591,10 +591,10 @@ local function mqtt_connect(self)
 
     if opts.username then
         pkt:add_string(opts.username)
+    end
 
-        if opts.password then
-            pkt:add_string(opts.password)
-        end
+    if opts.password then
+        pkt:add_string(opts.password)
     end
 
     self.sock = sock
