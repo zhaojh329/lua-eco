@@ -685,6 +685,7 @@ function methods:run()
 
     on_event(self, 'error', err)
 
+    self.wait_conack:cancel()
     self.ping_tmr:cancel()
     self.wait_pingresp:cancel()
     self.sock:close()
