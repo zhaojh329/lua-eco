@@ -242,6 +242,13 @@ local function retransmit_unack_packets(self)
 
     local function add_waiting_packets(waiting)
         for _, w in pairs(waiting) do
+            local pkt = w.pkt
+
+            if pkt.type == PKT_PUBLISH then
+                local flags = str_byte(pkt.buf[1])
+                pkt:change_flags(flags | 1 << 3) -- set DUP flag
+            end
+
             packets[#packets + 1] = w
         end
     end
@@ -683,11 +690,6 @@ function methods:publish(topic, payload, qos, retain)
         end
 
         return nil, err
-    end
-
-    if qos > 0 then
-        -- set dup flag
-        pkt:change_flags(flags | 1 << 3)
     end
 
     return true
