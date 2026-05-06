@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <pwd.h>
 
@@ -149,7 +150,7 @@ static int lua_exec(lua_State *L)
     int epipe[2] = {};
     pid_t pid;
 
-    if (pipe(opipe) < 0 || pipe(epipe) < 0) {
+    if (pipe2(opipe, O_CLOEXEC) < 0 || pipe2(epipe, O_CLOEXEC) < 0) {
         lua_pushnil(L);
         lua_pushfstring(L, "pipe: %s", strerror(errno));
         goto err;
