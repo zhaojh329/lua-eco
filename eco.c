@@ -3,6 +3,7 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <sys/resource.h>
 #include <sys/time.h>
 #include <stdlib.h>
 #include <lualib.h>
@@ -781,9 +782,27 @@ static void set_random_seed()
     srandom(t.tv_usec * t.tv_sec);
 }
 
+static void close_inherited_fds()
+{
+    struct rlimit lim = {};
+    long maxfd;
+    int fd;
+
+    if (!getrlimit(RLIMIT_NOFILE, &lim) && lim.rlim_cur > 0 && lim.rlim_cur != RLIM_INFINITY)
+        maxfd = (long)lim.rlim_cur;
+    else
+        maxfd = sysconf(_SC_OPEN_MAX);
+
+    if (maxfd < 0)
+        maxfd = 1024;
+
+    for (fd = STDERR_FILENO + 1; fd < maxfd; fd++)
+        close(fd);
+}
+
 int main(int argc, char *const argv[])
 {
-    struct ev_loop *loop = EV_DEFAULT;
+    struct ev_loop *loop;
     bool has_v, has_e;
     int error = 0;
     int script;
@@ -803,6 +822,10 @@ int main(int argc, char *const argv[])
 
     if (script == 0)
         return 0;
+
+    close_inherited_fds();
+
+    loop = EV_DEFAULT;
 
     signal(SIGPIPE, SIG_IGN);
 
