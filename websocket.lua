@@ -384,7 +384,7 @@ function M.connect(uri, opts)
 
     local res, err = hc:request('GET', uri, nil, {
         insecure = opts.insecure,
-        timeout = opts.insecure,
+        timeout = opts.timeout,
         headers = headers
     })
     if not res then
