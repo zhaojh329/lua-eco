@@ -28,16 +28,19 @@
 
 struct eco_socket {
     struct ev_timer tmr;
+    struct ev_timer snd_tmr;
     struct {
         uint8_t overtime:1;
         uint8_t established:1;
         uint8_t connecting:1;
+        uint8_t snd_overtime:1;
     } flag;
     int domain;
     int fd;
     struct {
         struct ev_io io;
         lua_State *co;
+        double timeout;
         size_t len;
         size_t sent;
         const void *data;
@@ -85,6 +88,15 @@ static void ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
     }
 }
 
+static void ev_snd_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+    struct eco_socket *sock = container_of(w, struct eco_socket, snd_tmr);
+
+    sock->flag.snd_overtime = 1;
+    ev_io_stop(loop, &sock->snd.io);
+    eco_resume(sock->snd.co, 0);
+}
+
 static void ev_io_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
     struct eco_socket *sock = container_of(w, struct eco_socket, rcv.io);
@@ -102,6 +114,8 @@ static void ev_io_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 
     if (sock->flag.connecting)
         ev_timer_stop(loop, &sock->tmr);
+    else
+        ev_timer_stop(loop, &sock->snd_tmr);
 
     eco_resume(sock->snd.co, 0);
 }
@@ -260,6 +274,7 @@ static int eco_socket_init(lua_State *L, int fd, int domain, bool established)
     sock->fd = fd;
 
     ev_timer_init(&sock->tmr, ev_timer_cb, 0.0, 0);
+    ev_timer_init(&sock->snd_tmr, ev_snd_timer_cb, 0.0, 0);
 
     ev_io_init(&sock->rcv.io, ev_io_read_cb, fd, EV_READ);
     ev_io_init(&sock->snd.io, ev_io_write_cb, fd, EV_WRITE);
@@ -576,6 +591,13 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
         return 1;
     }
 
+    if (sock->flag.snd_overtime) {
+        sock->flag.snd_overtime = 0;
+        lua_pushnil(L);
+        lua_pushliteral(L, "timeout");
+        return 2;
+    }
+
     if (sock->fd < 0) {
         lua_pushnil(L);
         lua_pushliteral(L, "closed");
@@ -603,6 +625,12 @@ static int lua_sendk(lua_State *L, int status, lua_KContext ctx)
 
 again:
     sock->snd.co = L;
+
+    if (sock->snd.timeout > 0) {
+        ev_timer_set(&sock->snd_tmr, sock->snd.timeout, 0);
+        ev_timer_start(loop, &sock->snd_tmr);
+    }
+
     ev_io_start(loop, &sock->snd.io);
     return lua_yieldk(L, 0, ctx, lua_sendk);
 }
@@ -613,6 +641,8 @@ static int lua_send(lua_State *L)
 
     if (lua_init_snd(sock, L))
         return 2;
+
+    sock->snd.timeout = lua_tonumber(L, 3);
 
     return lua_sendk(L, 0, (lua_KContext)sock);
 }

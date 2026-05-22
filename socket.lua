@@ -80,11 +80,11 @@ function methods:accept(timeout)
     return setmetatable({ sock = sock, domain = self.domain, b = b, mutex = sync.mutex() }, metatable), perr
 end
 
-function methods:send(data)
+function methods:send(data, timeout)
     local mutex = self.mutex
 
     mutex:lock()
-    local sent, err = self.sock:send(data)
+    local sent, err = self.sock:send(data, timeout)
     mutex:unlock()
 
     if sent then
