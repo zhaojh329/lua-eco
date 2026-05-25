@@ -497,8 +497,6 @@ local function parse_cipher(data)
             return cipher_names[id]
         end
     end
-
-    return id
 end
 
 local function parse_rsn(data, defcipher, defauth)
@@ -539,7 +537,10 @@ local function parse_rsn(data, defcipher, defauth)
     data = data:sub(3)
 
     while count > 0 do
-        pair_ciphers[parse_cipher(data)] = true
+        local cipher = parse_cipher(data)
+        if cipher then
+            pair_ciphers[cipher] = true
+        end
         count = count - 1
         data = data:sub(5)
     end
@@ -562,11 +563,11 @@ local function parse_rsn(data, defcipher, defauth)
         local id = str_byte(data, 4)
 
         if oui == OUI_MICROSOFT then
-            if id < 3 then
+            if id < 3 and auth_suite_names[id] then
                 auth_suites[auth_suite_names[id]] = true
             end
         elseif oui == OUI_IEEE80211 then
-            if id < 19 then
+            if id < 19 and auth_suite_names[id] then
                 auth_suites[auth_suite_names[id]] = true
             end
         end
