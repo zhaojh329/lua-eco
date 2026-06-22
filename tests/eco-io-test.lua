@@ -317,6 +317,43 @@ test.run_case_sync('writer cancel blocked write', function()
     end)
 end)
 
+test.run_case_sync('io event rechecks writer after read resume', function()
+    local s1, s2 = make_pair()
+    local rd = eco.reader(s1:getfd())
+    local wr = eco.writer(s1:getfd())
+    local read_done = false
+    local write_done = false
+
+    eco.run(function()
+        local data, err = rd:readfull(1, 1.0)
+        assert(data == 'x', err)
+
+        wr:cancel()
+        read_done = true
+    end)
+
+    eco.run(function()
+        local ok, err = wr:wait(1.0)
+        assert(ok == nil and err == 'canceled',
+               'writer should be canceled before stale event resume')
+
+        write_done = true
+    end)
+
+    eco.run(function()
+        local n, err = s2:send('x', 0.2)
+        assert(n == 1, err)
+    end)
+
+    eco.run(function()
+        test.wait_until('stale writer event should not be resumed', function()
+            return read_done and write_done
+        end, 1.0, 0.01)
+
+        close_pair(s1, s2)
+    end)
+end)
+
 test.run_case_sync('read io fairness', function()
     local s1, s2 = make_pair()
 

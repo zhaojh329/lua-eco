@@ -167,6 +167,21 @@ struct eco_writer {
     void *ctx;
 };
 
+static inline void eco_fd_ref(struct eco_fd *efd)
+{
+    efd->refcount++;
+}
+
+static void eco_fd_put(struct eco_fd *efd)
+{
+    efd->refcount--;
+
+    if (efd->refcount == 0) {
+        list_del(&efd->list);
+        free(efd);
+    }
+}
+
 static uint64_t eco_time_now()
 {
     struct timespec ts;
@@ -517,14 +532,8 @@ static void eco_io_unbind_fd(lua_State *L, struct eco_io *io)
     if (io->co)
         eco_io_stop(L, io);
 
-    efd->refcount--;
-
-    if (efd->refcount == 0) {
-        list_del(&efd->list);
-        free(efd);
-    }
-
     io->efd = NULL;
+    eco_fd_put(efd);
 }
 
 static int lua_io_gc(lua_State *L)
@@ -1895,7 +1904,12 @@ static int get_next_timeout(struct eco_scheduler *sched, uint64_t now)
 
 static void eco_resume_io(lua_State *L, struct eco_io *io)
 {
-    lua_State *co = io->co;
+    lua_State *co;
+
+    if (!io || !io->co)
+        return;
+
+    co = io->co;
     io->fairness_yield = false;
     eco_resume(L, co, 0);
 }
@@ -1936,29 +1950,33 @@ static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
 {
     for (int i = 0; i < nfds; i++) {
         struct eco_fd *efd = events[i].data.ptr;
+        eco_fd_ref(efd);
+    }
+
+    for (int i = 0; i < nfds; i++) {
+        struct eco_fd *efd = events[i].data.ptr;
         int ev = events[i].events;
-        struct eco_io *read_io = NULL;
-        struct eco_io *write_io = NULL;
+        uintptr_t resumed_io = 0;
+        struct eco_io *io;
 
-        if ((ev & (EPOLLIN | EPOLLERR | EPOLLHUP)) && efd->read_io)
-            read_io = efd->read_io;
-
-        if ((ev & (EPOLLOUT | EPOLLERR | EPOLLHUP)) && efd->write_io)
-            write_io = efd->write_io;
-
-        if (!read_io && !write_io)
-            continue;
-
-        if (read_io == write_io) {
-            eco_resume_io(L, read_io);
-            continue;
+        if (ev & (EPOLLIN | EPOLLERR | EPOLLHUP)) {
+            io = efd->read_io;
+            if (io && io->co) {
+                resumed_io = (uintptr_t)io;
+                eco_resume_io(L, io);
+            }
         }
 
-        if (read_io)
-            eco_resume_io(L, read_io);
+        if (ev & (EPOLLOUT | EPOLLERR | EPOLLHUP)) {
+            io = efd->write_io;
+            if (io && io->co && (uintptr_t)io != resumed_io)
+                eco_resume_io(L, io);
+        }
+    }
 
-        if (write_io)
-            eco_resume_io(L, write_io);
+    for (int i = 0; i < nfds; i++) {
+        struct eco_fd *efd = events[i].data.ptr;
+        eco_fd_put(efd);
     }
 }
 
