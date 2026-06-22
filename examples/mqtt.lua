@@ -24,10 +24,12 @@ local function on_conack(ack, client)
 end
 
 local function on_suback(ack)
-    if ack.rc == mqtt.SUBACK_FAILURE then
-        print('suback:', ack.topic, 'fail')
-    else
-        print('suback:', ack.topic, 'rc:', ack.rc)
+    for _, result in ipairs(ack.results) do
+        if result.rc == mqtt.SUBACK_FAILURE then
+            print('suback:', result.topic, 'fail')
+        else
+            print('suback:', result.topic, 'rc:', result.rc)
+        end
     end
 end
 

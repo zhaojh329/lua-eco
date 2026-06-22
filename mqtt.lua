@@ -15,7 +15,7 @@
 -- Known events:
 --
 -- - `conack`: CONNACK received. `data = { rc = integer, reason = string, session_present = boolean }`
--- - `suback`: SUBACK received. `data = { rc = integer, topic = string }`
+-- - `suback`: SUBACK received. `data = { results = { { rc = integer, topic = string }, ... } }`
 -- - `unsuback`: UNSUBACK received. `data = topic` (string)
 -- - `publish`: PUBLISH received. `data = { topic = string, payload = string, qos = integer, dup = boolean, retain = boolean }`
 -- - `error`: network/protocol errors and timeouts. `data = err` (string)
@@ -314,10 +314,61 @@ local function read_packet(sock)
     return typ, flags, data
 end
 
+local function malformed_packet(name, reason)
+    return false, 'malformed ' .. name .. ' packet: ' .. reason
+end
+
+local function check_packet_flags(name, flags, expected)
+    if flags ~= expected then
+        return malformed_packet(name, string.format('invalid flags 0x%02x', flags))
+    end
+
+    return true
+end
+
+local function check_remaining_length(name, data, expected)
+    if #data ~= expected then
+        return malformed_packet(name, 'remaining length must be ' .. expected)
+    end
+
+    return true
+end
+
+local function check_min_remaining_length(name, data, min)
+    if #data < min then
+        return malformed_packet(name, 'remaining length must be at least ' .. min)
+    end
+
+    return true
+end
+
+local function check_fixed_packet(name, flags, data, expected_flags, expected_len)
+    local ok, err = check_packet_flags(name, flags, expected_flags)
+    if not ok then
+        return false, err
+    end
+
+    return check_remaining_length(name, data, expected_len)
+end
+
+local function packet_id(name, flags, data, expected_flags)
+    local ok, err = check_fixed_packet(name, flags, data, expected_flags, 2)
+    if not ok then
+        return nil, err
+    end
+
+    return string.unpack('>I2', data)
+end
+
 local function handle_conack(self, flags, data)
     if self.connected then
         on_event(self, 'error', 'unexpecting CONNACK received')
         return true
+    end
+
+    local ok, err = check_fixed_packet('CONNACK', flags, data, 0x00, 2)
+    if not ok then
+        return false, err
     end
 
     self.wait_conack:cancel()
@@ -358,16 +409,36 @@ local function handle_conack(self, flags, data)
 end
 
 local function handle_publish(self, flags, data)
+    local qos = (flags >> 1) & 0x3
+
+    if qos == 0x3 then
+        return malformed_packet('PUBLISH', 'invalid qos')
+    end
+
+    if #data < 2 then
+        return malformed_packet('PUBLISH', 'missing topic length')
+    end
+
     local topic_len = string.unpack('>I2', data)
+    if topic_len == 0 then
+        return malformed_packet('PUBLISH', 'empty topic name')
+    end
+
+    local pos = 3 + topic_len
+    if #data < pos - 1 then
+        return malformed_packet('PUBLISH', 'truncated topic name')
+    end
+
     local topic = data:sub(3, 3 + topic_len - 1)
     local dup = (flags >> 3) & 0x1 == 0x1
-    local qos = (flags >> 1) & 0x3
     local retain = flags & 0x1 == 0x1
 
-    data = data:sub(3 + topic_len)
-
     if qos > 0 then
-        local mid = string.unpack('>I2', data)
+        if #data < pos + 1 then
+            return malformed_packet('PUBLISH', 'missing packet id')
+        end
+
+        local mid = string.unpack('>I2', data, pos)
 
         if qos == M.QOS1 then
             local pkt = mqtt_packet(PKT_PUBACK, 0x00):add_u16(mid)
@@ -388,21 +459,22 @@ local function handle_publish(self, flags, data)
                     return false, err
                 end
             end
-        else
-            on_event(self, 'error', 'invalid PUBLISH received with unknown qos number ' .. qos)
-            return true
         end
 
-        data = data:sub(3)
+        pos = pos + 2
     end
 
-    on_event(self, 'publish', { topic = topic, payload = data, qos = qos, dup = dup, retain = retain })
+    on_event(self, 'publish', { topic = topic, payload = data:sub(pos), qos = qos, dup = dup, retain = retain })
 
     return true
 end
 
 local function handle_puback(self, flags, data)
-    local mid = string.unpack('>I2', data)
+    local mid, err = packet_id('PUBACK', flags, data, 0x00)
+    if not mid then
+        return false, err
+    end
+
     local w = self.wait_for_puback[mid]
     if not w then
         return true
@@ -412,7 +484,10 @@ local function handle_puback(self, flags, data)
 end
 
 local function handle_pubrec(self, flags, data)
-    local mid = string.unpack('>I2', data)
+    local mid, err = packet_id('PUBREC', flags, data, 0x00)
+    if not mid then
+        return false, err
+    end
 
     -- check if this is a duplicate
     if self.wait_for_pubcomp[mid] then
@@ -434,14 +509,22 @@ local function handle_pubrec(self, flags, data)
 end
 
 local function handle_pubrel(self, flags, data)
-    local mid = string.unpack('>I2', data)
+    local mid, err = packet_id('PUBREL', flags, data, 0x02)
+    if not mid then
+        return false, err
+    end
+
     self.wait_for_pubrel[mid] = nil
     local pkt = mqtt_packet(PKT_PUBCOMP, 0x00):add_u16(mid)
     return send_pkt(self, pkt)
 end
 
 local function handle_pubcomp(self, flags, data)
-    local mid = string.unpack('>I2', data)
+    local mid, err = packet_id('PUBCOMP', flags, data, 0x00)
+    if not mid then
+        return false, err
+    end
+
     local w = self.wait_for_pubcomp[mid]
     if not w then
         return true
@@ -451,6 +534,16 @@ local function handle_pubcomp(self, flags, data)
 end
 
 local function handle_suback(self, flags, data)
+    local ok, err = check_packet_flags('SUBACK', flags, 0x00)
+    if not ok then
+        return false, err
+    end
+
+    ok, err = check_min_remaining_length('SUBACK', data, 3)
+    if not ok then
+        return false, err
+    end
+
     local mid = string.unpack('>I2', data)
     local w = self.wait_for_suback[mid]
     if not w then
@@ -468,6 +561,8 @@ local function handle_suback(self, flags, data)
         return true
     end
 
+    local results = {}
+
     for i = 1, topic_count do
         local rc = str_byte(data, 2 + i)
         local topic = w.topics[i].topic
@@ -477,14 +572,20 @@ local function handle_suback(self, flags, data)
             return true
         end
 
-        on_event(self, 'suback', { rc = rc, topic = topic })
+        results[i] = { rc = rc, topic = topic }
     end
+
+    on_event(self, 'suback', { results = results })
 
     return true
 end
 
 local function handle_unsuback(self, flags, data)
-    local mid = string.unpack('>I2', data)
+    local mid, err = packet_id('UNSUBACK', flags, data, 0x00)
+    if not mid then
+        return false, err
+    end
+
     local w = self.wait_for_unsuback[mid]
     if not w then
         return true
@@ -500,7 +601,7 @@ local function handle_unsuback(self, flags, data)
 end
 
 local function handle_pingresp(self, flags, data)
-    return true
+    return check_fixed_packet('PINGRESP', flags, data, 0x00, 0)
 end
 
 local handlers = {

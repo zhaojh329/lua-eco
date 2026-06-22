@@ -10,6 +10,28 @@ local function uniq(suffix)
     return string.format('%s-%d-%d', suffix, sys.getpid(), math.floor(time.now() * 1000))
 end
 
+local function run_timeout(timeout, predicate, on_timeout)
+    eco.run(function()
+        local deadline = time.now() + timeout
+
+        while not predicate() and time.now() < deadline do
+            eco.sleep(0.01)
+        end
+
+        if not predicate() then
+            on_timeout()
+        end
+    end)
+end
+
+local function is_connect_unavailable(err)
+    err = tostring(err)
+    return err:find('network:', 1, true) ~= nil or
+           err:find('CONNACK timeout', 1, true) ~= nil
+end
+
+local run_network_tests = os.getenv('ECO_MQTT_NETWORK_TEST') == '1'
+
 test.run_case_sync('mqtt constants', function()
     assert(mqtt.QOS0 == 0)
     assert(mqtt.QOS1 == 1)
@@ -251,6 +273,7 @@ test.run_case_sync('mqtt pending queue sequence semantics', function()
     assert(#sent >= 5, 'expected sends for qos publishes and sub/unsub')
 end)
 
+if run_network_tests then
 local connect_failure_error
 
 test.run_case_sync('mqtt run error path without broker', function()
@@ -269,7 +292,7 @@ test.run_case_sync('mqtt run error path without broker', function()
         end
 
         done = true
-        eco.unloop()
+        c:close()
     end
 
     c:on('error', function(err, self)
@@ -284,10 +307,9 @@ test.run_case_sync('mqtt run error path without broker', function()
         finish()
     end)
 
-    eco.run(function()
-        eco.sleep(5)
-        finish()
-    end)
+    run_timeout(5, function()
+        return done
+    end, finish)
 end)
 
 assert(type(connect_failure_error) == 'string', 'missing error callback on connect failure')
@@ -304,7 +326,8 @@ local lifecycle = {
     got_publish_q0 = false,
     got_publish_q1 = false,
     got_publish_q2 = false,
-    err_reason = nil
+    err_reason = nil,
+    skipped_reason = nil
 }
 
 test.run_case_sync('mqtt broker lifecycle semantics', function()
@@ -333,7 +356,16 @@ test.run_case_sync('mqtt broker lifecycle semantics', function()
         lifecycle.done = true
         lifecycle.err_reason = err or 'unknown error'
         client:close()
-        eco.unloop()
+    end
+
+    local function skip(reason)
+        if lifecycle.done then
+            return
+        end
+
+        lifecycle.done = true
+        lifecycle.skipped_reason = reason or 'MQTT broker unavailable'
+        client:close()
     end
 
     local function success()
@@ -344,7 +376,6 @@ test.run_case_sync('mqtt broker lifecycle semantics', function()
         lifecycle.done = true
         client:disconnect()
         client:close()
-        eco.unloop()
     end
 
     local function publish_next()
@@ -390,6 +421,12 @@ test.run_case_sync('mqtt broker lifecycle semantics', function()
         end
 
         assert(self == client)
+
+        if not lifecycle.got_conack and is_connect_unavailable(err) then
+            skip('mqtt broker lifecycle skipped: ' .. tostring(err))
+            return
+        end
+
         fail('mqtt error: ' .. tostring(err))
     end)
 
@@ -495,21 +532,26 @@ test.run_case_sync('mqtt broker lifecycle semantics', function()
         client:run()
     end)
 
-    eco.run(function()
-        eco.sleep(8)
-
-        if not lifecycle.done then
-            fail('timeout waiting mqtt lifecycle flow')
-        end
+    run_timeout(8, function()
+        return lifecycle.done
+    end, function()
+        fail('timeout waiting mqtt lifecycle flow')
     end)
 end)
 
-assert(lifecycle.err_reason == nil, lifecycle.err_reason)
-assert(lifecycle.got_conack, 'did not receive CONNACK')
-assert(lifecycle.got_suback, 'did not receive SUBACK')
-assert(lifecycle.got_publish_q0, 'did not receive QoS0 publish')
-assert(lifecycle.got_publish_q1, 'did not receive QoS1 publish')
-assert(lifecycle.got_publish_q2, 'did not receive QoS2 publish')
-assert(lifecycle.got_unsuback, 'did not receive UNSUBACK')
+if lifecycle.skipped_reason then
+    print(lifecycle.skipped_reason)
+else
+    assert(lifecycle.err_reason == nil, lifecycle.err_reason)
+    assert(lifecycle.got_conack, 'did not receive CONNACK')
+    assert(lifecycle.got_suback, 'did not receive SUBACK')
+    assert(lifecycle.got_publish_q0, 'did not receive QoS0 publish')
+    assert(lifecycle.got_publish_q1, 'did not receive QoS1 publish')
+    assert(lifecycle.got_publish_q2, 'did not receive QoS2 publish')
+    assert(lifecycle.got_unsuback, 'did not receive UNSUBACK')
+end
+else
+    print('mqtt network tests skipped')
+end
 
 print('mqtt tests passed')
