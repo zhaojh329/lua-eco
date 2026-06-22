@@ -117,64 +117,59 @@ static int lua_b64_decode(lua_State *L)
     size_t inlen;
     const char *in = luaL_checklstring(L, 1, &inlen);
     uint8_t out[3] = {};
-    int outlen = 0;
     luaL_Buffer b;
-    int i, c;
+    size_t i;
 
     luaL_buffinit(L, &b);
 
     if (inlen & 0x3) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "input is malformed");
-        return 2;
+        goto malformed;
     }
 
-    for (i = 0; i < inlen; i++) {
-        if (in[i] == '=') {
-            outlen--;
-            luaL_addlstring (&b, (const char *)out, outlen);
-            break;
+    for (i = 0; i < inlen; i += 4) {
+        uint8_t v[4] = {};
+        int pad = 0;
+        int j;
+
+        if (in[i] == BASE64_PAD || in[i + 1] == BASE64_PAD)
+            goto malformed;
+
+        if (in[i + 2] == BASE64_PAD) {
+            if (in[i + 3] != BASE64_PAD)
+                goto malformed;
+            pad = 2;
+        } else if (in[i + 3] == BASE64_PAD) {
+            pad = 1;
         }
 
-        if (in[i] < BASE64DE_FIRST || in[i] > BASE64DE_LAST) {
-            lua_pushnil(L);
-            lua_pushliteral(L, "input is malformed");
-            return 2;
+        if (pad && i + 4 != inlen)
+            goto malformed;
+
+        for (j = 0; j < 4 - pad; j++) {
+            unsigned char ch = in[i + j];
+
+            if (ch < BASE64DE_FIRST || ch > BASE64DE_LAST)
+                goto malformed;
+
+            v[j] = Base64[ch];
+            if (v[j] == 255)
+                goto malformed;
         }
 
-        c = Base64[(int)in[i]];
-        if (c == 255) {
-            lua_pushnil(L);
-            lua_pushliteral(L, "input is malformed");
-            return 2;
-        }
+        out[0] = (v[0] << 2) | (v[1] >> 4);
+        out[1] = ((v[1] & 0xF) << 4) | (v[2] >> 2);
+        out[2] = ((v[2] & 0x3) << 6) | v[3];
 
-        switch (i & 0x3) {
-        case 0:
-            out[0] = (c << 2) & 0xFF;
-            outlen++;
-            break;
-        case 1:
-            out[0] |= (c >> 4) & 0x3;
-            out[1] = (c & 0xF) << 4;
-            outlen++;
-            break;
-        case 2:
-            out[1] |= (c >> 2) & 0xF;
-            out[2] = (c & 0x3) << 6;
-            outlen++;
-            break;
-        case 3:
-            out[2] |= c;
-            outlen = 0;
-
-            luaL_addlstring(&b, (const char *)out, 3);
-            break;
-        }
+        luaL_addlstring(&b, (const char *)out, 3 - pad);
     }
 
     luaL_pushresult(&b);
     return 1;
+
+malformed:
+    lua_pushnil(L);
+    lua_pushliteral(L, "input is malformed");
+    return 2;
 }
 
 static const luaL_Reg funcs[] = {

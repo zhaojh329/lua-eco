@@ -48,6 +48,23 @@ run_case('decode malformed input', function()
 
     out, err = base64.decode('ab\n=')
     assert(out == nil and err == 'input is malformed', 'decode should reject control characters')
+
+    local malformed_padding = {
+        '====',
+        '=AAA',
+        'A===',
+        'AA=A',
+        'AAAA=AAA',
+        'AAAAAA=A',
+        'AAA=AAAA',
+        'AA==AAAA',
+    }
+
+    for i = 1, #malformed_padding do
+        out, err = base64.decode(malformed_padding[i])
+        assert(out == nil and err == 'input is malformed',
+               'decode should reject malformed padding at #' .. i)
+    end
 end)
 
 run_case('argument validation', function()
