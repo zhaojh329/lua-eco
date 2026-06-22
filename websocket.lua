@@ -33,9 +33,13 @@ local str_gmatch = string.gmatch
 local str_gsub = string.gsub
 local str_lower = string.lower
 local str_sub = string.sub
+local unpack = string.unpack
 local type = type
 
 local M = {}
+
+local MAX_PAYLOAD_LEN_HIGH = math.maxinteger // 0x100000000
+local MAX_PAYLOAD_LEN_LOW = math.maxinteger & 0xffffffff
 
 local types = {
     [0x0] = 'continuation',
@@ -125,8 +129,6 @@ function  methods:recv_frame(timeout)
         return nil, nil, 'failed to receive the first 2 bytes: ' .. err
     end
 
-    timeout = 1.0
-
     local fst, snd = str_byte(data, 1, 2)
 
     local fin = fst & 0x80 ~= 0
@@ -158,21 +160,19 @@ function  methods:recv_frame(timeout)
         payload_len = string.unpack('>I2', data)
 
     elseif payload_len == 127 then
-        data, err = sock:readfull(2, timeout)
+        data, err = sock:readfull(8, timeout)
         if not data then
             return nil, nil, 'failed to receive the 8 byte payload length: ' .. err
         end
 
-        if str_byte(data, 1) ~= 0 or str_byte(data, 2) ~= 0 or str_byte(data, 3) ~= 0 or str_byte(data, 4) ~= 0 then
+        local high, low = unpack('>I4I4', data)
+
+        if high & 0x80000000 ~= 0 or high > MAX_PAYLOAD_LEN_HIGH or
+                (high == MAX_PAYLOAD_LEN_HIGH and low > MAX_PAYLOAD_LEN_LOW) then
             return nil, nil, 'payload len too large'
         end
 
-        local fifth = str_byte(data, 5)
-        if fifth & 0x80 ~= 0 then
-            return nil, nil, 'payload len too large'
-        end
-
-        payload_len = string.unpack('>I4', data:sub(5))
+        payload_len = high * 0x100000000 + low
     end
 
     if opcode & 0x8 ~= 0 then
@@ -198,7 +198,6 @@ function  methods:recv_frame(timeout)
     end
 
     if rest > 0 then
-        timeout = 10.0
         data, err = sock:readfull(rest, timeout)
         if not data then
             return nil, nil, 'failed to read masking-len and payload: ' .. err
