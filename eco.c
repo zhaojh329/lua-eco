@@ -402,8 +402,15 @@ static int eco_fd_update_events(struct eco_scheduler *sched, struct eco_fd *efd)
     ev.data.ptr = efd;
 
     ret = epoll_ctl(sched->epoll_fd, op, efd->fd, &ev);
-    if (ret < 0)
+    if (ret < 0) {
+        if (op == EPOLL_CTL_DEL && (errno == EBADF || errno == ENOENT)) {
+            efd->events = events;
+            sched->nfd = nfd;
+            return 0;
+        }
+
         return -1;
+    }
 
     efd->events = events;
     sched->nfd = nfd;

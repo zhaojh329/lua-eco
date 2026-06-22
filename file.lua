@@ -217,6 +217,9 @@ function file_methods:close()
 
     file.close(self.fd)
     self.fd = -1
+
+    self.rd:cancel()
+    self.wr:cancel()
 end
 
 --- End of `file` class section.
@@ -371,6 +374,8 @@ function inotify_methods:close()
 
     file.close(self.fd)
     self.fd = -1
+
+    self.rd:cancel()
 end
 
 --- End of `inotify` class section.

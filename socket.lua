@@ -76,8 +76,17 @@ end
 -- @function socket:close
 function methods:close()
     self.sock:close()
+
     if self.rd then
         self.rd:cancel()
+    end
+
+    if self.wr then
+        self.wr:cancel()
+    end
+
+    if self.io then
+        self.io:cancel()
     end
 end
 

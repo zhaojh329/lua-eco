@@ -118,6 +118,35 @@ test.run_case_sync('socketpair dgram and close state', function()
     end)
 end)
 
+test.run_case_sync('socket close cancels pending writer', function()
+    local a, b = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+    assert(a and b, b)
+
+    local done = false
+
+    eco.run(function()
+        a:setoption('sndbuf', 4096)
+
+        local n, err = a:send(string.rep('x', 2 * 1024 * 1024))
+        assert(n == nil and err == 'canceled',
+               'socket:close should wake pending writer with canceled')
+
+        done = true
+    end)
+
+    eco.run(function()
+        eco.sleep(0.02)
+        a:close()
+        b:close()
+    end)
+
+    eco.run(function()
+        test.wait_until('pending writer canceled by socket close', function()
+            return done
+        end, 1.0, 0.01)
+    end)
+end)
+
 test.run_case_sync('udp sendto recvfrom timeout', function()
     local server, err = socket.listen_udp('127.0.0.1', 0)
     assert(server, err)
