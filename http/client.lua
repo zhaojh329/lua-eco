@@ -142,9 +142,13 @@ local function receive_body_until_closed(resp, sock, timeout, body_to_file)
     local body = {}
 
     while true do
-        local data = sock:read(4096, timeout)
+        local data, err = sock:read(4096, timeout)
         if not data then
-            break
+            if err == 'closed' then
+                break
+            end
+
+            return false, 'read body fail: ' .. err
         end
 
         if body_to_file then
