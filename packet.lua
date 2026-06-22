@@ -103,8 +103,8 @@ local protos = {
                 ttl = data:byte(9),
                 protocol = data:byte(10),
                 check = string.unpack('>I2', data:sub(12)),
-                saddr = socket.inet_ntop(socket.AF_INET, data:sub(17)),
-                daddr = socket.inet_ntop(socket.AF_INET, data:sub(13)),
+                saddr = socket.inet_ntop(socket.AF_INET, data:sub(13, 16)),
+                daddr = socket.inet_ntop(socket.AF_INET, data:sub(17, 20)),
                 data = data:sub(ihl * 4 + 1)
             }, mtable_decap)
         end
