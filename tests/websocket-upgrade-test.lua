@@ -76,12 +76,14 @@ do
     local con = make_con()
     local ws, err = websocket.upgrade(con, make_req({
         connection = 'keep-alive, Upgrade',
+        ['sec-websocket-protocol'] = 'chat, echo',
         ['sec-websocket-key'] = 'dGhlIHNhbXBsZSBub25jZQ=='
     }))
 
     assert(ws, err)
     assert(con.status == 101)
     assert(con.headers['sec-websocket-accept'] == 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=')
+    assert(con.headers['sec-websocket-protocol'] == 'chat')
     assert(con.flushed == true)
 end
 

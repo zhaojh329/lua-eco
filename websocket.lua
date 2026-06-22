@@ -34,12 +34,14 @@ local str_gsub = string.gsub
 local str_lower = string.lower
 local str_sub = string.sub
 local unpack = string.unpack
+local pairs = pairs
 local type = type
 
 local M = {}
 
 local MAX_PAYLOAD_LEN_HIGH = math.maxinteger // 0x100000000
 local MAX_PAYLOAD_LEN_LOW = math.maxinteger & 0xffffffff
+local WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
 local types = {
     [0x0] = 'continuation',
@@ -50,6 +52,11 @@ local types = {
     [0xa] = 'pong',
 }
 
+local function trim(value)
+    value = str_gsub(value, '^%s+', '')
+    return str_gsub(value, '%s+$', '')
+end
+
 local function header_has_token(value, token)
     if type(value) ~= 'string' then
         return false
@@ -58,9 +65,7 @@ local function header_has_token(value, token)
     token = str_lower(token)
 
     for part in str_gmatch(value, '[^,]+') do
-        part = str_gsub(part, '^%s+', '')
-        part = str_gsub(part, '%s+$', '')
-
+        part = trim(part)
         if str_lower(part) == token then
             return true
         end
@@ -76,6 +81,52 @@ local function valid_websocket_key(key)
 
     local raw = base64.decode(key)
     return raw ~= nil and #raw == 16
+end
+
+local function generate_websocket_key()
+    local bytes = {}
+
+    for i = 1, 16 do
+        bytes[i] = str_char(rand(0, 255))
+    end
+
+    return base64.encode(concat(bytes))
+end
+
+local function websocket_accept(key)
+    return base64.encode(sha1.sum(key .. WS_GUID))
+end
+
+local function protocol_set(protocols)
+    local set = {}
+
+    if type(protocols) ~= 'string' then
+        return set
+    end
+
+    for part in str_gmatch(protocols, '[^,]+') do
+        part = trim(part)
+        if part ~= '' then
+            set[part] = true
+        end
+    end
+
+    return set
+end
+
+local function first_protocol(protocols)
+    if type(protocols) ~= 'string' then
+        return nil
+    end
+
+    for part in str_gmatch(protocols, '[^,]+') do
+        part = trim(part)
+        if part ~= '' then
+            return part
+        end
+    end
+
+    return nil
 end
 
 --- Options table for WebSocket connections.
@@ -503,7 +554,7 @@ function M.upgrade(con, req, opts)
         return nil, 'bad "sec-websocket-key" request header'
     end
 
-    local protocol = headers['sec-websocket-protocol']
+    local protocol = first_protocol(headers['sec-websocket-protocol'])
 
     con:set_status(101)
     con:add_header('upgrade', 'websocket')
@@ -513,8 +564,7 @@ function M.upgrade(con, req, opts)
         con:add_header('sec-websocket-protocol', protocol)
     end
 
-    local hash = sha1.sum(key .. '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
-    con:add_header('sec-websocket-accept', base64.encode(hash))
+    con:add_header('sec-websocket-accept', websocket_accept(key))
 
     ok, err = con:flush()
     if not ok then
@@ -556,22 +606,38 @@ end
 function M.connect(uri, opts)
     opts = opts or {}
 
-    local headers = opts.headers or {}
+    local headers = {}
 
-    local protos = opts.protocols
-    if protos then
-        if type(protos) == 'table' then
-            headers['sec-websocket-protocol'] = concat(protos, ',')
-        else
-            headers['sec-websocket-protocol'] = protos
-        end
+    for k, v in pairs(opts.headers or {}) do
+        headers[str_lower(k)] = v
     end
 
+    local protos = opts.protocols
+    local protocols
+    if protos then
+        if type(protos) == 'table' then
+            protocols = concat(protos, ',')
+        else
+            protocols = protos
+        end
+
+        headers['sec-websocket-protocol'] = protocols
+    else
+        protocols = headers['sec-websocket-protocol']
+    end
+
+    local requested_protocols = protocol_set(protocols)
 
     local origin = opts.origin
     if origin then
         headers['origin'] = origin
     end
+
+    local key = generate_websocket_key()
+    headers['connection'] = 'upgrade'
+    headers['upgrade'] = 'websocket'
+    headers['sec-websocket-version'] = '13'
+    headers['sec-websocket-key'] = key
 
     local hc = http.new()
 
@@ -587,6 +653,32 @@ function M.connect(uri, opts)
     if res.code ~= 101 then
         hc:close()
         return nil, 'connect fail with status code: ' .. res.code
+    end
+
+    local resp_headers = res.headers or {}
+
+    if not header_has_token(resp_headers.upgrade, 'websocket') then
+        hc:close()
+        return nil, 'bad "upgrade" response header'
+    end
+
+    if not header_has_token(resp_headers.connection, 'upgrade') then
+        hc:close()
+        return nil, 'bad "connection" response header'
+    end
+
+    if resp_headers['sec-websocket-accept'] ~= websocket_accept(key) then
+        hc:close()
+        return nil, 'bad "sec-websocket-accept" response header'
+    end
+
+    local protocol = resp_headers['sec-websocket-protocol']
+    if protocol then
+        protocol = trim(protocol)
+        if not requested_protocols[protocol] then
+            hc:close()
+            return nil, 'bad "sec-websocket-protocol" response header'
+        end
     end
 
     opts.max_payload_len = opts.max_payload_len or 65535
