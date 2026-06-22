@@ -29,6 +29,8 @@ local concat = table.concat
 local rand = math.random
 local str_char = string.char
 local str_byte = string.byte
+local str_gmatch = string.gmatch
+local str_gsub = string.gsub
 local str_lower = string.lower
 local str_sub = string.sub
 local type = type
@@ -43,6 +45,34 @@ local types = {
     [0x9] = 'ping',
     [0xa] = 'pong',
 }
+
+local function header_has_token(value, token)
+    if type(value) ~= 'string' then
+        return false
+    end
+
+    token = str_lower(token)
+
+    for part in str_gmatch(value, '[^,]+') do
+        part = str_gsub(part, '^%s+', '')
+        part = str_gsub(part, '%s+$', '')
+
+        if str_lower(part) == token then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function valid_websocket_key(key)
+    if type(key) ~= 'string' then
+        return false
+    end
+
+    local raw = base64.decode(key)
+    return raw ~= nil and #raw == 16
+end
 
 --- Options table for WebSocket connections.
 -- @table WebSocketOptions
@@ -449,14 +479,14 @@ function M.upgrade(con, req, opts)
     local val = headers.upgrade
     if not val then
         return nil, 'not found "upgrade" request header'
-    elseif str_lower(val) ~= 'websocket' then
+    elseif not header_has_token(val, 'websocket') then
         return nil, 'bad "upgrade" request header:' .. val
     end
 
     val = headers.connection
     if not val then
         return nil, 'not found "connection" request header'
-    elseif str_lower(val) ~= 'upgrade' then
+    elseif not header_has_token(val, 'upgrade') then
         return nil, 'bad "connection" request header: ' .. val
     end
 
@@ -468,8 +498,10 @@ function M.upgrade(con, req, opts)
     end
 
     local key = headers['sec-websocket-key']
-    if not val then
+    if not key then
         return nil, 'not found "sec-websocket-key" request header'
+    elseif not valid_websocket_key(key) then
+        return nil, 'bad "sec-websocket-key" request header'
     end
 
     local protocol = headers['sec-websocket-protocol']

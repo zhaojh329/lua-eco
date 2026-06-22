@@ -7,6 +7,8 @@ local socket = require 'eco.socket'
 local time = require 'eco.time'
 local test = require 'test'
 
+local concat = table.concat
+
 local function request(method, url, body, opts)
     return http_client.request(method, url, body, opts)
 end
@@ -95,6 +97,20 @@ local function wait_server_ready(base_url)
     return nil, 'server not ready in time'
 end
 
+local function raw_http_request(port, data)
+    local sock, err = socket.connect_tcp('127.0.0.1', port)
+    assert(sock, err)
+
+    local n, werr = sock:write(data, 1.0)
+    assert(n == #data, werr)
+
+    local resp, rerr = sock:readuntil('\r\n\r\n', 1.0)
+    sock:close()
+
+    assert(resp, rerr)
+    return resp
+end
+
 test.run_case_async('websocket server and client communicate', function()
     local ok, err = xpcall(function()
         local probe = assert(socket.listen_tcp('127.0.0.1', 0, { reuseaddr = true }))
@@ -108,6 +124,20 @@ test.run_case_async('websocket server and client communicate', function()
         local ws_url = 'ws://127.0.0.1:' .. tostring(port) .. '/ws'
 
         assert(wait_server_ready(base))
+
+        local bad_resp = raw_http_request(port, concat({
+            'GET /ws HTTP/1.1',
+            'Host: 127.0.0.1',
+            'Upgrade: websocket',
+            'Connection: keep-alive, Upgrade',
+            'Sec-WebSocket-Version: 13',
+            '',
+            ''
+        }, '\r\n'))
+
+        assert(bad_resp:find('^HTTP/1%.1 400 '),
+               'malformed websocket upgrade should return 400')
+        assert(wait_server_ready(base), 'server should stay alive after malformed upgrade')
 
         local ws, cerr = websocket.connect(ws_url, {
             origin = base,
