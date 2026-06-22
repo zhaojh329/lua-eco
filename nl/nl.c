@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "nl.h"
 
@@ -114,9 +115,11 @@ static int eco_nlmsg_payload(lua_State *L)
 static int eco_nlmsg_parse_attr(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_KER_MT);
-    size_t offset = luaL_checkinteger(L, 2);
+    lua_Integer offset_arg = luaL_checkinteger(L, 2);
     struct nlmsghdr *nlh = msg->nlh;
-	const struct nlattr *attr;
+    const struct nlattr *attr;
+    int payload_len;
+    int offset;
     int rem;
 
     if (!NLMSG_OK(nlh, msg->size)) {
@@ -125,11 +128,23 @@ static int eco_nlmsg_parse_attr(lua_State *L)
         return 2;
     }
 
+    payload_len = NLMSG_PAYLOAD(nlh, 0);
+    if (offset_arg < 0 || offset_arg > payload_len)
+        return luaL_argerror(L, 2, "invalid offset");
+
+    offset = (int)offset_arg;
+
     lua_newtable(L);
 
     nla_for_each_attr(attr, NLMSG_DATA(nlh) + NLMSG_ALIGN(offset), NLMSG_PAYLOAD(nlh, offset), rem) {
         lua_pushlstring(L, (const char *)attr, attr->nla_len);
         lua_rawseti(L, -2, nla_type(attr));
+    }
+
+    if (rem) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "malformed attributes");
+        return 2;
     }
 
     return 1;
@@ -220,18 +235,27 @@ static int eco_nlmsg_put(lua_State *L)
     struct nlmsghdr *nlh = msg->nlh;
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
+    size_t aligned_len;
 
-    if (nlh->nlmsg_len + NLMSG_ALIGN(len) > msg->size) {
+    if (len > INT_MAX) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "data is too large");
+        return 2;
+    }
+
+    aligned_len = NLMSG_ALIGN(len);
+
+    if (aligned_len > (size_t)msg->size - nlh->nlmsg_len) {
         lua_pushnil(L);
         lua_pushliteral(L, "buf is full");
-		return 2;
+        return 2;
     }
 
     memcpy((char *)msg->nlh + nlh->nlmsg_len, data, len);
 
-	nlh->nlmsg_len += NLMSG_ALIGN(len);
+    nlh->nlmsg_len += aligned_len;
 
-	lua_settop(L, 1);
+    lua_settop(L, 1);
     return 1;
 }
 
@@ -239,30 +263,49 @@ static int __eco_nlmsg_put_attr(lua_State *L, struct eco_nlmsg *msg,
         uint16_t type, size_t len, const void *data)
 {
     struct nlmsghdr *nlh = msg->nlh;
-	struct nlattr *attr = (void *)nlh + NLMSG_ALIGN(nlh->nlmsg_len);
-	uint16_t payload_len = NLMSG_ALIGN(sizeof(struct nlattr)) + len;
-	int pad;
+    struct nlattr *attr = (void *)nlh + NLMSG_ALIGN(nlh->nlmsg_len);
+    size_t payload_len;
+    size_t aligned_len;
+    size_t pad;
 
-    if (nlh->nlmsg_len + NLA_HDRLEN + NLMSG_ALIGN(len) > msg->size) {
+    if (len > UINT16_MAX - NLA_HDRLEN) {
         lua_pushnil(L);
-        lua_pushliteral(L, "buf is full");
-		return 2;
+        lua_pushliteral(L, "attr is too large");
+        return 2;
     }
 
-	attr->nla_type = type;
-	attr->nla_len = payload_len;
-	memcpy(nla_data(attr), data, len);
+    payload_len = NLA_HDRLEN + len;
+    aligned_len = NLA_ALIGN(payload_len);
 
-	pad = NLMSG_ALIGN(len) - len;
-	if (pad > 0)
-		memset(nla_data(attr) + len, 0, pad);
+    if (aligned_len > (size_t)msg->size - nlh->nlmsg_len) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "buf is full");
+        return 2;
+    }
 
-	nlh->nlmsg_len += NLMSG_ALIGN(payload_len);
+    if (!(type & NLA_F_NESTED) && msg->nest &&
+            (size_t)msg->nest->nla_len + aligned_len > UINT16_MAX) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "attr is too large");
+        return 2;
+    }
+
+    attr->nla_type = type;
+    attr->nla_len = payload_len;
+    if (len > 0) {
+        memcpy(nla_data(attr), data, len);
+    }
+
+    pad = aligned_len - payload_len;
+    if (pad > 0)
+        memset((char *)nla_data(attr) + len, 0, pad);
+
+    nlh->nlmsg_len += aligned_len;
 
     if (type & NLA_F_NESTED)
         msg->nest = attr;
     else if (msg->nest)
-        msg->nest->nla_len += NLMSG_ALIGN(payload_len);
+        msg->nest->nla_len += aligned_len;
 
     lua_settop(L, 1);
 
@@ -398,7 +441,7 @@ static int eco_nlmsg_put_attr_str(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
     int type = luaL_checkinteger(L, 2);
-    const char *value = lua_tostring(L, 3);
+    const char *value = luaL_checkstring(L, 3);
 
     return __eco_nlmsg_put_attr(L, msg, type, strlen(value), value);
 }
@@ -417,7 +460,7 @@ static int eco_nlmsg_put_attr_strz(lua_State *L)
 {
     struct eco_nlmsg *msg = luaL_checkudata(L, 1, NLMSG_USER_MT);
     int type = luaL_checkinteger(L, 2);
-    const char *value = lua_tostring(L, 3);
+    const char *value = luaL_checkstring(L, 3);
 
     return __eco_nlmsg_put_attr(L, msg, type, strlen(value) + 1, value);
 }
@@ -477,19 +520,46 @@ static const struct luaL_Reg nlmsg_user_methods[] = {
     {NULL, NULL}
 };
 
+static const struct nlattr *lua_check_nlattr(lua_State *L, int idx, size_t min_payload)
+{
+    size_t len;
+    const struct nlattr *attr = (const struct nlattr *)luaL_checklstring(L, idx, &len);
+
+    if (len < NLA_HDRLEN || len > INT_MAX) {
+        luaL_argerror(L, idx, "invalid attribute");
+        return NULL;
+    }
+
+    if (!nla_ok(attr, (int)len)) {
+        luaL_argerror(L, idx, "invalid attribute");
+        return NULL;
+    }
+
+    if ((size_t)nla_len(attr) < min_payload) {
+        luaL_argerror(L, idx, "attribute payload is too short");
+        return NULL;
+    }
+
+    return attr;
+}
+
+#define LUA_NL_ATTR_GET_INTEGER_FUNC(name, type) \
+static int name(lua_State *L) \
+{ \
+    const struct nlattr *attr = lua_check_nlattr(L, 1, sizeof(type)); \
+    type value; \
+    memcpy(&value, nla_data(attr), sizeof(value)); \
+    lua_pushinteger(L, value); \
+    return 1; \
+}
+
 /**
  * Decode an attribute whose payload is an unsigned 8-bit integer.
  * @function attr_get_u8
  * @tparam string attr Raw attribute bytes.
  * @treturn integer value
  */
-static int lua_nl_attr_get_u8(lua_State *L)
-{
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    int value = *((uint8_t *)nla_data(attr));
-    lua_pushinteger(L, value);
-    return 1;
-}
+LUA_NL_ATTR_GET_INTEGER_FUNC(lua_nl_attr_get_u8, uint8_t)
 
 /**
  * Decode an attribute whose payload is a signed 8-bit integer.
@@ -497,13 +567,7 @@ static int lua_nl_attr_get_u8(lua_State *L)
  * @tparam string attr Raw attribute bytes.
  * @treturn integer value
  */
-static int lua_nl_attr_get_s8(lua_State *L)
-{
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    int8_t value = *((int8_t *)nla_data(attr));
-    lua_pushinteger(L, value);
-    return 1;
-}
+LUA_NL_ATTR_GET_INTEGER_FUNC(lua_nl_attr_get_s8, int8_t)
 
 /**
  * Decode an attribute whose payload is an unsigned 16-bit integer.
@@ -511,13 +575,7 @@ static int lua_nl_attr_get_s8(lua_State *L)
  * @tparam string attr Raw attribute bytes.
  * @treturn integer value
  */
-static int lua_nl_attr_get_u16(lua_State *L)
-{
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    int value = *((uint16_t *)nla_data(attr));
-    lua_pushinteger(L, value);
-    return 1;
-}
+LUA_NL_ATTR_GET_INTEGER_FUNC(lua_nl_attr_get_u16, uint16_t)
 
 /**
  * Decode an attribute whose payload is a signed 16-bit integer.
@@ -525,13 +583,7 @@ static int lua_nl_attr_get_u16(lua_State *L)
  * @tparam string attr Raw attribute bytes.
  * @treturn integer value
  */
-static int lua_nl_attr_get_s16(lua_State *L)
-{
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    int16_t value = *((int16_t *)nla_data(attr));
-    lua_pushinteger(L, value);
-    return 1;
-}
+LUA_NL_ATTR_GET_INTEGER_FUNC(lua_nl_attr_get_s16, int16_t)
 
 /**
  * Decode an attribute whose payload is an unsigned 32-bit integer.
@@ -539,13 +591,7 @@ static int lua_nl_attr_get_s16(lua_State *L)
  * @tparam string attr Raw attribute bytes.
  * @treturn integer value
  */
-static int lua_nl_attr_get_u32(lua_State *L)
-{
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    uint32_t value = *((uint32_t *)nla_data(attr));
-    lua_pushinteger(L, value);
-    return 1;
-}
+LUA_NL_ATTR_GET_INTEGER_FUNC(lua_nl_attr_get_u32, uint32_t)
 
 /**
  * Decode an attribute whose payload is a signed 32-bit integer.
@@ -553,13 +599,7 @@ static int lua_nl_attr_get_u32(lua_State *L)
  * @tparam string attr Raw attribute bytes.
  * @treturn integer value
  */
-static int lua_nl_attr_get_s32(lua_State *L)
-{
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    int32_t value = *((int32_t *)nla_data(attr));
-    lua_pushinteger(L, value);
-    return 1;
-}
+LUA_NL_ATTR_GET_INTEGER_FUNC(lua_nl_attr_get_s32, int32_t)
 
 /**
  * Decode an attribute whose payload is an unsigned 64-bit integer.
@@ -573,8 +613,10 @@ static int lua_nl_attr_get_s32(lua_State *L)
  */
 static int lua_nl_attr_get_u64(lua_State *L)
 {
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    uint64_t value = *((uint64_t *)nla_data(attr));
+    const struct nlattr *attr = lua_check_nlattr(L, 1, sizeof(uint64_t));
+    uint64_t value;
+
+    memcpy(&value, nla_data(attr), sizeof(value));
 
     /* overflow */
     if (value > INT64_MAX)
@@ -592,8 +634,10 @@ static int lua_nl_attr_get_u64(lua_State *L)
  */
 static int lua_nl_attr_get_s64(lua_State *L)
 {
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
-    int64_t value = *((int64_t *)nla_data(attr));
+    const struct nlattr *attr = lua_check_nlattr(L, 1, sizeof(int64_t));
+    int64_t value;
+
+    memcpy(&value, nla_data(attr), sizeof(value));
 
     lua_pushinteger(L, value);
     return 1;
@@ -607,9 +651,15 @@ static int lua_nl_attr_get_s64(lua_State *L)
  */
 static int lua_nl_attr_get_str(lua_State *L)
 {
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
+    const struct nlattr *attr = lua_check_nlattr(L, 1, 1);
+    size_t len = nla_len(attr);
     const char *value = nla_data(attr);
-    lua_pushstring(L, value);
+    const char *end = memchr(value, '\0', len);
+
+    if (!end)
+        return luaL_argerror(L, 1, "attribute string is not NUL-terminated");
+
+    lua_pushlstring(L, value, (size_t)(end - value));
     return 1;
 }
 
@@ -621,7 +671,7 @@ static int lua_nl_attr_get_str(lua_State *L)
  */
 static int lua_nl_attr_get_payload(lua_State *L)
 {
-    const struct nlattr *attr = (const struct nlattr *)luaL_checkstring(L, 1);
+    const struct nlattr *attr = lua_check_nlattr(L, 1, 0);
     lua_pushlstring(L, nla_data(attr), nla_len(attr));
     return 1;
 }
@@ -638,7 +688,7 @@ static int lua_nl_attr_get_payload(lua_State *L)
  */
 static int lua_nl_parse_attr_nested(lua_State *L)
 {
-    const struct nlattr *nest = (const struct nlattr *)luaL_checkstring(L, 1);
+    const struct nlattr *nest = lua_check_nlattr(L, 1, 0);
     const struct nlattr *attr;
     int rem;
 
@@ -648,6 +698,9 @@ static int lua_nl_parse_attr_nested(lua_State *L)
         lua_pushlstring(L, (const char *)attr, attr->nla_len);
         lua_rawseti(L, -2, nla_type(attr));
     }
+
+    if (rem)
+        return luaL_argerror(L, 1, "malformed nested attributes");
 
     return 1;
 }
@@ -682,11 +735,16 @@ static int lua_new_nlmsg_user(lua_State *L)
     int type = luaL_checkinteger(L, 1);
     int flags = luaL_checkinteger(L, 2);
     int seq = luaL_optinteger(L, 3, 0);
-    int size = luaL_optinteger(L, 4, 4096);
+    lua_Integer payload_size = luaL_optinteger(L, 4, 4096);
+    size_t size;
     struct eco_nlmsg *msg;
     struct nlmsghdr *nlh;
 
-    size = NLMSG_SPACE(size);
+    luaL_argcheck(L, payload_size >= 0 && payload_size <= INT_MAX - NLMSG_HDRLEN,
+            4, "invalid size");
+
+    size = NLMSG_SPACE((size_t)payload_size);
+    luaL_argcheck(L, size <= INT_MAX, 4, "invalid size");
 
     msg = lua_newuserdatauv(L, sizeof(struct eco_nlmsg) + size, 0);
     luaL_setmetatable(L, NLMSG_USER_MT);
@@ -701,7 +759,7 @@ static int lua_new_nlmsg_user(lua_State *L)
     nlh->nlmsg_seq = seq;
 
     msg->nlh = nlh;
-    msg->size = size;
+    msg->size = (int)size;
     msg->nest = NULL;
 
     return 1;
@@ -721,6 +779,8 @@ static int lua_new_nlmsg_ker(lua_State *L)
     size_t len;
     const char *data = luaL_checklstring(L, 1, &len);
     struct eco_nlmsg *msg;
+
+    luaL_argcheck(L, len <= INT_MAX, 1, "datagram is too large");
 
     msg = lua_newuserdatauv(L, sizeof(struct eco_nlmsg) + len, 0);
     luaL_setmetatable(L, NLMSG_KER_MT);
