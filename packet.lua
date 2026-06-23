@@ -515,13 +515,20 @@ end
 function M.from_radiotap(data)
     assert(type(data) == 'string')
 
-    if #data < 14 then
+    if #data < 8 then
         return nil, 'not a valid radiotap packet'
     end
 
     local header_len = string.unpack('<I2', data:sub(3))
+    if header_len < 8 or header_len > #data then
+        return nil, 'not a valid radiotap packet'
+    end
 
     data = data:sub(header_len + 1)
+
+    if #data < 10 then
+        return nil, 'not a valid radiotap packet'
+    end
 
     local fc = string.unpack('<I2', data:sub(1))
 
@@ -546,12 +553,22 @@ function M.from_radiotap(data)
     }
 
     if typ == nl80211.FTYPE_MGMT then
+        local hdr_len = pkt.plus_htc and 28 or 24
+
+        if #data < hdr_len then
+            return nil, 'not a valid radiotap packet'
+        end
+
         pkt.addr2 = hex.encode(data:sub(11, 16), ':')
         pkt.addr3 = hex.encode(data:sub(17, 22), ':')
 
-        data = data:sub(pkt.plus_htc and 29 or 25)
+        data = data:sub(hdr_len + 1)
 
         if subtype == nl80211.STYPE_BEACON or subtype == nl80211.STYPE_PROBE_RESP then
+            if #data < 12 then
+                return nil, 'not a valid radiotap packet'
+            end
+
             pkt.timestamp = string.unpack('<I8', data:sub(1))
             pkt.beacon_interval = string.unpack('<I2', data:sub(9))
             pkt.capability = string.unpack('<I2', data:sub(11))
@@ -561,11 +578,34 @@ function M.from_radiotap(data)
             parse_80211_ie(pkt, data)
         end
     elseif typ == nl80211.FTYPE_DATA then
+        if #data < 24 then
+            return nil, 'not a valid radiotap packet'
+        end
+
         pkt.addr2 = hex.encode(data:sub(11, 16), ':')
         pkt.addr3 = hex.encode(data:sub(17, 22), ':')
 
         if pkt.from_ds and pkt.to_ds then
+            if #data < 30 then
+                return nil, 'not a valid radiotap packet'
+            end
+
             pkt.addr4 = hex.encode(data:sub(23, 28), ':')
+        end
+
+        if pkt.plus_htc then
+            local hdr_len = (pkt.from_ds and pkt.to_ds) and 34 or 28
+            if #data < hdr_len then
+                return nil, 'not a valid radiotap packet'
+            end
+        end
+    elseif typ == nl80211.FTYPE_CTL then
+        if subtype == nl80211.STYPE_BACK_REQ or subtype == nl80211.STYPE_BACK or
+           subtype == nl80211.STYPE_PSPOLL or subtype == nl80211.STYPE_RTS or
+           subtype == nl80211.STYPE_CFEND or subtype == nl80211.STYPE_CFENDACK then
+            if #data < 16 then
+                return nil, 'not a valid radiotap packet'
+            end
         end
     end
 
