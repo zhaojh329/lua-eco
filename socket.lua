@@ -311,9 +311,11 @@ end
 
 --- Send file contents on a connected stream socket.
 --
+-- If `len` is omitted, sends from `offset` to the end of the file.
+--
 -- @function socket:sendfile
 -- @tparam string path File path.
--- @tparam[opt] int len Bytes to send.
+-- @tparam[opt] int len Bytes to send. Defaults to file size minus offset.
 -- @tparam[opt=0] int offset File offset.
 -- @treturn integer Bytes sent.
 -- @treturn[2] nil On failure.
@@ -321,8 +323,22 @@ end
 function methods:sendfile(path, len, offset)
     local mutex = self.mutex
 
+    offset = offset or 0
+
+    if len == nil then
+        local st, err = file.stat(path)
+        if not st then
+            return nil, err
+        end
+
+        len = st.size - offset
+        if len <= 0 then
+            return 0
+        end
+    end
+
     mutex:lock()
-    local sent, err = self.wr:sendfile(path, offset or 0, len)
+    local sent, err = self.wr:sendfile(path, offset, len)
     mutex:unlock()
 
     if sent then
