@@ -28,6 +28,14 @@ test.run_case_async('shared semantics', function()
     d, err = shared.get('bad/name')
     assert(d == nil and err, 'shared.get should reject invalid name')
 
+    local too_long_name = string.rep('x', 232)
+
+    d, err = shared.new(too_long_name, 128)
+    assert(d == nil and err == 'name too long', 'shared.new should reject names that do not fit')
+
+    d, err = shared.get(too_long_name)
+    assert(d == nil and err == 'name too long', 'shared.get should reject names that do not fit')
+
     -- Size validation is an argument error (throws).
     test.expect_error(function()
         shared.new('bad-size', 0)

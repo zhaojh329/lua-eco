@@ -670,6 +670,7 @@ static int lua_shared_open(lua_State *L, const char *name, bool create, size_t s
     void *map = NULL;
     struct stat st;
     char path[256];
+    int path_len;
     int fd;
 
     if (strchr(name, '/')) {
@@ -678,7 +679,12 @@ static int lua_shared_open(lua_State *L, const char *name, bool create, size_t s
         return 2;
     }
 
-    snprintf(path, sizeof(path), "/dev/shm/eco-shared-%s.shm", name);
+    path_len = snprintf(path, sizeof(path), "/dev/shm/eco-shared-%s.shm", name);
+    if (path_len < 0 || (size_t)path_len >= sizeof(path)) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "name too long");
+        return 2;
+    }
 
     if (create)
         flags |= O_CREAT | O_EXCL;
