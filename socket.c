@@ -260,7 +260,10 @@ static int lua_connect(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
     uint8_t addr[sizeof(struct sockaddr_un)];
-    socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
+    int addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 0);
+
+    if (addrlen < 0)
+        return 2;
 
     if (connect(sock->fd, (struct sockaddr *)&addr, addrlen)) {
         if (errno == EINPROGRESS) {
@@ -280,8 +283,11 @@ static int lua_sendto(lua_State *L)
     size_t size;
     const char *data = luaL_checklstring(L, 2, &size);
     uint8_t addr[sizeof(struct sockaddr_un)];
-    socklen_t addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 1);
+    int addrlen = lua_args_to_sockaddr(sock, L, (struct sockaddr *)addr, 1);
     int ret;
+
+    if (addrlen < 0)
+        return 2;
 
     ret = sendto(sock->fd, data, size, 0, (struct sockaddr *)addr, addrlen);
     if (ret < 0)
