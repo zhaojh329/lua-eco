@@ -530,12 +530,23 @@ static int lua_inotify_parse_event(lua_State *L)
 {
     size_t len;
     const char *buf = luaL_checklstring(L, 1, &len);
-    int i = 0, n = 1;
+    size_t i = 0;
+    int n = 1;
 
     lua_newtable(L);
 
     while (i < len) {
-        struct inotify_event *event = (struct inotify_event *)&buf[i];
+        size_t remaining = len - i;
+        struct inotify_event *event;
+        size_t name_len;
+
+        if (remaining < sizeof(struct inotify_event))
+            return luaL_argerror(L, 1, "invalid inotify event buffer");
+
+        event = (struct inotify_event *)&buf[i];
+
+        if (event->len > remaining - sizeof(struct inotify_event))
+            return luaL_argerror(L, 1, "invalid inotify event buffer");
 
         lua_newtable(L);
 
@@ -546,7 +557,8 @@ static int lua_inotify_parse_event(lua_State *L)
         lua_setfield(L, -2, "mask");
 
         if (event->len > 0) {
-            lua_pushstring(L, event->name);
+            name_len = strnlen(event->name, event->len);
+            lua_pushlstring(L, event->name, name_len);
             lua_setfield(L, -2, "name");
         }
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local file = require 'eco.file'
+local raw_file = require 'eco.internal.file'
 local time = require 'eco.time'
 local sys = require 'eco.sys'
 local eco = require 'eco'
@@ -45,6 +46,36 @@ local root = string.format('/tmp/eco-file-test-%d-%d', sys.getpid(), math.floor(
 
 rm_tree(root)
 assert(file.mkdir(root, file.S_IRWXU))
+
+-- inotify_parse_event rejects forged/truncated buffers.
+do
+	local function inotify_event(wd, mask, cookie, name)
+		local name_len = name and #name or 0
+
+		return string.pack('=i4I4I4I4', wd, mask, cookie, name_len) .. (name or '')
+	end
+
+	local empty = raw_file.inotify_parse_event('')
+	assert(type(empty) == 'table' and #empty == 0)
+
+	local evs = raw_file.inotify_parse_event(inotify_event(7, file.IN_CREATE, 0, 'x\0pad'))
+	assert(#evs == 1)
+	assert(evs[1].wd == 7)
+	assert(evs[1].mask == file.IN_CREATE)
+	assert(evs[1].name == 'x')
+
+	evs = raw_file.inotify_parse_event(inotify_event(8, file.IN_CLOSE_WRITE, 0, 'raw'))
+	assert(#evs == 1)
+	assert(evs[1].name == 'raw')
+
+	test.expect_error_contains(function()
+		raw_file.inotify_parse_event(string.rep('\0', 15))
+	end, 'invalid inotify event buffer', 'inotify_parse_event should reject short event headers')
+
+	test.expect_error_contains(function()
+		raw_file.inotify_parse_event(string.pack('=i4I4I4I4', 1, file.IN_CREATE, 0, 8) .. 'x')
+	end, 'invalid inotify event buffer', 'inotify_parse_event should reject truncated names')
+end
 
 -- readfile/writefile + basic path/stat helpers.
 do
