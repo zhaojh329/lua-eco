@@ -1,6 +1,7 @@
 #!/usr/bin/env eco
 
 local nl = require 'eco.internal.nl'
+local nl80211 = require 'eco.internal.nl80211'
 local test = require 'test'
 
 local function attrs_from_msg(msg, offset)
@@ -92,6 +93,39 @@ run_case('builder rejects invalid arguments and malformed attrs', function()
 
     local attrs, err = rx:parse_attr(0)
     assert(attrs == nil and err == 'malformed attributes')
+end)
+
+run_case('nl80211 sta flag payloads are bounds checked', function()
+    local STA_FLAG_AUTHORIZED = 1
+    local STA_FLAG_SHORT_PREAMBLE = 2
+    local STA_FLAG_WME = 3
+    local STA_FLAG_MFP = 4
+    local STA_FLAG_AUTHENTICATED = 5
+    local STA_FLAG_ASSOCIATED = 7
+    local mask = (1 << STA_FLAG_AUTHORIZED) |
+            (1 << STA_FLAG_SHORT_PREAMBLE) |
+            (1 << STA_FLAG_WME) |
+            (1 << STA_FLAG_MFP) |
+            (1 << STA_FLAG_AUTHENTICATED) |
+            (1 << STA_FLAG_ASSOCIATED)
+    local set = (1 << STA_FLAG_AUTHORIZED) |
+            (1 << STA_FLAG_SHORT_PREAMBLE) |
+            (1 << STA_FLAG_AUTHENTICATED)
+
+    local flags = nl80211.parse_sta_flag_update(string.pack('=I4I4', mask, set))
+    assert(flags.authorized == true)
+    assert(flags.authenticated == true)
+    assert(flags.associated == false)
+    assert(flags.preamble == 'short')
+    assert(flags.wme == false)
+    assert(flags.mfp == false)
+
+    flags = nl80211.parse_sta_flag_update(string.pack('=I4I4', mask, set) .. 'pad')
+    assert(flags.authorized == true)
+
+    test.expect_error_contains(function()
+        nl80211.parse_sta_flag_update(string.rep('\0', 7))
+    end, 'invalid sta flags', 'short sta flag payload should be rejected')
 end)
 
 print('netlink tests passed')

@@ -5,6 +5,8 @@
 
 /// @module eco.nl80211
 
+#include <string.h>
+
 #include "nl80211.h"
 #include "nl.h"
 
@@ -12,40 +14,47 @@
 
 static int parse_sta_flag_update(lua_State *L)
 {
-    struct nl80211_sta_flag_update *flags = (struct nl80211_sta_flag_update *)luaL_checkstring(L, 1);
+    struct nl80211_sta_flag_update flags;
+    size_t len;
+    const char *payload = luaL_checklstring(L, 1, &len);
+
+    if (len < sizeof(flags))
+        return luaL_argerror(L, 1, "invalid sta flags");
+
+    memcpy(&flags, payload, sizeof(flags));
 
     lua_newtable(L);
 
-    if (flags->mask & BIT(NL80211_STA_FLAG_AUTHORIZED)) {
-        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_AUTHORIZED));
+    if (flags.mask & BIT(NL80211_STA_FLAG_AUTHORIZED)) {
+        lua_pushboolean(L, flags.set & BIT(NL80211_STA_FLAG_AUTHORIZED));
         lua_setfield(L, -2, "authorized");
     }
 
-    if (flags->mask & BIT(NL80211_STA_FLAG_AUTHENTICATED)) {
-        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_AUTHENTICATED));
+    if (flags.mask & BIT(NL80211_STA_FLAG_AUTHENTICATED)) {
+        lua_pushboolean(L, flags.set & BIT(NL80211_STA_FLAG_AUTHENTICATED));
         lua_setfield(L, -2, "authenticated");
     }
 
-    if (flags->mask & BIT(NL80211_STA_FLAG_ASSOCIATED)) {
-        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_ASSOCIATED));
+    if (flags.mask & BIT(NL80211_STA_FLAG_ASSOCIATED)) {
+        lua_pushboolean(L, flags.set & BIT(NL80211_STA_FLAG_ASSOCIATED));
         lua_setfield(L, -2, "associated");
     }
 
-    if (flags->mask & BIT(NL80211_STA_FLAG_SHORT_PREAMBLE)) {
-        if (flags->set & BIT(NL80211_STA_FLAG_SHORT_PREAMBLE))
+    if (flags.mask & BIT(NL80211_STA_FLAG_SHORT_PREAMBLE)) {
+        if (flags.set & BIT(NL80211_STA_FLAG_SHORT_PREAMBLE))
             lua_pushliteral(L, "short");
         else
             lua_pushliteral(L, "long");
         lua_setfield(L, -2, "preamble");
     }
 
-    if (flags->mask & BIT(NL80211_STA_FLAG_WME)) {
-        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_WME));
+    if (flags.mask & BIT(NL80211_STA_FLAG_WME)) {
+        lua_pushboolean(L, flags.set & BIT(NL80211_STA_FLAG_WME));
         lua_setfield(L, -2, "wme");
     }
 
-    if (flags->mask & BIT(NL80211_STA_FLAG_MFP)) {
-        lua_pushboolean(L, flags->set & BIT(NL80211_STA_FLAG_MFP));
+    if (flags.mask & BIT(NL80211_STA_FLAG_MFP)) {
+        lua_pushboolean(L, flags.set & BIT(NL80211_STA_FLAG_MFP));
         lua_setfield(L, -2, "mfp");
     }
 
