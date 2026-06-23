@@ -565,6 +565,12 @@ local session_metatable = {
     __close = session_methods.free
 }
 
+local function cleanup_new_session(obj, err)
+    obj.disconnected = true
+    session_methods.free(obj)
+    return nil, err
+end
+
 --- Create a new SSH session.
 --
 -- This call:
@@ -594,7 +600,7 @@ function M.new(ipaddr, port, username, password)
     local session = ssh.new()
     local fd = sock:getfd()
 
-    local obj = { session = session, sock = sock, io = eco.io(fd) }
+    local obj = setmetatable({ session = session, sock = sock, io = eco.io(fd) }, session_metatable)
 
     local ok
 
@@ -604,11 +610,11 @@ function M.new(ipaddr, port, username, password)
 
         if err ~= ssh.ERROR_EAGAIN then
             err = session:last_error()
-            return nil, err
+            return cleanup_new_session(obj, err)
         end
 
         if not waitsocket(obj, 5.0) then
-            return nil, 'handshake timeout'
+            return cleanup_new_session(obj, 'handshake timeout')
         end
     end
 
@@ -619,11 +625,11 @@ function M.new(ipaddr, port, username, password)
         if userauth_list or err == '' then break end
 
         if session:last_errno() ~= ssh.ERROR_EAGAIN then
-            return nil, err
+            return cleanup_new_session(obj, err)
         end
 
         if not waitsocket(obj, 5.0) then
-            return nil, 'userauth_list timeout'
+            return cleanup_new_session(obj, 'userauth_list timeout')
         end
     end
 
@@ -634,16 +640,16 @@ function M.new(ipaddr, port, username, password)
 
             if err ~= ssh.ERROR_EAGAIN then
                 err = session:last_error()
-                return nil, err
+                return cleanup_new_session(obj, err)
             end
 
             if not waitsocket(obj, 5.0) then
-                return nil, 'authentication timeout'
+                return cleanup_new_session(obj, 'authentication timeout')
             end
         end
     end
 
-    return setmetatable(obj, session_metatable)
+    return obj
 end
 
 return M
