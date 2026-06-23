@@ -279,14 +279,14 @@ static void lua_ubus_ctx_remove_obj(lua_State *L, int idx, void *ctx, void *obj)
     lua_pop(L, 1);
 }
 
-static bool lua_ubus_ctx_has_obj(lua_State *L, int idx, void *ctx, void *obj)
+static bool lua_ubus_ctx_has_obj(lua_State *L, int idx, void *ctx, void *obj, int type)
 {
     bool exists;
 
     lua_ubus_get_ctx_uv(L, idx, ctx);
     lua_rawgetp(L, -1, obj);
 
-    exists = !lua_isnil(L, -1);
+    exists = lua_isinteger(L, -1) && lua_tointeger(L, -1) == type;
 
     lua_pop(L, 2);
 
@@ -868,7 +868,13 @@ static int lua_ubus_unsubscribe(lua_State *L)
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
     struct ubus_subscriber *sub = (struct ubus_subscriber *)lua_checkludata(L, 2);
 
-    if (!sub || !lua_ubus_ctx_has_obj(L, 1, NULL, sub)) {
+    if (ctx->ctx.sock.eof) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
+    }
+
+    if (!sub || !lua_ubus_ctx_has_obj(L, 1, NULL, sub, LUA_UBUS_OBJ_SUBSCRIBER)) {
         lua_pushnil(L);
         lua_pushliteral(L, "invalid subscriber");
         return 2;
@@ -892,6 +898,18 @@ static int lua_ubus_notify(lua_State *L)
     struct lua_ubus_object *obj = (struct lua_ubus_object *)lua_checkludata(L, 2);
     struct blob_buf buf = {};
     int ret;
+
+    if (ctx->ctx.sock.eof) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "closed");
+        return 2;
+    }
+
+    if (!obj || !lua_ubus_ctx_has_obj(L, 1, NULL, obj, LUA_UBUS_OBJ_OBJECT)) {
+        lua_pushnil(L);
+        lua_pushliteral(L, "invalid object");
+        return 2;
+    }
 
     if (lua_arg_to_blob(L, 4, &buf))
         return 2;
@@ -967,6 +985,7 @@ static int lua_ubus_signatures(lua_State *L)
 static int lua_ubus_close(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    int nkeys = 0;
 
     if (ctx->ctx.sock.eof)
         return 0;
@@ -983,10 +1002,15 @@ static int lua_ubus_close(lua_State *L)
 
     lua_getuservalue(L, 1);
 
+    lua_newtable(L);
+
     lua_pushnil(L);
 
-    while (lua_next(L, -2) != 0) {
+    while (lua_next(L, -3) != 0) {
         int type = lua_tointeger(L, -1);
+
+        lua_pushvalue(L, -2);
+        lua_rawseti(L, -4, ++nkeys);
 
         if (type == LUA_UBUS_OBJ_OBJECT) {
             const struct lua_ubus_object *obj = lua_topointer(L, -2);
@@ -998,6 +1022,14 @@ static int lua_ubus_close(lua_State *L)
 
         lua_pop(L, 1);
     }
+
+    for (int i = 1; i <= nkeys; i++) {
+        lua_rawgeti(L, -1, i);
+        lua_pushnil(L);
+        lua_rawset(L, -4);
+    }
+
+    lua_pop(L, 2);
 
     return 0;
 }

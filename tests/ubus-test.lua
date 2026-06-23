@@ -241,8 +241,12 @@ test.run_case_sync('ubus call/add/signatures/objects/errors/closed', function()
         local _, suberr = con:subscribe(uniq('missing_sub'), function() end)
         assert(suberr == 'not found')
 
+        local raw_ctx = con.ctx
         con:close()
         con:close()
+
+        local _, rnerr = raw_ctx:notify(obj, 'tick', {})
+        assert(rnerr == 'closed')
 
         assert(con:call(object, 'echo', {}, 0.1) == nil)
         assert(con:send('x', {}) == nil)
@@ -326,7 +330,11 @@ test.run_case_sync('ubus listen/send and subscribe/notify', function()
         local _, nuerr = sub:unsubscribe(subh)
         assert(nuerr == 'not found')
 
+        local raw_sub_ctx = sub.ctx
         sub:close()
+        local _, ruerr = raw_sub_ctx:unsubscribe(subh)
+        assert(ruerr == 'closed')
+
         pub:close()
         send:close()
         recv:close()
