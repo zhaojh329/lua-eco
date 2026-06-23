@@ -194,6 +194,25 @@ run_loop_case('exec read/wait/close', function()
     p:close()
 end)
 
+run_loop_case('waitpid no state change', function()
+    local p, perr = sys.exec('/bin/sh', '-c', 'sleep 1')
+    assert(p, perr)
+
+    local waited_pid, status = sys.waitpid(p.pid)
+    assert(waited_pid == 0)
+    assert(type(status) == 'table' and next(status) == nil,
+           'waitpid should return an empty status table while child is still running')
+
+    local kill_ok, kerr = p:kill()
+    assert(kill_ok == true, kerr)
+
+    local killed_pid, killed_status = p:wait(1)
+    assert(killed_pid == p.pid)
+    assert(type(killed_status) == 'table' and killed_status.signaled == true)
+
+    p:close()
+end)
+
 run_loop_case('exec signal(sigterm)', function()
     local p, perr = sys.exec('/bin/sh', '-c', 'sleep 5')
     assert(p, perr)

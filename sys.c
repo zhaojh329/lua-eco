@@ -112,7 +112,10 @@ static int lua_waitpid(lua_State *L)
 
     lua_newtable(L);
 
-     if (WIFEXITED(status)) {
+    if (ret == 0)
+        return 2;
+
+    if (WIFEXITED(status)) {
         lua_pushboolean(L, true);
         lua_setfield(L, -2, "exited");
         status = WEXITSTATUS(status);
