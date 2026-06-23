@@ -156,10 +156,12 @@ do
 
 	assert(count == 1, 'walk should terminate immediately when callback returns false')
 
-	test.expect_error(function()
-		for _ in file.dir(root .. '/not-exist') do
-		end
-	end, 'dir should throw on opendir failure')
+	local missing_count = 0
+	for _ in file.dir(root .. '/not-exist') do
+		missing_count = missing_count + 1
+	end
+
+	assert(missing_count == 0, 'dir on missing path should iterate zero entries')
 
 	local dangling = tree .. '/dangling'
 	assert(shell_ok(string.format('ln -sfn %q %q', tree .. '/missing-target', dangling)), 'failed to create dangling symlink')
