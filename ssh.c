@@ -15,9 +15,37 @@ struct eco_ssh_session {
 };
 
 struct eco_ssh_channel {
-    LIBSSH2_SESSION *session;
+    struct eco_ssh_session *session;
     LIBSSH2_CHANNEL *channel;
 };
+
+static struct eco_ssh_channel *lua_ssh_check_channel(lua_State *L)
+{
+    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+
+    if (!channel->channel)
+        luaL_error(L, "channel freed");
+
+    if (!channel->session || !channel->session->session)
+        luaL_error(L, "session freed");
+
+    return channel;
+}
+
+static void lua_ssh_new_channel(lua_State *L, struct eco_ssh_session *session,
+                                LIBSSH2_CHANNEL *channel)
+{
+    struct eco_ssh_channel *lchannel;
+
+    lchannel = lua_newuserdatauv(L, sizeof(struct eco_ssh_channel), 1);
+    luaL_setmetatable(L, SSH_CHANNEL_MT);
+
+    lchannel->session = session;
+    lchannel->channel = channel;
+
+    lua_pushvalue(L, 1);
+    lua_setiuservalue(L, -2, 1);
+}
 
 static int lua_ssh_session_new(lua_State *L)
 {
@@ -121,12 +149,9 @@ static int lua_ssh_session_userauth_password(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_exec(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     const char *cmd = luaL_checkstring(L, 2);
     int rc;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     rc = libssh2_channel_exec(channel->channel, cmd);
     if (rc) {
@@ -143,13 +168,10 @@ static int lua_ssh_channel_exec(lua_State *L)
 /* In case of success, it returns a string, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_read(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int stream_id = luaL_checkinteger(L, 2);
     char buffer[4096];
     ssize_t nread;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     nread = libssh2_channel_read_ex(channel->channel, stream_id, buffer, sizeof(buffer));
     if (nread < 0) {
@@ -166,13 +188,10 @@ static int lua_ssh_channel_read(lua_State *L)
 /* In case of success, it returns a number indicates writen, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_write(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
     ssize_t nwritten;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     nwritten = libssh2_channel_write(channel->channel, data, len);
     if (nwritten < 0) {
@@ -189,11 +208,8 @@ static int lua_ssh_channel_write(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_send_eof(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int rc;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     rc = libssh2_channel_send_eof(channel->channel);
     if (rc) {
@@ -210,11 +226,8 @@ static int lua_ssh_channel_send_eof(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_wait_eof(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int rc;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     rc = libssh2_channel_wait_eof(channel->channel);
     if (rc) {
@@ -231,11 +244,8 @@ static int lua_ssh_channel_wait_eof(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_wait_closed(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int rc;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     rc = libssh2_channel_wait_closed(channel->channel);
     if (rc) {
@@ -252,11 +262,8 @@ static int lua_ssh_channel_wait_closed(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_close(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int rc;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     rc = libssh2_channel_close(channel->channel);
     if (rc) {
@@ -272,11 +279,8 @@ static int lua_ssh_channel_close(lua_State *L)
 
 static int lua_ssh_channel_get_exit_status(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int exitcode;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     exitcode = libssh2_channel_get_exit_status(channel->channel);
 
@@ -287,11 +291,8 @@ static int lua_ssh_channel_get_exit_status(lua_State *L)
 
 static int lua_ssh_channel_get_exit_signal(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     char *exitsignal;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
     libssh2_channel_get_exit_signal(channel->channel, &exitsignal, NULL, NULL, NULL, NULL, NULL);
 
@@ -306,11 +307,8 @@ static int lua_ssh_channel_get_exit_signal(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_signal(lua_State *L)
 {
-    struct eco_ssh_channel *channel = luaL_checkudata(L, 1, SSH_CHANNEL_MT);
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int rc = 0;
-
-    if (!channel->channel)
-        return luaL_error(L, "channel freed");
 
 #ifdef libssh2_channel_signal
     rc = libssh2_channel_signal(channel->channel, luaL_checkstring(L, 2));
@@ -335,6 +333,15 @@ static int lua_ssh_channel_free(lua_State *L)
     if (!channel->channel)
         return 0;
 
+    if (!channel->session || !channel->session->session) {
+        channel->channel = NULL;
+        channel->session = NULL;
+        lua_pushnil(L);
+        lua_setiuservalue(L, 1, 1);
+        lua_pushboolean(L, true);
+        return 1;
+    }
+
     rc = libssh2_channel_free(channel->channel);
     if (rc) {
         lua_pushnil(L);
@@ -343,6 +350,10 @@ static int lua_ssh_channel_free(lua_State *L)
     }
 
     channel->channel = NULL;
+    channel->session = NULL;
+
+    lua_pushnil(L);
+    lua_setiuservalue(L, 1, 1);
 
     lua_pushboolean(L, true);
 
@@ -374,7 +385,6 @@ static const luaL_Reg channel_mt[] = {
 static int lua_ssh_session_open_channel(lua_State *L)
 {
     struct eco_ssh_session *session = luaL_checkudata(L, 1, SSH_SESSION_MT);
-    struct eco_ssh_channel *lchannel;
     LIBSSH2_CHANNEL *channel;
 
     if (!session->session)
@@ -391,11 +401,7 @@ static int lua_ssh_session_open_channel(lua_State *L)
         return 2;
     }
 
-    lchannel = lua_newuserdatauv(L, sizeof(struct eco_ssh_channel), 0);
-    luaL_setmetatable(L, SSH_CHANNEL_MT);
-
-    lchannel->session = session->session;
-    lchannel->channel = channel;
+    lua_ssh_new_channel(L, session, channel);
 
     return 1;
 }
@@ -406,7 +412,6 @@ static int lua_ssh_session_scp_recv(lua_State *L)
     struct eco_ssh_session *session = luaL_checkudata(L, 1, SSH_SESSION_MT);
     const char *path = luaL_checkstring(L, 2);
     libssh2_struct_stat fileinfo;
-    struct eco_ssh_channel *lchannel;
     LIBSSH2_CHANNEL *channel;
 
     if (!session->session)
@@ -423,11 +428,7 @@ static int lua_ssh_session_scp_recv(lua_State *L)
         return 2;
     }
 
-    lchannel = lua_newuserdatauv(L, sizeof(struct eco_ssh_channel), 0);
-    luaL_setmetatable(L, SSH_CHANNEL_MT);
-
-    lchannel->session = session->session;
-    lchannel->channel = channel;
+    lua_ssh_new_channel(L, session, channel);
 
     lua_pushinteger(L, fileinfo.st_size);
 
@@ -441,7 +442,6 @@ static int lua_ssh_session_scp_send(lua_State *L)
     const char *path = luaL_checkstring(L, 2);
     int mode = luaL_checkinteger(L, 3);
     size_t size = luaL_checkinteger(L, 4);
-    struct eco_ssh_channel *lchannel;
     LIBSSH2_CHANNEL *channel;
 
     if (!session->session)
@@ -458,11 +458,7 @@ static int lua_ssh_session_scp_send(lua_State *L)
         return 2;
     }
 
-    lchannel = lua_newuserdatauv(L, sizeof(struct eco_ssh_channel), 0);
-    luaL_setmetatable(L, SSH_CHANNEL_MT);
-
-    lchannel->session = session->session;
-    lchannel->channel = channel;
+    lua_ssh_new_channel(L, session, channel);
 
     return 1;
 }
