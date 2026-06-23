@@ -782,8 +782,22 @@ static int lua_inet_ntoa(lua_State *L)
 static int lua_inet_ntop(lua_State *L)
 {
     int family = luaL_checkinteger(L, 1);
-    const void *src = luaL_checkstring(L, 2);
+    size_t len, size;
+    const void *src = luaL_checklstring(L, 2, &len);
     char dst[INET6_ADDRSTRLEN];
+
+    switch (family) {
+    case AF_INET:
+        size = sizeof(struct in_addr);
+        break;
+    case AF_INET6:
+        size = sizeof(struct in6_addr);
+        break;
+    default:
+        return luaL_argerror(L, 1, "family must be AF_INET or AF_INET6");
+    }
+
+    luaL_argcheck(L, len >= size, 2, "address too short");
 
     if (inet_ntop(family, src, dst, sizeof(dst)))
         lua_pushstring(L, dst);

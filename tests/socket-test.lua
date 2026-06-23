@@ -38,10 +38,24 @@ assert(socket.inet_ntoa(aton) == '127.0.0.1')
 local pton4 = socket.inet_pton(socket.AF_INET, '127.0.0.1')
 assert(type(pton4) == 'string')
 assert(socket.inet_ntop(socket.AF_INET, pton4) == '127.0.0.1')
+assert(socket.inet_ntop(socket.AF_INET, pton4 .. 'x') == '127.0.0.1')
+
+test.expect_error_contains(function()
+    socket.inet_ntop(socket.AF_INET, string.char(1))
+end, 'address too short', 'inet_ntop should reject short IPv4 binary address')
 
 local pton6 = socket.inet_pton(socket.AF_INET6, '::1')
 assert(type(pton6) == 'string')
 assert(socket.inet_ntop(socket.AF_INET6, pton6) == '::1')
+assert(socket.inet_ntop(socket.AF_INET6, pton6 .. 'x') == '::1')
+
+test.expect_error_contains(function()
+    socket.inet_ntop(socket.AF_INET6, string.rep('\0', 15))
+end, 'address too short', 'inet_ntop should reject short IPv6 binary address')
+
+test.expect_error_contains(function()
+    socket.inet_ntop(socket.AF_UNIX, pton4)
+end, 'family must be AF_INET or AF_INET6', 'inet_ntop should reject unsupported family')
 
 assert(socket.ntohl(socket.htonl(0x12345678)) == 0x12345678)
 assert(socket.ntohs(socket.htons(0x1234)) == 0x1234)
