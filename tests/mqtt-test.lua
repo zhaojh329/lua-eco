@@ -30,7 +30,48 @@ local function is_connect_unavailable(err)
            err:find('CONNACK timeout', 1, true) ~= nil
 end
 
-local run_network_tests = os.getenv('ECO_MQTT_NETWORK_TEST') == '1'
+local SENTINEL = {}
+
+local function restore_modules(saved)
+    for name, value in pairs(saved) do
+        if value == SENTINEL then
+            package.loaded[name] = nil
+        else
+            package.loaded[name] = value
+        end
+    end
+end
+
+local function with_mqtt_socket(socket_module, fn)
+    local names = {
+        'eco.mqtt',
+        'eco.socket'
+    }
+    local saved = {}
+
+    for _, name in ipairs(names) do
+        if package.loaded[name] == nil then
+            saved[name] = SENTINEL
+        else
+            saved[name] = package.loaded[name]
+        end
+    end
+
+    package.loaded['eco.socket'] = socket_module
+    package.loaded['eco.mqtt'] = nil
+
+    local ok, mqtt_or_err = pcall(require, 'eco.mqtt')
+    if not ok then
+        restore_modules(saved)
+        error(mqtt_or_err)
+    end
+
+    local run_ok, run_err = pcall(fn, mqtt_or_err)
+
+    restore_modules(saved)
+
+    assert(run_ok, run_err)
+end
 
 test.run_case_sync('mqtt constants', function()
     assert(mqtt.QOS0 == 0)
@@ -273,43 +314,29 @@ test.run_case_sync('mqtt pending queue sequence semantics', function()
     assert(#sent >= 5, 'expected sends for qos publishes and sub/unsub')
 end)
 
-if run_network_tests then
 local connect_failure_error
 
 test.run_case_sync('mqtt run error path without broker', function()
-    local c = mqtt.new({
-        ipaddr = '127.0.0.1',
-        port = 1,
-        keepalive = 5,
-        id = uniq('mqtt-no-broker')
-    })
-
-    local done = false
-
-    local function finish()
-        if done then
-            return
+    with_mqtt_socket({
+        connect_tcp = function()
+            return nil, 'connection refused'
         end
+    }, function(fake_mqtt)
+        local c = fake_mqtt.new({
+            ipaddr = '127.0.0.1',
+            port = 1883,
+            keepalive = 5,
+            id = uniq('mqtt-no-broker')
+        })
 
-        done = true
-        c:close()
-    end
+        c:on('error', function(err, self)
+            assert(self == c)
+            assert(type(err) == 'string')
+            connect_failure_error = err
+        end)
 
-    c:on('error', function(err, self)
-        assert(self == c)
-        assert(type(err) == 'string')
-        connect_failure_error = err
-        finish()
-    end)
-
-    eco.run(function()
         c:run()
-        finish()
     end)
-
-    run_timeout(5, function()
-        return done
-    end, finish)
 end)
 
 assert(type(connect_failure_error) == 'string', 'missing error callback on connect failure')
@@ -549,9 +576,6 @@ else
     assert(lifecycle.got_publish_q1, 'did not receive QoS1 publish')
     assert(lifecycle.got_publish_q2, 'did not receive QoS2 publish')
     assert(lifecycle.got_unsuback, 'did not receive UNSUBACK')
-end
-else
-    print('mqtt network tests skipped')
 end
 
 print('mqtt tests passed')

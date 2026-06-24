@@ -32,7 +32,7 @@ local function with_http_client(fake_socket, fn)
     package.loaded['eco.file'] = {}
     package.loaded['eco.http.client'] = nil
 
-    local ok, http_or_err = pcall(dofile, 'http/client.lua')
+    local ok, http_or_err = pcall(require, 'eco.http.client')
     if not ok then
         restore_modules(saved)
         error(http_or_err)

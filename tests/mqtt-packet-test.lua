@@ -1,16 +1,6 @@
 #!/usr/bin/env eco
 
 local SENTINEL = {}
-local MQTT_PATH = 'mqtt.lua'
-
-do
-    local f = io.open(MQTT_PATH)
-    if f then
-        f:close()
-    else
-        MQTT_PATH = '../mqtt.lua'
-    end
-end
 
 local function restore_modules(saved)
     for name, value in pairs(saved) do
@@ -57,7 +47,7 @@ local function with_mqtt_socket(socket_module, fn)
     }
     package.loaded['eco.mqtt'] = nil
 
-    local ok, mqtt_or_err = pcall(dofile, MQTT_PATH)
+    local ok, mqtt_or_err = pcall(require, 'eco.mqtt')
     if not ok then
         restore_modules(saved)
         error(mqtt_or_err)

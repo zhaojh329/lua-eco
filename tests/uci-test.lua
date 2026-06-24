@@ -248,8 +248,11 @@ local ok, err = xpcall(function()
     local dk, de = c:delete('missing_pkg_zzz', 's')
     assert(dk == false and type(de) == 'string')
 
-    local ei = c:each('missing_pkg_zzz')
-    assert(ei == nil)
+    local missing_n = 0
+    for _ in c:each('missing_pkg_zzz') do
+        missing_n = missing_n + 1
+    end
+    assert(missing_n == 0, 'each missing package should return an empty iterator')
 
     c:close()
     c:close()

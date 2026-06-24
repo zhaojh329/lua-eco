@@ -1,15 +1,11 @@
 #!/usr/bin/env eco
 
 local SENTINEL = {}
-local SSH_PATH = 'ssh.lua'
 
-do
-    local f = io.open(SSH_PATH)
-    if f then
-        f:close()
-    else
-        SSH_PATH = '../ssh.lua'
-    end
+local ok_mod, ssh_mod_or_err = pcall(require, 'eco.ssh')
+if not ok_mod then
+    print('skip ssh cleanup tests: ' .. tostring(ssh_mod_or_err))
+    os.exit(0)
 end
 
 local function restore_modules(saved)
@@ -50,7 +46,7 @@ local function with_ssh_env(env, fn)
     package.loaded['eco'] = env.eco
     package.loaded['eco.ssh'] = nil
 
-    local ok, ssh_or_err = pcall(dofile, SSH_PATH)
+    local ok, ssh_or_err = pcall(require, 'eco.ssh')
     if not ok then
         restore_modules(saved)
         error(ssh_or_err)

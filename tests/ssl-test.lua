@@ -1,6 +1,11 @@
 #!/usr/bin/env eco
 
-local ssl = require 'eco.ssl'
+local ok_mod, ssl = pcall(require, 'eco.ssl')
+if not ok_mod then
+    print('skip ssl tests: ' .. tostring(ssl))
+    os.exit(0)
+end
+
 local file = require 'eco.file'
 local eco = require 'eco'
 local sys = require 'eco.sys'
@@ -14,11 +19,6 @@ end
 local function cert_paths()
     local cert = 'cert.pem'
     local key = 'key.pem'
-
-    if not file.access(cert) then
-        cert = 'tests/cert.pem'
-        key = 'tests/key.pem'
-    end
 
     assert(file.access(cert), 'cert file not found')
     assert(file.access(key), 'key file not found')

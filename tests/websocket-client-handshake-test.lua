@@ -4,17 +4,40 @@ local base64 = require 'eco.encoding.base64'
 local sha1 = require 'eco.hash.sha1'
 
 local WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+local SENTINEL = {}
+
+local function restore_modules(saved)
+    for name, value in pairs(saved) do
+        if value == SENTINEL then
+            package.loaded[name] = nil
+        else
+            package.loaded[name] = value
+        end
+    end
+end
 
 local function accept_for(key)
     return base64.encode(sha1.sum(key .. WS_GUID))
 end
 
 local function with_websocket(make_response, fn)
-    local saved_http = package.loaded['eco.http.client']
+    local names = {
+        'eco.websocket',
+        'eco.http.client'
+    }
+    local saved = {}
     local state = {
         closed = false,
         sock = {}
     }
+
+    for _, name in ipairs(names) do
+        if package.loaded[name] == nil then
+            saved[name] = SENTINEL
+        else
+            saved[name] = package.loaded[name]
+        end
+    end
 
     local fake_http = {}
 
@@ -43,14 +66,19 @@ local function with_websocket(make_response, fn)
     end
 
     package.loaded['eco.http.client'] = fake_http
+    package.loaded['eco.websocket'] = nil
 
-    local ok, websocket_or_err = pcall(dofile, 'websocket.lua')
+    local ok, websocket_or_err = pcall(require, 'eco.websocket')
+    if not ok then
+        restore_modules(saved)
+        error(websocket_or_err)
+    end
 
-    package.loaded['eco.http.client'] = saved_http
+    local run_ok, run_err = pcall(fn, websocket_or_err, state)
 
-    assert(ok, websocket_or_err)
+    restore_modules(saved)
 
-    return fn(websocket_or_err, state)
+    assert(run_ok, run_err)
 end
 
 local function good_response(state, overrides)

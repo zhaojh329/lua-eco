@@ -1,17 +1,6 @@
 #!/usr/bin/env eco
 
-local PACKET_PATH = 'packet.lua'
-
-do
-    local f = io.open(PACKET_PATH)
-    if f then
-        f:close()
-    else
-        PACKET_PATH = '../packet.lua'
-    end
-end
-
-local packet = dofile(PACKET_PATH)
+local packet = require 'eco.packet'
 local nl80211 = require 'eco.nl80211'
 local socket = require 'eco.socket'
 

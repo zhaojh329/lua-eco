@@ -1,18 +1,5 @@
 #!/usr/bin/env eco
 
-local function prefer_built_socket(path)
-    local f = io.open(path)
-    if not f then
-        return
-    end
-
-    f:close()
-    package.cpath = path .. ';' .. package.cpath
-end
-
-prefer_built_socket('build/socket.so')
-prefer_built_socket('../build/socket.so')
-
 local socket = require 'eco.internal.socket'
 
 local raw, err = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(socket.ETH_P_ALL))

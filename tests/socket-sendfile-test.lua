@@ -1,16 +1,6 @@
 #!/usr/bin/env eco
 
 local SENTINEL = {}
-local SOCKET_PATH = 'socket.lua'
-
-do
-    local f = io.open(SOCKET_PATH)
-    if f then
-        f:close()
-    else
-        SOCKET_PATH = '../socket.lua'
-    end
-end
 
 local function restore_modules(saved)
     for name, value in pairs(saved) do
@@ -122,7 +112,7 @@ local function with_socket_env(stat_sizes, fn)
 
     package.loaded['eco.socket'] = nil
 
-    local ok, socket_or_err = pcall(dofile, SOCKET_PATH)
+    local ok, socket_or_err = pcall(require, 'eco.socket')
     if not ok then
         restore_modules(saved)
         error(socket_or_err)

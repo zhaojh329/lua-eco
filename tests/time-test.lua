@@ -137,8 +137,9 @@ assert(canceled_fired == false, 'timer callback should not run after cancel')
 test.run_case_sync('timer set invalid delay', function()
 	local tmr = assert(time.timer(function() end))
 
-	local ok, err = tmr:set(-1)
-	assert(ok == nil and type(err) == 'string', 'timer:set should fail on invalid negative delay')
+	test.expect_error_contains(function()
+		tmr:set(-1)
+	end, 'delay must be non-negative', 'timer:set should reject invalid negative delay')
 
 	tmr:close()
 end)

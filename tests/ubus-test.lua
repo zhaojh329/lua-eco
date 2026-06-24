@@ -12,6 +12,34 @@ local sys = require 'eco.sys'
 local time = require 'eco.time'
 local test = require 'test'
 
+local function running_as_root()
+    local f = io.open('/proc/self/status', 'r')
+    if not f then
+        return false
+    end
+
+    for line in f:lines() do
+        local uid = line:match('^Uid:%s+(%d+)')
+        if uid then
+            f:close()
+            return uid == '0'
+        end
+    end
+
+    f:close()
+    return false
+end
+
+if not running_as_root() then
+    print('skip ubus tests: root privileges required')
+    os.exit(0)
+end
+
+if os.execute('command -v ubusd >/dev/null 2>&1') ~= true then
+    print('skip ubus tests: ubusd not found')
+    os.exit(0)
+end
+
 local function uniq(tag)
     return string.format('eco.ubus.%s.%d.%d', tag, sys.getpid(), math.floor(time.now() * 1000))
 end
@@ -48,18 +76,24 @@ end
 
 local shmem_name = string.format('dict-%d', sys.getpid())
 
+local function request_stop_ubusd()
+    local ok, dict = pcall(shared.get, shmem_name)
+    if ok and dict then
+        pcall(function()
+            dict:set('stop', true)
+        end)
+    end
+end
+
 local function stop_ubusd()
     test.run_case_async('stop ubusd', function()
-        local dict = shared.get(shmem_name)
-        if dict then
-            dict:set('stop', true)
-        end
+        request_stop_ubusd()
         eco.sleep(0.1)
     end)
 end
 
 eco.set_panic_hook(function(...)
-    stop_ubusd()
+    request_stop_ubusd()
 
     for _, v in ipairs({...}) do
         print(v)
