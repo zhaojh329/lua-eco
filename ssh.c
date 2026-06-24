@@ -307,11 +307,14 @@ static int lua_ssh_channel_get_exit_signal(lua_State *L)
 /* In case of success, it returns true, in case of error，it returns nil with an error code */
 static int lua_ssh_channel_signal(lua_State *L)
 {
-    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
     int rc = 0;
 
 #ifdef libssh2_channel_signal
+    struct eco_ssh_channel *channel = lua_ssh_check_channel(L);
+
     rc = libssh2_channel_signal(channel->channel, luaL_checkstring(L, 2));
+#else
+    lua_ssh_check_channel(L);
 #endif
     if (rc) {
         lua_pushnil(L);
