@@ -984,7 +984,7 @@ again:
  * @tparam string package Package name.
  * @tparam[opt] string type Filter by section type.
  * @treturn function iter Iterator function yielding section tables.
- * @treturn[2] nil If package does not exist.
+ * If the package does not exist, the iterator yields no sections.
  * @usage
  * local c = uci.cursor()
  * for s in c:each('network') do
