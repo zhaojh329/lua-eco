@@ -387,7 +387,7 @@ static const luaL_Reg funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_eco_internal_termios(lua_State *L)
+int luaopen_eco_termios(lua_State *L)
 {
     creat_metatable(L, TERMIOS_ATTR_MT, NULL, termios_methods);
 
@@ -513,9 +513,4 @@ int luaopen_eco_internal_termios(lua_State *L)
     lua_add_constant(L, "TCION", TCION);
 
     return 1;
-}
-
-int luaopen_eco_termios(lua_State *L)
-{
-    return luaopen_eco_internal_termios(L);
 }
