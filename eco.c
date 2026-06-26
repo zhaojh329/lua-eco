@@ -2078,7 +2078,7 @@ out:
         sigaction(SIGINT, &old_sigint, NULL);
 
     if (err) {
-        lua_pushstring(L, strerror(errno));
+        lua_pushstring(L, strerror(err));
         return 1;
     }
 
