@@ -139,7 +139,6 @@
 <h2>Contents</h2>
 <ul>
 <li><a href="#Functions">Functions</a></li>
-<li><a href="#Tables">Tables</a></li>
 </ul>
 
 
@@ -152,7 +151,7 @@
   <li><a href="../modules/eco.sys.html">eco.sys</a></li>
   <li><a href="../modules/eco.sync.html">eco.sync</a></li>
   <li><a href="../modules/eco.channel.html">eco.channel</a></li>
-  <li><a href="../modules/eco.cli.html">eco.cli</a></li>
+  <li><strong>eco.cli</strong></li>
   <li><a href="../modules/eco.shared.html">eco.shared</a></li>
   <li><a href="../modules/eco.uci.html">eco.uci</a></li>
   <li><a href="../modules/eco.ubus.html">eco.ubus</a></li>
@@ -161,7 +160,7 @@
   <li><a href="../modules/eco.dns.html">eco.dns</a></li>
   <li><a href="../modules/eco.ssl.html">eco.ssl</a></li>
   <li><a href="../modules/eco.mqtt.html">eco.mqtt</a></li>
-  <li><strong>eco.net</strong></li>
+  <li><a href="../modules/eco.net.html">eco.net</a></li>
   <li><a href="../modules/eco.nl.html">eco.nl</a></li>
   <li><a href="../modules/eco.genl.html">eco.genl</a></li>
   <li><a href="../modules/eco.rtnl.html">eco.rtnl</a></li>
@@ -279,28 +278,18 @@
 
 <div id="content">
 
-<h1>Module <code>eco.net</code></h1>
-<p>Network utilities.</p>
-<p> Currently this module provides simple ICMP echo (ping) helpers for both
- IPv4 and IPv6.</p>
+<h1>Module <code>eco.cli</code></h1>
+<p>Command-line argument parsing utilities.</p>
+<p>
+
+</p>
 
 
 <h2><a href="#Functions">Functions</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#ping">ping (host[, opts])</a></td>
-	<td class="summary">Send an ICMP echo request (IPv4).</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#ping6">ping6 (host[, opts])</a></td>
-	<td class="summary">Send an ICMP echo request (IPv6).</td>
-	</tr>
-</table>
-<h2><a href="#Tables">Tables</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#PingOptions">PingOptions</a></td>
-	<td class="summary">Options table for <a href="../modules/eco.net.html#ping">net.ping</a> / <a href="../modules/eco.net.html#ping6">net.ping6</a>.</td>
+	<td class="name" nowrap><a href="#parse_args">parse_args (spec[, argv])</a></td>
+	<td class="summary">Parse command-line options and positional arguments.</td>
 	</tr>
 </table>
 
@@ -312,24 +301,47 @@
 
     <dl class="function">
     <dt>
-    <a name = "ping"></a>
-    <strong>ping (host[, opts])</strong>
+    <a name = "parse_args"></a>
+    <strong>parse_args (spec[, argv])</strong>
     </dt>
     <dd>
-    Send an ICMP echo request (IPv4). </p>
+    Parse command-line options and positional arguments. </p>
 
-<p> If <code>host</code> is a domain name, it will be resolved using DNS A records.
+<p> The parser follows POSIX/GNU <code>getopt_long</code>-style conventions: long
+ options use <code>--name</code> or <code>--name=value</code>, short options use <code>-x</code>, and
+ single-dash multi-character forms are parsed as short option bundles or
+ short option values, not as long options. Use <code>--</code> to stop option parsing.</p>
+
+<p> Parsed option values are returned in a result table keyed by option
+ <code>name</code>; positional arguments are returned in <code>result.args</code>. If <code>argv</code> is
+ omitted, the global <code>arg</code> table is used and <code>arg[0]</code> is ignored.</p>
+
+<p> Each option supports these fields:</p>
+
+<ul>
+    <li><code>name</code> (required): result field name and default long option name</li>
+    <li><code>short</code>: one-character short option</li>
+    <li><code>long</code>: long option name; defaults to <code>name</code></li>
+    <li><a href="https://www.lua.org/manual/5.1/manual.html#pdf-type">type</a>: <code>&quot;boolean&quot;</code> (default), <code>&quot;string&quot;</code>, <code>&quot;number&quot;</code>, <code>&quot;integer&quot;</code>,
+    <code>&quot;count&quot;</code> or <code>&quot;array&quot;</code></li>
+    <li><code>default</code>: default value; array defaults must be arrays of strings</li>
+    <li><code>required</code>: fail if the option is not present</li>
+</ul>
+
+<p> Supported value forms include <code>--name value</code>, <code>--name=value</code>, <code>-x value</code>,
+ and <code>-xvalue</code>. Boolean and count short options may be bundled, such as
+ <code>-vvq</code>.
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">host</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         IPv4 address or domain name.
+        <li><span class="parameter">spec</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Option specification array.
         </li>
-        <li><span class="parameter">opts</span>
-            <span class="types"><span class="type">PingOptions</span></span>
-         Options table.
+        <li><span class="parameter">argv</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         Argument array. Defaults to global <code>arg</code>.
          (<em>optional</em>)
         </li>
     </ul>
@@ -337,117 +349,35 @@
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">number</span></span>
-        Round-trip time in seconds.
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        Parsed options with positional arguments in <code>args</code>.
     </ol>
      <h3>Or</h3>
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        On failure.</li>
+        On parse failure.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        err Error message.</li>
+        Error message.</li>
     </ol>
 
 
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example"><span class="keyword">local</span> net = <span class="global">require</span> <span class="string">'eco.net'</span>
-<span class="keyword">local</span> rtt, err = net.<span class="function-name">ping</span>(<span class="string">'8.8.8.8'</span>, { timeout = <span class="number">1</span> })
-<span class="global">print</span>(rtt <span class="keyword">or</span> err)</pre>
+        <pre class="example"><span class="keyword">local</span> cli = <span class="global">require</span> <span class="string">'eco.cli'</span>
+<span class="keyword">local</span> opts, err = cli.<span class="function-name">parse_args</span>({
+    { name = <span class="string">'dev'</span>, short = <span class="string">'i'</span>, <span class="global">type</span> = <span class="string">'string'</span>, required = <span class="keyword">true</span> },
+    { name = <span class="string">'promisc'</span>, short = <span class="string">'p'</span> },
+    { name = <span class="string">'verbose'</span>, short = <span class="string">'v'</span>, <span class="global">type</span> = <span class="string">'count'</span>, default = <span class="number">0</span> },
+    { name = <span class="string">'include'</span>, short = <span class="string">'I'</span>, <span class="global">type</span> = <span class="string">'array'</span> },
+})
+<span class="keyword">if</span> <span class="keyword">not</span> opts <span class="keyword">then</span>
+    <span class="global">io</span>.stderr:<span class="function-name">write</span>(err, <span class="string">'\n'</span>)
+    <span class="global">os</span>.<span class="function-name">exit</span>(<span class="number">1</span>)
+<span class="keyword">end</span></pre>
     </ul>
-
-</dd>
-    <dt>
-    <a name = "ping6"></a>
-    <strong>ping6 (host[, opts])</strong>
-    </dt>
-    <dd>
-    Send an ICMP echo request (IPv6). </p>
-
-<p> If <code>host</code> is a domain name, it will be resolved using DNS AAAA records.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">host</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         IPv6 address or domain name.
-        </li>
-        <li><span class="parameter">opts</span>
-            <span class="types"><span class="type">PingOptions</span></span>
-         Options table.
-         (<em>optional</em>)
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">number</span></span>
-        Round-trip time in seconds.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        On failure.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        err Error message.</li>
-    </ol>
-
-
-
-
-</dd>
-</dl>
-    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
-
-    <dl class="function">
-    <dt>
-    <a name = "PingOptions"></a>
-    <strong>PingOptions</strong>
-    </dt>
-    <dd>
-    Options table for <a href="../modules/eco.net.html#ping">net.ping</a> / <a href="../modules/eco.net.html#ping6">net.ping6</a>.
-
-
-    <h3>Fields:</h3>
-    <ul>
-        <li><span class="parameter">timeout</span>
-            <span class="types"><span class="type">number</span></span>
-         Receive timeout in seconds.
-         (<em>default</em> 5.0)
-        </li>
-        <li><span class="parameter">data</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         ICMP payload.
-         (<em>default</em> "hello")
-        </li>
-        <li><span class="parameter">mark</span>
-            <span class="types"><span class="type">number</span></span>
-         Set <code>SO_MARK</code> on the underlying socket (Linux).
-         (<em>optional</em>)
-        </li>
-        <li><span class="parameter">device</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         Bind socket to a specific interface (e.g. <code>&quot;eth0&quot;</code>).
-         (<em>optional</em>)
-        </li>
-        <li><span class="parameter">nameservers</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
-         DNS servers used for name resolution.
-   Each entry is typically an IP string (e.g. <code>{ &quot;1.1.1.1&quot;, &quot;8.8.8.8&quot; }</code>).
-         (<em>optional</em>)
-        </li>
-    </ul>
-
-
-
-
 
 </dd>
 </dl>
