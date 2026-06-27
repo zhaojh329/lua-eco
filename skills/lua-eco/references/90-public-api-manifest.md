@@ -64,6 +64,9 @@ Rules:
 - `channel:send`
 - `channel:recv`
 
+## eco.cli
+- `parse_args`
+
 ## eco.file
 - `readfile`
 - `writefile`

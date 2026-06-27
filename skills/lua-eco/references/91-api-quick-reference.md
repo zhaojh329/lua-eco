@@ -38,6 +38,9 @@ Do not edit by hand. Run `scripts/update-api-reference.sh`.
 - `channel:send` - channel:send (v[, timeout]) [Class channel]. Send a value to the channel. Docs: https://zhaojh329.github.io/lua-eco/modules/eco.channel.html#channel:send
 - `new` - new ([capacity=1]) [Functions]. Create a channel. If `capacity` is not provided or is less than 1, it defaults to 1. Docs: https://zhaojh329.github.io/lua-eco/modules/eco.channel.html#new
 
+## eco.cli
+- `parse_args` - parse_args (spec[, argv]) [Functions]. Parse script command-line arguments. Options are described with Lua tables. Parsed values are returned in a result table keyed by option `name`; positional arguments are returned in `result.args`. If `argv` is omitted, the global `arg` table is used and `arg[0]` is ignored. Each option supports these fields: - `name` (required): result field name and default long option name - `short`: one-character short option - `long`: long option name; defaults to `name` - `type`: `"boolean"` (default), `"string"`, `"number"`, `"integer"`, `"count"` or `"array"` - `default`: default value - `required`: fai Docs: https://zhaojh329.github.io/lua-eco/modules/eco.cli.html#parse_args
+
 ## eco.dns
 - `CLASS_IN` - CLASS_IN [Fields]. DNS class: IN (Internet). Docs: https://zhaojh329.github.io/lua-eco/modules/eco.dns.html#CLASS_IN
 - `query` - query (qname[, opts]) [Functions]. Resolve a DNS name. The return value is an array of answer records. Record table fields depend on the record type. Common fields: - `name`, `type`, `class`, `ttl`, `section` Type-specific fields include: - `A/AAAA`: `address` - `CNAME`: `cname` - `MX`: `preference`, `exchange` - `SRV`: `priority`, `weight`, `port`, `target` - `NS`: `nsdname` - `TXT`: `txt` (string or array of strings) - `SPF`: `spf` (string or array of strings) - `PTR`: `ptrdname` - `SOA`: `mname`, `rname`, `serial`, `refresh`, `retry`, `expire`, `minimum` Docs: https://zhaojh329.github.io/lua-eco/modules/eco.dns.html#query
@@ -171,7 +174,6 @@ Do not edit by hand. Run `scripts/update-api-reference.sh`.
 - `link.set` - link.set (dev[, attrs]) [Functions]. Set link attributes. Supported `attrs` fields: - `up` (boolean): bring interface up - `down` (boolean): bring interface down - `arp` (boolean): enable/disable ARP - `dynamic` (boolean) - `multicast` (boolean) - `allmulticast` (boolean) - `promisc` (boolean) - `carrier` (boolean) - `txqueuelen` (number) - `address` (string): MAC address like `"00:11:22:33:44:55"` - `broadcast` (string): MAC address - `mtu` (number) - `alias` (string) - `master` (string): master interface name - `nomaster` (boolean): detach from master Docs: https://zhaojh329.github.io/lua-eco/modules/eco.ip.html#link.set
 
 ## eco.log
-- Note: `debug`, `info`, `err`, and `log` join varargs with spaces. They do not interpret printf-style placeholders such as `%s`; call `string.format(...)` yourself when formatting is needed.
 - `debug` - debug ([...]) [Functions]. Log a DEBUG message. Docs: https://zhaojh329.github.io/lua-eco/modules/eco.log.html#debug
 - `err` - err ([...]) [Functions]. Log an ERR message. Docs: https://zhaojh329.github.io/lua-eco/modules/eco.log.html#err
 - `info` - info ([...]) [Functions]. Log an INFO message. Docs: https://zhaojh329.github.io/lua-eco/modules/eco.log.html#info

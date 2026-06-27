@@ -176,7 +176,7 @@ install(
 
 install(
     FILES time.lua sys.lua file.lua dns.lua socket.lua
-        packet.lua mqtt.lua websocket.lua sync.lua channel.lua net.lua
+        packet.lua mqtt.lua websocket.lua sync.lua channel.lua net.lua cli.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 

@@ -9,6 +9,7 @@ Use this when generating a complete lua-eco program from zero.
 ## Required Shape
 
 ```lua
+local cli = require 'eco.cli'
 local log = require 'eco.log'
 local eco = require 'eco'
 
@@ -31,8 +32,13 @@ local function trace_hook(event)
 end
 
 local function main()
-    if arg[1] == '-trace' then
-        debug.sethook(trace_hook, 'rc')
+    local opts, err = cli.parse_args({
+        { name = 'trace' },
+        -- Add task-specific options here.
+    })
+    if not opts then
+        io.stderr:write(err, '\n')
+        os.exit(1)
     end
 
     eco.set_panic_hook(function(traceback1, traceback2)
@@ -42,6 +48,10 @@ local function main()
 
     log.set_flags(log.FLAG_LF | log.FLAG_FILE)
     log.set_ident('task-specific-ident')
+
+    if opts.trace then
+        debug.sethook(trace_hook, 'rc')
+    end
 
     log.info('task-specific-ident run')
 
@@ -54,7 +64,9 @@ main()
 ## Adaptation Rules
 - Replace `task-specific-ident` with a stable ident derived from the user task, such as `tcp-echo-server`, `mqtt-bridge`, or `ubus-monitor`.
 - Put business logic inside `main()`.
+- Add task-specific command-line options to `parse_args()` using `eco.cli.parse_args`; read positional arguments from `opts.args`.
+- Use POSIX/GNU `getopt_long`-style option forms: long options use `--name`, short options are one-character `-x` aliases.
 - Use `eco.run` inside `main()` for concurrent workers.
 - Do not add `eco.loop()` for normal scripts; the `eco` interpreter starts the scheduler.
-- Keep `-trace` support unless the user explicitly asks for a very small example.
+- Keep `--trace` support unless the user explicitly asks for a very small example.
 - When building formatted log messages, call `string.format(...)` first; `eco.log` joins arguments with spaces and does not apply printf-style formatting.
