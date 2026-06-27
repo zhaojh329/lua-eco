@@ -574,7 +574,7 @@ static int lua_ubus_listen(lua_State *L)
     ev = &lev->ev;
     ev->cb = ubus_event_handler;
 
-    strcpy(lev->pattern, name);
+    memcpy(lev->pattern, name, strlen(name) + 1);
 
     ret = ubus_register_event_handler(&ctx->ctx, ev, lev->pattern);
     if (ret) {
@@ -834,7 +834,7 @@ static int lua_ubus_subscribe(lua_State *L)
     sub->remove_cb = ubus_subscriber_remove_cb;
 
     if (auto_sub) {
-        strcpy(lsub->path, path);
+        memcpy(lsub->path, path, strlen(path) + 1);
         sub->new_obj_cb = ubus_subscriber_new_obj_cb;
     }
 
@@ -1083,7 +1083,7 @@ static int lua_ubus_connect(lua_State *L)
     set_obj(L, &ubus_obj_key, -1, ctx);
 
     if (path)
-        strcpy(ctx->path, path);
+        memcpy(ctx->path, path, strlen(path) + 1);
     else
         ctx->path[0] = '\0';
 
