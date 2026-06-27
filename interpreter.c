@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <time.h>
 
 #include "config.h"
 #include "eco.h"
