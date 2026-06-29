@@ -80,7 +80,7 @@ static volatile sig_atomic_t got_sigchld;
 #define RD_BUFSIZE 4096
 #define FD_HASH_BUCKETS 256
 #define IO_FAIRNESS_DURATION 300
-#define CO_RUN_TIMEOUT 2000
+#define CO_RUN_TIMEOUT 5000
 
 #define ECO_IO_MT "struct eco_io *"
 #define ECO_READER_MT "struct eco_reader *"
@@ -1869,7 +1869,7 @@ static int lua_eco_set_panic_hook(lua_State *L)
  * If a single `resume` runs longer than this timeout, eco triggers panic
  * and prints traceback via the existing panic path.
  *
- * The default timeout is 2000 milliseconds.
+ * The default timeout is 5000 milliseconds.
  *
  * @function set_watchdog_timeout
  * @tparam integer ms Timeout in milliseconds, `0` means disabled.
