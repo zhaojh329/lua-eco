@@ -202,6 +202,23 @@ static struct eco_scheduler *get_eco_scheduler(lua_State *L)
     return sched;
 }
 
+static void eco_log_traceback(struct eco_scheduler *sched, lua_State *L,
+                lua_State *co, const char *msg)
+{
+    luaL_traceback(L, co, msg, 0);
+    luaL_traceback(L, L, NULL, 0);
+
+    if (sched->panic_hook != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, sched->panic_hook);
+        lua_insert(L, -3);
+        lua_call(L, 2, 0);
+    } else {
+        printf("%s\n", lua_tostring(L, -2));
+        printf("%s\n", lua_tostring(L, -1));
+        lua_pop(L, 2);
+    }
+}
+
 static void eco_resume(lua_State *L, lua_State *co, int narg)
 {
     struct eco_scheduler *sched = get_eco_scheduler(L);
@@ -218,7 +235,8 @@ static void eco_resume(lua_State *L, lua_State *co, int narg)
         lua_pushfstring(co,
                 "coroutine execution timeout: run too long(%I ms) without yielding/dead (>%I ms)",
                 duration, sched->co_run_timeout);
-        status = LUA_ERRRUN;
+        eco_log_traceback(sched, L, co, lua_tostring(co, -1));
+        lua_pop(co, 1);
     }
 
     switch (status) {
@@ -230,18 +248,7 @@ static void eco_resume(lua_State *L, lua_State *co, int narg)
         break;
 
     default:
-        luaL_traceback(L, co, lua_tostring(co, -1), 0);
-        luaL_traceback(L, L, NULL, 0);
-
-        if (sched->panic_hook != LUA_NOREF) {
-            lua_rawgeti(L, LUA_REGISTRYINDEX, sched->panic_hook);
-            lua_insert(L, -3);
-            lua_call(L, 2, 0);
-        } else {
-            printf("%s\n", lua_tostring(L, -2));
-            printf("%s\n", lua_tostring(L, -1));
-        }
-
+        eco_log_traceback(sched, L, co, lua_tostring(co, -1));
         exit(1);
     }
 }

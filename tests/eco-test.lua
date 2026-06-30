@@ -23,6 +23,13 @@ local function write_file(path, content)
     f:close()
 end
 
+local function read_file(path)
+    local f = assert(io.open(path, 'rb'))
+    local content = f:read('*a')
+    f:close()
+    return content
+end
+
 -- Constants exported by eco.c
 assert(type(eco.VERSION) == 'string')
 assert(math.type(eco.VERSION_MAJOR) == 'integer')
@@ -59,6 +66,7 @@ eco.set_watchdog_timeout(1000)
 
 do
     local script = os.tmpname()
+    local log = os.tmpname()
 
     write_file(script, [[
 local eco = require 'eco'
@@ -69,10 +77,14 @@ eco.run(function()
 end)
 ]])
 
-    local status = shell_status('eco ' .. script .. ' >/dev/null 2>&1')
+    local status = shell_status('eco ' .. script .. ' >' .. log .. ' 2>&1')
+    local output = read_file(log)
     os.remove(script)
+    os.remove(log)
 
-    assert(status ~= 0, 'watchdog should terminate long-running coroutine with non-zero exit')
+    assert(status == 0, 'watchdog timeout should only log and not exit')
+    assert(output:find('coroutine execution timeout', 1, true),
+           'watchdog timeout should be logged')
 end
 
 do
