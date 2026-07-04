@@ -71,6 +71,7 @@
 
 static char eco_scheduler_key;
 static char eco_co_key;
+static char eco_ready_key;
 
 static volatile sig_atomic_t got_sigint;
 static volatile sig_atomic_t got_sigchld;
@@ -98,6 +99,8 @@ struct eco_scheduler {
     uint32_t nfd;
     uint16_t co_run_timeout;
     uint64_t resumed_at;
+    int64_t ready_head;
+    int64_t ready_tail;
     unsigned quit:1;
 };
 
@@ -121,6 +124,7 @@ struct eco_io {
     struct eco_timer timer;
     unsigned is_timeout:1;
     unsigned is_canceled:1;
+    unsigned is_ready:1;
     unsigned fairness_yield:1;
     double timeout;
     lua_State *co;
@@ -219,7 +223,7 @@ static void eco_log_traceback(struct eco_scheduler *sched, lua_State *L,
     }
 }
 
-static void eco_resume(lua_State *L, lua_State *co, int narg)
+static void eco_resume_direct(lua_State *L, lua_State *co, int narg)
 {
     struct eco_scheduler *sched = get_eco_scheduler(L);
     uint64_t duration;
@@ -251,6 +255,21 @@ static void eco_resume(lua_State *L, lua_State *co, int narg)
         eco_log_traceback(sched, L, co, lua_tostring(co, -1));
         exit(1);
     }
+}
+
+static void eco_ready(lua_State *L, lua_State *co, struct eco_scheduler *sched)
+{
+    if (!sched)
+        sched = get_eco_scheduler(L);
+
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_ready_key);
+    lua_pushlightuserdata(L, co);
+    lua_rawseti(L, -2, ++sched->ready_tail);
+
+    lua_pop(L, 1);
+
+    if (sched->ready_head == 0)
+        sched->ready_head = sched->ready_tail;
 }
 
 static void eco_timer_stop(struct eco_timer *timer)
@@ -440,6 +459,38 @@ static int eco_fd_update_events(struct eco_scheduler *sched, struct eco_fd *efd)
     return 0;
 }
 
+static void eco_io_detach(lua_State *L, struct eco_scheduler *sched, struct eco_io *io)
+{
+    struct eco_fd *efd = io->efd;
+
+    if (!sched)
+        sched = get_eco_scheduler(L);
+
+    eco_timer_stop(&io->timer);
+
+    if (efd->read_io == io)
+        efd->read_io = NULL;
+
+    if (efd->write_io == io)
+        efd->write_io = NULL;
+
+    eco_fd_update_events(sched, efd);
+}
+
+static void eco_io_ready(lua_State *L, struct eco_scheduler *sched, struct eco_io *io)
+{
+    if (!io->co || io->is_ready)
+        return;
+
+    if (!sched)
+        sched = get_eco_scheduler(L);
+
+    io->is_ready = true;
+
+    eco_io_detach(L, sched, io);
+    eco_ready(L, io->co, sched);
+}
+
 static int eco_io_yieldk(lua_State *L, struct eco_io *io, int events, lua_KFunction k)
 {
     struct eco_scheduler *sched = get_eco_scheduler(L);
@@ -480,18 +531,10 @@ static void eco_io_fairness(lua_State *L, struct eco_io *io, lua_KFunction k)
 static void eco_io_stop(lua_State *L, struct eco_io *io)
 {
     struct eco_scheduler *sched = get_eco_scheduler(L);
-    struct eco_fd *efd = io->efd;
 
-    eco_timer_stop(&io->timer);
+    eco_io_detach(L, sched, io);
 
-    if (efd->read_io == io)
-        efd->read_io = NULL;
-
-    if (efd->write_io == io)
-        efd->write_io = NULL;
-
-    eco_fd_update_events(sched, efd);
-
+    io->is_ready = false;
     io->co = NULL;
 }
 
@@ -668,12 +711,17 @@ static int eco_scheduler_init(lua_State *L)
     lua_newtable(L);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_co_key);
 
+    lua_newtable(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_ready_key);
+
     return 0;
 }
 
 static int eco_io_push_wait_error(lua_State *L, struct eco_io *io)
 {
     const char *err = NULL;
+
+    io->is_ready = false;
 
     if (io->is_timeout) {
         io->is_timeout = false;
@@ -695,8 +743,10 @@ static int eco_io_waitk(lua_State *L, int status, lua_KContext ctx)
     int ret;
 
     ret = eco_io_push_wait_error(L, io);
-    if (ret)
+    if (ret) {
+        eco_io_stop(L, io);
         return ret;
+    }
 
     eco_io_stop(L, io);
     lua_pushboolean(L, true);
@@ -753,15 +803,13 @@ static int lua_io_wait(lua_State *L)
 
 static int eco_io_cancel(lua_State *L, struct eco_io *io)
 {
-    lua_State *co = io->co;
-    if (!co)
+    if (!io->co || io->is_ready)
         return 0;
 
     io->fairness_yield = false;
     io->is_canceled = true;
 
-    eco_io_stop(L, io);
-    eco_resume(L, co, 0);
+    eco_io_ready(L, NULL, io);
 
     return 0;
 }
@@ -769,8 +817,10 @@ static int eco_io_cancel(lua_State *L, struct eco_io *io)
 /**
  * Cancel a pending wait on this I/O object.
  *
- * If a coroutine is currently suspended in `io:wait()`, it will be resumed
- * immediately and `io:wait()` will return nil, "canceled".
+ * If a coroutine is currently suspended in `io:wait()`, it is queued on the
+ * scheduler ready queue and `io:wait()` will later return nil, "canceled".
+ * This method does not resume the waiting coroutine synchronously before
+ * returning.
  *
  * @function io:cancel
  * @treturn nil
@@ -1268,8 +1318,10 @@ static int lua_reader_readuntil(lua_State *L)
 /**
  * Cancel a pending read operation.
  *
- * If a coroutine is currently suspended in `read`, `read2b` or `wait`, it will be
- * resumed immediately and return nil with error "canceled".
+ * If a coroutine is currently suspended in `read`, `read2b` or `wait`, it is
+ * queued on the scheduler ready queue and will later return nil with error
+ * "canceled". This method does not resume the waiting coroutine synchronously
+ * before returning.
  *
  * @function reader:cancel
  * @treturn nil
@@ -1612,8 +1664,10 @@ out_close:
 /**
  * Cancel a pending write operation.
  *
- * If a coroutine is currently suspended in `write`, `sendfile` or `wait`, it will be
- * resumed immediately and return nil with error "canceled".
+ * If a coroutine is currently suspended in `write`, `sendfile` or `wait`, it is
+ * queued on the scheduler ready queue and will later return nil with error
+ * "canceled". This method does not resume the waiting coroutine synchronously
+ * before returning.
  *
  * @function writer:cancel
  * @treturn nil
@@ -1766,7 +1820,7 @@ static int lua_eco_run(lua_State *L)
 
     set_obj(L, &eco_co_key, -1, co);
 
-    eco_resume(L, co, top - 1);
+    eco_resume_direct(L, co, top - 1);
 
     return 1;
 }
@@ -1778,7 +1832,7 @@ static int lua_eco_resume(lua_State *L)
     luaL_checktype(L, 1, LUA_TTHREAD);
 
     co = lua_tothread(L, 1);
-    eco_resume(L, co, 0);
+    eco_ready(L, co, NULL);
 
     return 0;
 }
@@ -1913,14 +1967,8 @@ static int get_next_timeout(struct eco_scheduler *sched, uint64_t now)
 
 static void eco_resume_io(lua_State *L, struct eco_io *io)
 {
-    lua_State *co;
-
-    if (!io || !io->co)
-        return;
-
-    co = io->co;
     io->fairness_yield = false;
-    eco_resume(L, co, 0);
+    eco_io_ready(L, NULL, io);
 }
 
 static void eco_process_timeouts(struct eco_scheduler *sched, lua_State *L, uint64_t now)
@@ -1936,27 +1984,25 @@ static void eco_process_timeouts(struct eco_scheduler *sched, lua_State *L, uint
 
         if (co) {
             eco_timer_stop(timer);
-            eco_resume(L, co, 0);
+            eco_ready(L, co, sched);
         } else {
             struct eco_io *io = container_of(timer, struct eco_io, timer);
 
-            co = io->co;
-
-            if (io->fairness_yield) {
-                eco_timer_stop(timer);
-            } else {
+            if (!io->fairness_yield)
                 io->is_timeout = true;
-                eco_io_stop(L, io);
-            }
 
             io->fairness_yield = false;
-            eco_resume(L, co, 0);
+            eco_io_ready(L, sched, io);
         }
     }
 }
 
+static void eco_process_ready(lua_State *L, struct eco_scheduler *sched);
+
 static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
 {
+    struct eco_scheduler *sched = get_eco_scheduler(L);
+
     for (int i = 0; i < nfds; i++) {
         struct eco_fd *efd = events[i].data.ptr;
         eco_fd_ref(efd);
@@ -1973,6 +2019,12 @@ static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
             if (io && io->co) {
                 resumed_io = (uintptr_t)io;
                 eco_resume_io(L, io);
+
+                /*
+                * A read coroutine may cancel or replace the write waiter before a
+                * stale EPOLLOUT bit from the same epoll snapshot is consumed.
+                */
+                eco_process_ready(L, sched);
             }
         }
 
@@ -1987,6 +2039,35 @@ static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
         struct eco_fd *efd = events[i].data.ptr;
         eco_fd_put(efd);
     }
+}
+
+static void eco_process_ready(lua_State *L, struct eco_scheduler *sched)
+{
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &eco_ready_key);
+
+    while (sched->ready_head) {
+        lua_State *co;
+
+        lua_rawgeti(L, -1, sched->ready_head);
+
+        co = (lua_State *)lua_topointer(L, -1);
+
+        lua_pop(L, 1);
+
+        lua_pushnil(L);
+        lua_rawseti(L, -2, sched->ready_head);
+
+        if (sched->ready_head == sched->ready_tail) {
+            sched->ready_head = 0;
+            sched->ready_tail = 0;
+        } else {
+            sched->ready_head++;
+        }
+
+        eco_resume_direct(L, co, 0);
+    }
+
+    lua_pop(L, 1);
 }
 
 /**
@@ -2044,6 +2125,8 @@ static int lua_eco_loop(lua_State *L)
         eco_process_timeouts(sched, L, now);
 
         eco_process_sigchld(L, sched);
+
+        eco_process_ready(L, sched);
 
         if (sched->quit)
             break;
@@ -2132,11 +2215,16 @@ static int lua_eco_init(lua_State *L)
 
     sched->nfd = 0;
     sched->quit = false;
+    sched->ready_head = 0;
+    sched->ready_tail = 0;
     sched->resumed_at = 0;
     sched->co_run_timeout = CO_RUN_TIMEOUT;
 
     lua_newtable(L);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_co_key);
+
+    lua_newtable(L);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &eco_ready_key);
 
     return 0;
 }
@@ -2153,13 +2241,13 @@ static const struct luaL_Reg funcs[] = {
     {"writer", lua_eco_writer},
     {"sleep", lua_eco_sleep},
     {"run", lua_eco_run},
-    {"resume", lua_eco_resume},
     {"count", lua_eco_count},
     {"all", lua_eco_all},
     {"set_panic_hook", lua_eco_set_panic_hook},
     {"set_watchdog_timeout", lua_eco_set_watchdog_timeout},
     {"loop", lua_eco_loop},
     {"unloop", lua_eco_unloop},
+    {"_resume", lua_eco_resume},
     {"_init", lua_eco_init},
     {"_set_sigchld_hook", lua_eco_set_sigchld_hook},
     {NULL, NULL}

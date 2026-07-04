@@ -112,6 +112,7 @@ test.run_case_sync('io cancel and busy check', function()
         assert(tostring(perr):find('already waiting'), 'busy error message mismatch')
 
         io:cancel()
+        assert(canceled == false, 'io:cancel should not resume waiter before returning')
     end)
 
     eco.run(function()
@@ -230,6 +231,7 @@ test.run_case_sync('reader wait timeout and cancel', function()
     eco.run(function()
         eco.sleep(0.06)
         rd:cancel()
+        assert(canceled == false, 'reader:cancel should not resume waiter before returning')
     end)
 
     eco.run(function()
@@ -307,6 +309,7 @@ test.run_case_sync('writer cancel blocked write', function()
     eco.run(function()
         eco.sleep(0.05)
         wr:cancel()
+        assert(canceled == false, 'writer:cancel should not resume waiter before returning')
     end)
 
     eco.run(function()

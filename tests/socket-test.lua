@@ -151,6 +151,7 @@ test.run_case_sync('socket close cancels pending writer', function()
     eco.run(function()
         eco.sleep(0.02)
         a:close()
+        assert(done == false, 'socket:close should not resume pending writer before returning')
         b:close()
     end)
 

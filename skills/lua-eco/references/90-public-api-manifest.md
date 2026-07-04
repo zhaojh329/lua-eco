@@ -26,7 +26,6 @@ Rules:
 - `writer:cancel`
 - `sleep`
 - `run`
-- `resume`
 - `count`
 - `all`
 - `set_panic_hook`

@@ -7,7 +7,6 @@ Public functions:
 - eco.writer
 - eco.sleep
 - eco.run
-- eco.resume
 - eco.count
 - eco.all
 - eco.set_panic_hook

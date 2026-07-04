@@ -136,7 +136,7 @@ end)
 
 eco.run(function()
     eco.sleep(0.01)
-    eco.resume(yielded_co)
+    eco._resume(yielded_co)
     done.resumer = true
 end)
 

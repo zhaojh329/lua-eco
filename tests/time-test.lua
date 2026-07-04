@@ -134,6 +134,131 @@ end)
 
 assert(canceled_fired == false, 'timer callback should not run after cancel')
 
+local reset_calls = 0
+test.run_case_sync('timer reset while pending', function()
+	local tmr = assert(time.timer(function(self)
+		reset_calls = reset_calls + 1
+		self:close()
+	end))
+
+	local _, err = tmr:set(0.2)
+	assert(err == nil, err)
+
+	eco.sleep(0.01)
+
+	_, err = tmr:set(0.01)
+	assert(err == nil, err)
+
+	test.wait_until('reset timer callback should run', function()
+		return reset_calls == 1
+	end, 1.0)
+end)
+
+assert(reset_calls == 1, 'reset timer callback should run exactly once')
+
+local yield_set_calls = 0
+test.run_case_sync('timer set while callback yields', function()
+	local first_entered = false
+	local tmr
+
+	tmr = assert(time.timer(function()
+		yield_set_calls = yield_set_calls + 1
+
+		if yield_set_calls == 1 then
+			first_entered = true
+			eco.sleep(0.25)
+		end
+	end))
+
+	local _, err = tmr:set(0.01)
+	assert(err == nil, err)
+
+	test.wait_until('yielding timer callback should enter', function()
+		return first_entered
+	end, 1.0)
+
+	_, err = tmr:set(0.01)
+	assert(err == nil, err)
+
+	test.wait_until('timer should fire again while first callback yields', function()
+		return yield_set_calls >= 2
+	end, 0.12)
+
+	tmr:close()
+end)
+
+assert(yield_set_calls >= 2,
+	   'timer should allow a later set() to fire while an earlier callback is yielded')
+
+local cancel_rearm_fired = false
+test.run_case_sync('timer cancel then immediate set', function()
+	local tmr = assert(time.timer(function(self)
+		cancel_rearm_fired = true
+		self:close()
+	end))
+
+	local _, err = tmr:set(1.0)
+	assert(err == nil, err)
+
+	tmr:cancel()
+
+	_, err = tmr:set(0.01)
+	assert(err == nil, err)
+
+	test.wait_until('timer should fire after cancel followed by set', function()
+		return cancel_rearm_fired
+	end, 1.0)
+end)
+
+assert(cancel_rearm_fired, 'cancel followed by set should keep a waiter for the new timer')
+
+test.run_case_sync('timer read error exits waiter', function()
+	local fired = false
+	local tmr = assert(time.timer(function(self)
+		fired = true
+		self:close()
+	end))
+	local real_rd = tmr.rd
+	local read_calls = 0
+
+	tmr.rd = {
+		read = function(_, size)
+			read_calls = read_calls + 1
+			assert(size == 8, 'timer should read the timerfd expiration counter')
+			return nil, 'synthetic read error'
+		end
+	}
+
+	local ok, err = tmr:set(0.01)
+	assert(ok == true, err)
+	assert(read_calls == 1, 'reader error path should not busy-loop')
+
+	tmr.rd = real_rd
+
+	ok, err = tmr:set(0.01)
+	assert(ok == true, err)
+
+	test.wait_until('timer should restart after reader error', function()
+		return fired
+	end, 1.0)
+end)
+
+local close_fired = false
+test.run_case_sync('timer close idempotent', function()
+	local tmr = assert(time.timer(function()
+		close_fired = true
+	end))
+
+	local _, err = tmr:set(0.05)
+	assert(err == nil, err)
+
+	tmr:close()
+	tmr:close()
+	eco.sleep(0.08)
+end)
+
+assert(close_fired == false, 'closed timer callback should not run')
+
 test.run_case_sync('timer set invalid delay', function()
 	local tmr = assert(time.timer(function() end))
 

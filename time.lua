@@ -34,6 +34,13 @@ local timer_methods = {}
 --
 -- This cancels the pending read waiting for the timer to expire.
 function timer_methods:cancel()
+    if not self.tfd then
+        return
+    end
+
+    time.timerfd_settime(self.tfd, self.flags, 0)
+
+    self.canceled = true
     self.rd:cancel()
 end
 
@@ -56,36 +63,40 @@ function timer_methods:set(delay)
         delay = 0.001
     end
 
+    if not self.tfd then
+        return nil, 'closed'
+    end
+
     local ok, err = time.timerfd_settime(self.tfd, self.flags, delay)
     if not ok then
         return nil, err
     end
 
-    if self.active then
-        if self.in_callback then
-            self.rearmed_in_callback = true
-        end
+    self.canceled = nil
+
+    if self.waiting then
         return true
     end
 
-    self.active = true
+    self.waiting = true
 
     eco.run(function()
-        while self.rd:read(8) do
-            self.in_callback = true
-            self.cb()
-            self.in_callback = false
+        while true do
+            _, err = self.rd:read(8)
 
-            if not self.rearmed_in_callback then
-                break
+            if not err then
+                self.waiting = nil
+                self.canceled = nil
+                self.cb()
+                return
             end
 
-            self.rearmed_in_callback = false
+            if err ~= 'canceled' or self.canceled then
+                self.waiting = nil
+                self.canceled = nil
+                return
+            end
         end
-
-        self.in_callback = false
-        self.rearmed_in_callback = false
-        self.active = false
     end)
 
     return true
@@ -98,7 +109,7 @@ function timer_methods:close()
     end
 
     -- Ensure any coroutine blocked in rd:read() is resumed before fd closes.
-    self.rd:cancel()
+    self:cancel()
     file.close(self.tfd)
     self.tfd = nil
 end

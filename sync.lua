@@ -29,13 +29,19 @@ local M = {}
 -- @type cond
 local cond_methods = {}
 
-local function resume_one_yield_waiter(self)
+-- Only one coroutine may own the eventfd read slot. Others stay pending until
+-- the current reader finishes; handoff reserves the slot before resuming.
+local function resume_pending_waiter(self)
     for co, info in pairs(self.waiters) do
-        if info.yield then
-            eco.resume(co)
-            break
+        if info.pending then
+            self.reading = co
+            info.pending = nil
+            eco._resume(co)
+            return
         end
     end
+
+    self.reading = nil
 end
 
 --- Wait until signaled.
@@ -54,18 +60,28 @@ function cond_methods:wait(timeout)
     local co = coroutine.running()
 
     local info = {}
+    local deadline
 
     waiters[co] = info
 
-    if self.waiting then
-        info.yield = true
+    if timeout then
+        deadline = time.now() + timeout
+    end
 
-        if timeout and timeout > 0 then
-            info.timeout = true
+    while self.reading and self.reading ~= co do
+        info.pending = true
 
-            eco.sleep(timeout)
+        if deadline and not info.signaled then
+            local remaining = deadline - time.now()
 
-            if info.timeout then
+            if remaining <= 0 then
+                waiters[co] = nil
+                return nil, 'timeout'
+            end
+
+            eco.sleep(remaining)
+
+            if info.pending and not info.signaled then
                 waiters[co] = nil
                 return nil, 'timeout'
             end
@@ -74,18 +90,31 @@ function cond_methods:wait(timeout)
         end
     end
 
-    self.waiting = true
+    info.pending = nil
 
-    local ok, err = self.rd:read(8, timeout)
-    if not ok then
-        return nil, err
+    self.reading = co
+
+    local remaining = timeout
+
+    if deadline and not info.signaled then
+        remaining = deadline - time.now()
+
+        if remaining <= 0 then
+            waiters[co] = nil
+            resume_pending_waiter(self)
+            return nil, 'timeout'
+        end
     end
+
+    local ok, err = self.rd:read(8, remaining)
 
     waiters[co] = nil
 
-    self.waiting = false
+    resume_pending_waiter(self)
 
-    resume_one_yield_waiter(self)
+    if not ok then
+        return nil, err
+    end
 
     return info.data or true
 end
@@ -105,12 +134,22 @@ end
 -- @treturn boolean `true` if a waiter was awakened.
 function cond_methods:signal(data)
     local waiters = self.waiters
+    local reading = self.reading
+
+    if reading and waiters[reading] then
+        local info = waiters[reading]
+
+        info.data = data
+        info.signaled = true
+
+        return write_eventfd(self, 1)
+    end
 
     for co in pairs(waiters) do
         local info = waiters[co]
 
         info.data = data
-        info.timeout = nil
+        info.signaled = true
 
         return write_eventfd(self, 1)
     end
@@ -129,7 +168,7 @@ function cond_methods:broadcast()
     local n = 0
 
     for co in pairs(waiters) do
-        waiters[co].timeout = nil
+        waiters[co].signaled = true
         n = n + 1
     end
 
@@ -170,8 +209,7 @@ function M.cond()
         efd = efd,
         rd = eco.reader(efd),
         wr = eco.writer(efd),
-        waiters = {},
-        waiting = false
+        waiters = {}
     }, cond_mt)
 end
 

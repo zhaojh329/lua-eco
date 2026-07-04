@@ -92,6 +92,44 @@ test.run_case_sync('mutex lock/unlock semantics', function()
     end)
 end)
 
+test.run_case_sync('mutex relock after queued waiter resume', function()
+    local m = sync.mutex()
+    local loops = 4
+    local slow_count = 0
+    local fast_count = 0
+    local done = 0
+
+    eco.run(function()
+        for _ = 1, loops do
+            local ok, err = m:lock(1.0)
+            assert(ok == true, err)
+            slow_count = slow_count + 1
+            eco.sleep(0.01)
+            m:unlock()
+        end
+
+        done = done + 1
+    end)
+
+    eco.run(function()
+        for _ = 1, loops do
+            local ok, err = m:lock(1.0)
+            assert(ok == true, err)
+            fast_count = fast_count + 1
+            m:unlock()
+        end
+
+        done = done + 1
+    end)
+
+    test.wait_until('mutex relock should complete', function()
+        return done == 2
+    end, 2.0, 0.001)
+
+    assert(slow_count == loops and fast_count == loops,
+           string.format('unexpected lock counts: slow=%d fast=%d', slow_count, fast_count))
+end)
+
 -- waitgroup: wait success, timeout and negative counter errors.
 test.run_case_sync('waitgroup semantics', function()
     local wg = sync.waitgroup()

@@ -174,7 +174,7 @@ function methods:call(object, method, params, timeout)
             datas[#datas + 1] = data
         else
             status = data
-            eco.resume(co)
+            eco._resume(co)
         end
     end
 
