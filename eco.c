@@ -58,6 +58,7 @@ static int eco_count(lua_State *L)
         count++;
         lua_pop(L, 1);
     }
+    lua_pop(L, 1);
     lua_pushinteger(L, count);
     return 1;
 }
