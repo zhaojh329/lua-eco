@@ -194,6 +194,47 @@ run_loop_case('exec read/wait/close', function()
     p:close()
 end)
 
+run_loop_case('exec close wakes pending stdio readers', function()
+    local p, perr = sys.exec('/bin/sleep', '60')
+    assert(p, perr)
+
+    local stdout_res
+    local stderr_res
+
+    eco.run(function()
+        local data, rerr = p:read_stdout('*a')
+        stdout_res = { data = data, err = rerr }
+    end)
+
+    eco.run(function()
+        local data, rerr = p:read_stderr('*a')
+        stderr_res = { data = data, err = rerr }
+    end)
+
+    eco.sleep(0.05)
+
+    p:close()
+
+    eco.sleep(0.05)
+
+    local stdout_done = stdout_res ~= nil
+    local stderr_done = stderr_res ~= nil
+
+    local kill_ok, kerr = p:kill()
+    assert(kill_ok == true, kerr)
+
+    local waited_pid, status = p:wait(1)
+    assert(waited_pid == p.pid)
+    assert(type(status) == 'table' and status.signaled == true)
+
+    assert(stdout_done, 'process:close should wake a pending stdout reader')
+    assert(stderr_done, 'process:close should wake a pending stderr reader')
+    assert(stdout_res.data == nil and stdout_res.err == 'canceled')
+    assert(stderr_res.data == nil and stderr_res.err == 'canceled')
+
+    p:close()
+end)
+
 run_loop_case('waitpid no state change', function()
     local p, perr = sys.exec('/bin/sh', '-c', 'sleep 1')
     assert(p, perr)

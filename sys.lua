@@ -60,15 +60,25 @@ local exec_methods = {}
 --
 -- @function process:close
 function exec_methods:close()
-    if not self.stdout_fd then
-        return
+    if self.stdout_rd then
+        self.stdout_rd:cancel()
+        self.stdout_rd = nil
     end
 
-    file.close(self.stdout_fd)
-    file.close(self.stderr_fd)
+    if self.stderr_rd then
+        self.stderr_rd:cancel()
+        self.stderr_rd = nil
+    end
 
-    self.stdout_fd = nil
-    self.stderr_fd = nil
+    if self.stdout_fd then
+        file.close(self.stdout_fd)
+        self.stdout_fd = nil
+    end
+
+    if self.stderr_fd then
+        file.close(self.stderr_fd)
+        self.stderr_fd = nil
+    end
 end
 
 --- Wait for the process to exit.
