@@ -155,6 +155,8 @@ Process handle behavior:
 
 Shell wrapper:
 - `local stdout, stderr, err = sys.sh(cmd[, timeout])`
+- On success, `stdout` is non-nil, `stderr` is stderr, and `err` is nil.
+- On failure, `err` is the error string.
 
 Reject these invented shapes:
 - `local stdout, stderr, code = sys.exec(...)`

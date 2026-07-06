@@ -28,7 +28,7 @@ signal_handle methods:
 - Prefer the array-argument form of sys.sh when shell syntax is not required.
 - `sys.exec(...)` returns `process, err`; it does not return stdout, stderr, or exit status directly.
 - `process:wait(timeout)` returns `pid, status` on success; `status` is a table, not a bare numeric exit code.
-- `sys.sh(cmd[, timeout])` returns `stdout, stderr, err`.
+- `sys.sh(cmd[, timeout])` returns `stdout, stderr` on success; failures report the error string in the third return value.
 - Process objects must be waited on or closed to avoid zombie processes and handle leaks.
 - File read/write error branches must be handled and resources must be cleaned up.
 

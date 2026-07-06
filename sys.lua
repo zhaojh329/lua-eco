@@ -279,7 +279,8 @@ end
 --
 --   - If string, executed via `/bin/sh -c`.
 --   - If table, first element is program, remaining are arguments.
--- @tparam[opt=30] number timeout Timeout in seconds for reading stdout/stderr.
+-- @tparam[opt=30] number timeout Timeout in seconds for the command,
+-- including stdout/stderr drain and process exit.
 --
 -- @treturn[1] string Standard output of the command.
 -- @treturn[1] string Standard error of the command.
@@ -287,7 +288,7 @@ end
 -- @treturn[2] string Error message when failed.
 --
 -- @usage
--- local out, err = sys.sh({ 'echo', 'hello' })
+-- local out, err, e = sys.sh({ 'echo', 'hello' })
 -- if not out then
 --     print('Command failed:', e)
 -- else
@@ -309,18 +310,82 @@ function M.sh(cmd, timeout)
         return nil, nil, err
     end
 
-    local stdout, stderr
-
     timeout = timeout or 30
 
-    stdout, err = p:read_stdout('*a', timeout)
-    if not stdout then
+    local function read_all(read)
+        local chunks = {}
+
+        while true do
+            local data, rerr = read()
+
+            if data then
+                if #data == 0 then
+                    return table.concat(chunks)
+                end
+
+                chunks[#chunks + 1] = data
+            elseif rerr == 'eof' then
+                return table.concat(chunks)
+            else
+                return nil, rerr
+            end
+        end
+    end
+
+    local wg = sync.waitgroup()
+    local stdout, stdout_err
+    local stderr, stderr_err
+    local wait_err
+
+    wg:add(3)
+
+    eco.run(function()
+        stdout, stdout_err = read_all(function()
+            return p:read_stdout('*a')
+        end)
+        wg:done()
+    end)
+
+    eco.run(function()
+        stderr, stderr_err = read_all(function()
+            return p:read_stderr('*a')
+        end)
+        wg:done()
+    end)
+
+    eco.run(function()
+        local wpid, werr = p:wait()
+        if not wpid then
+            wait_err = werr
+        end
+        wg:done()
+    end)
+
+    local ok
+    ok, err = wg:wait(timeout)
+    if not ok then
+        p:close()
+        p:signal(sys.SIGTERM)
+
+        ok = wg:wait(0.2)
+        if not ok then
+            p:kill()
+            wg:wait(1)
+        end
+
         return nil, nil, err
     end
 
-    stderr, err = p:read_stderr('*a', timeout)
+    if wait_err then
+        return nil, nil, wait_err
+    end
+
+    if not stdout then
+        return nil, nil, stdout_err
+    end
+
     if not stderr then
-        return stdout, nil, err
+        return stdout, nil, stderr_err
     end
 
     return stdout, stderr

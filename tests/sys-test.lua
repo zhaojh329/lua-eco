@@ -319,6 +319,33 @@ run_loop_case('sh wrapper', function()
     assert(stderr == 'E')
     assert(sherr == nil)
 
+    stdout, stderr, sherr = sys.sh('printf S', 1)
+    assert(stdout == 'S')
+    assert(stderr == '')
+    assert(sherr == nil)
+
+    stdout, stderr, sherr = sys.sh('true', 1)
+    assert(stdout == '')
+    assert(stderr == '')
+    assert(sherr == nil)
+
+    local large_stderr_cmd = [[python3 -c 'import os,select
+data = b"x" * (1024 * 1024)
+off = 0
+while off < len(data):
+    try:
+        off += os.write(2, data[off:off + 65536])
+    except BlockingIOError:
+        select.select([], [2], [])
+os.write(1, b"OUT")
+']]
+
+    stdout, stderr, sherr = sys.sh(large_stderr_cmd, 2)
+    assert(stdout == 'OUT', sherr)
+    assert(type(stderr) == 'string' and #stderr == 1024 * 1024,
+           'sys.sh should concurrently drain large stderr before stdout')
+    assert(sherr == nil)
+
     stdout, stderr, sherr = sys.sh('sleep 0.1', 0.01)
     assert(stdout == nil and stderr == nil and sherr == 'timeout')
 end)
