@@ -214,6 +214,128 @@ test.run_case_sync('reader readfull exact and closed', function()
     end)
 end)
 
+test.run_case_sync('reader EOF state across read formats', function()
+    local s1, s2 = make_pair()
+    local rd = eco.reader(s1:getfd())
+
+    eco.run(function()
+        s2:close()
+
+        local data, err = rd:read('*a', 0.2)
+        assert(data == '', err)
+
+        data, err = rd:read('*a', 0.2)
+        assert(data == nil and err == 'closed')
+
+        close_pair(s1, s2)
+    end)
+
+    local path = os.tmpname()
+    local f = assert(io.open(path, 'wb'))
+    f:close()
+
+    local rf, err = file.open(path, file.O_RDONLY)
+    assert(rf, err)
+
+    local data
+    data, err = rf:read('*a', 0.2)
+    assert(data == '', err)
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == nil and err == 'eof')
+
+    rf:close()
+
+    rf, err = file.open(path, file.O_RDONLY)
+    assert(rf, err)
+
+    data, err = rf:read(1, 0.2)
+    assert(data == nil and err == 'eof')
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == nil and err == 'eof')
+
+    rf:close()
+
+    os.remove(path)
+end)
+
+test.run_case_sync('reader EOF state after readfull and readuntil', function()
+    local path = os.tmpname()
+    local f = assert(io.open(path, 'wb'))
+    f:write('abc')
+    f:close()
+
+    local rf, err = file.open(path, file.O_RDONLY)
+    assert(rf, err)
+
+    local data
+    data, err = rf:readfull(5, 0.2)
+    assert(data == nil and err == 'eof')
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == nil and err == 'eof')
+
+    rf:close()
+
+    rf, err = file.open(path, file.O_RDONLY)
+    assert(rf, err)
+
+    local found
+    data, found = rf:readuntil('ZZZZZ', 0.2)
+    assert(data == 'abc' and found == nil)
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == nil and err == 'eof')
+
+    rf:close()
+
+    os.remove(path)
+end)
+
+test.run_case_sync('reader EOF clears after regular file advances', function()
+    local path = os.tmpname()
+    local f = assert(io.open(path, 'wb'))
+    f:write('abc')
+    f:close()
+
+    local rf, err = file.open(path, file.O_RDONLY)
+    assert(rf, err)
+
+    local data
+    data, err = rf:read('*a', 0.2)
+    assert(data == 'abc', err)
+
+    local off
+    off, err = rf:lseek(0, file.SEEK_SET)
+    assert(off == 0, err)
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == 'abc', err)
+
+    rf:close()
+
+    f = assert(io.open(path, 'wb'))
+    f:close()
+
+    rf, err = file.open(path, file.O_RDONLY)
+    assert(rf, err)
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == '', err)
+
+    f = assert(io.open(path, 'ab'))
+    f:write('xyz')
+    f:close()
+
+    data, err = rf:read('*a', 0.2)
+    assert(data == 'xyz', err)
+
+    rf:close()
+
+    os.remove(path)
+end)
+
 test.run_case_sync('reader wait timeout and cancel', function()
     local s1, s2 = make_pair()
     local rd = eco.reader(s1:getfd())

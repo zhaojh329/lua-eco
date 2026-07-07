@@ -126,6 +126,7 @@ struct eco_io {
     unsigned is_canceled:1;
     unsigned is_ready:1;
     unsigned fairness_yield:1;
+    unsigned eof:1;
     double timeout;
     lua_State *co;
 };
@@ -1054,6 +1055,8 @@ static int eco_reader_read_once(lua_State *L, struct eco_reader *rd,
 
         if (ret == 0) {
             if (mode == 'u') {
+                io->eof = true;
+
                 if (rd->len > 0) {
                     lua_pushlstring(L, rd->buf, rd->len);
                     rd->len = 0;
@@ -1065,15 +1068,20 @@ static int eco_reader_read_once(lua_State *L, struct eco_reader *rd,
             }
 
             if (mode == 'a') {
-                if (continuation || luaL_bufflen(&rd->b) > 0) {
+                if (!io->eof) {
+                    io->eof = true;
                     luaL_pushresult(&rd->b);
                     return eco_reader_stop(L, rd, 1);
                 }
             }
 
+            io->eof = true;
+
             push_nil_eof_or_closed(L, io->efd->fd);
             goto unref;
         }
+
+        io->eof = false;
 
         if (mode == 'f' || mode == 0) {
             luaL_addsize(&rd->b, ret);

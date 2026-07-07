@@ -305,6 +305,9 @@ run_loop_case('exec table env form', function()
     assert(stdout == 'eco', err1)
 
     local stderr, err2 = p:read_stderr('*a', 1)
+    assert(stderr == '', err2)
+
+    stderr, err2 = p:read_stderr('*a', 1)
     assert(stderr == nil and err2 == 'eof')
 
     local _, status = p:wait(1)
