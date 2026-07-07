@@ -32,6 +32,19 @@ local cond_methods = {}
 -- Only one coroutine may own the eventfd read slot. Others stay pending until
 -- the current reader finishes; handoff reserves the slot before resuming.
 local function resume_pending_waiter(self)
+    if self.closed then
+        self.reading = nil
+
+        for co, info in pairs(self.waiters) do
+            if info.pending then
+                info.pending = nil
+                eco._resume(co)
+            end
+        end
+
+        return
+    end
+
     for co, info in pairs(self.waiters) do
         if info.pending then
             self.reading = co
@@ -53,8 +66,12 @@ end
 -- @tparam[opt] number timeout Timeout in seconds.
 -- @treturn any Data passed to @{cond:signal}, or `true`.
 -- @treturn[2] nil On timeout.
--- @treturn[2] string Error message (`'timeout'`).
+-- @treturn[2] string Error message (`'timeout'` or `'closed'`).
 function cond_methods:wait(timeout)
+    if self.closed then
+        return nil, 'closed'
+    end
+
     local waiters = self.waiters
 
     local co = coroutine.running()
@@ -71,6 +88,11 @@ function cond_methods:wait(timeout)
     while self.reading and self.reading ~= co do
         info.pending = true
 
+        if self.closed then
+            waiters[co] = nil
+            return nil, 'closed'
+        end
+
         if deadline and not info.signaled then
             local remaining = deadline - time.now()
 
@@ -81,16 +103,31 @@ function cond_methods:wait(timeout)
 
             eco.sleep(remaining)
 
+            if self.closed then
+                waiters[co] = nil
+                return nil, 'closed'
+            end
+
             if info.pending and not info.signaled then
                 waiters[co] = nil
                 return nil, 'timeout'
             end
         else
             coroutine.yield()
+
+            if self.closed then
+                waiters[co] = nil
+                return nil, 'closed'
+            end
         end
     end
 
     info.pending = nil
+
+    if self.closed then
+        waiters[co] = nil
+        return nil, 'closed'
+    end
 
     self.reading = co
 
@@ -111,6 +148,10 @@ function cond_methods:wait(timeout)
     waiters[co] = nil
 
     resume_pending_waiter(self)
+
+    if self.closed then
+        return nil, 'closed'
+    end
 
     if not ok then
         return nil, err
@@ -133,6 +174,10 @@ end
 -- @tparam[opt] any data Data passed to the awakened waiter.
 -- @treturn boolean `true` if a waiter was awakened.
 function cond_methods:signal(data)
+    if self.closed then
+        return false
+    end
+
     local waiters = self.waiters
     local reading = self.reading
 
@@ -164,6 +209,10 @@ end
 -- @function cond:broadcast
 -- @treturn integer n Number of awakened coroutines.
 function cond_methods:broadcast()
+    if self.closed then
+        return 0
+    end
+
     local waiters = self.waiters
     local n = 0
 
@@ -172,15 +221,29 @@ function cond_methods:broadcast()
         n = n + 1
     end
 
+    if n == 0 then
+        return 0
+    end
+
     write_eventfd(self, n)
 
     return n
 end
 
+--- Close the condition variable.
+--
+-- This is idempotent. Any coroutine blocked in @{cond:wait} is resumed and
+-- receives `nil, 'closed'`.
 function cond_methods:close()
-    if not self.efd then
+    if self.closed then
         return
     end
+
+    self.closed = true
+
+    self.rd:cancel()
+    self.wr:cancel()
+    resume_pending_waiter(self)
 
     file.close(self.efd)
     self.efd = nil
@@ -209,7 +272,8 @@ function M.cond()
         efd = efd,
         rd = eco.reader(efd),
         wr = eco.writer(efd),
-        waiters = {}
+        waiters = {},
+        closed = false
     }, cond_mt)
 end
 

@@ -62,6 +62,39 @@ test.run_case_sync('cond broadcast', function()
     end)
 end)
 
+-- cond: close wakes active reader and pending waiters.
+test.run_case_sync('cond close wakes waiters', function()
+    local c = assert(sync.cond())
+    local n = 12
+    local closed = 0
+
+    for _ = 1, n do
+        eco.run(function()
+            local ok, err = c:wait(1.0)
+            assert(ok == nil and err == 'closed',
+                   string.format('wait should return closed, got ok=%s err=%s', tostring(ok), tostring(err)))
+            closed = closed + 1
+        end)
+    end
+
+    eco.run(function()
+        eco.sleep(0.02)
+        c:close()
+        c:close()
+
+        assert(c:signal('late') == false, 'signal on a closed cond should not wake waiters')
+        assert(c:broadcast() == 0, 'broadcast on a closed cond should not wake waiters')
+    end)
+
+    test.wait_until('cond close should wake all waiters', function()
+        return closed == n
+    end, 2.0, 0.01)
+
+    local ok, err = c:wait(0.01)
+    assert(ok == nil and err == 'closed',
+           string.format('wait after close should return closed, got ok=%s err=%s', tostring(ok), tostring(err)))
+end)
+
 -- mutex: lock exclusion, timeout and unlock error.
 test.run_case_sync('mutex lock/unlock semantics', function()
     local m = sync.mutex()
