@@ -38,6 +38,7 @@ end
 --
 -- After closing, @{channel:recv} returns `nil` once the buffer is drained.
 -- @{channel:send} will raise an error.
+-- Any coroutine blocked in @{channel:recv} or @{channel:send} is awakened.
 --
 -- @function channel:close
 function methods:close()
@@ -46,7 +47,8 @@ function methods:close()
     end
 
     self.closed = true
-    self.cond_recv:signal()
+    self.cond_recv:broadcast()
+    self.cond_send:broadcast()
 end
 
 --- Send a value to the channel.

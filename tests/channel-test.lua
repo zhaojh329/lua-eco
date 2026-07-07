@@ -154,23 +154,57 @@ end)
 -- close() should wake blocked receivers; recv() then returns nil.
 test.run_case_sync('channel close wakes blocked receiver', function()
     local ch = channel.new(1)
-    local recv_done = false
+    local n = 12
+    local recv_done = 0
 
-    eco.run(function()
-        local v, err = ch:recv(1.0)
-        assert(v == nil and err == nil)
-        recv_done = true
-    end)
+    for _ = 1, n do
+        eco.run(function()
+            local v, err = ch:recv(1.0)
+            assert(v == nil and err == nil)
+            recv_done = recv_done + 1
+        end)
+    end
 
     eco.run(function()
         eco.sleep(0.02)
         ch:close()
     end)
 
+    test.wait_until('channel close should wake blocked receivers', function()
+        return recv_done == n
+    end, 2.0, 0.01)
+end)
+
+-- close() should wake blocked senders; send() then raises closed error.
+test.run_case_sync('channel close wakes blocked senders', function()
+    local ch = channel.new(1)
+    local n = 12
+    local send_done = 0
+
+    assert(ch:send('first', 0.1))
+
+    for i = 1, n do
+        eco.run(function()
+            local ok, err = pcall(function()
+                return ch:send(i, 1.0)
+            end)
+
+            assert(ok == false and type(err) == 'string' and err:find('sending on closed channel', 1, true),
+                   string.format('blocked send should raise closed error, got ok=%s err=%s',
+                                 tostring(ok), tostring(err)))
+
+            send_done = send_done + 1
+        end)
+    end
+
     eco.run(function()
-        eco.sleep(0.08)
-        assert(recv_done == true)
+        eco.sleep(0.02)
+        ch:close()
     end)
+
+    test.wait_until('channel close should wake blocked senders', function()
+        return send_done == n
+    end, 2.0, 0.01)
 end)
 
 -- GC regression: channel wrapper and internal cond objects should be collectable.
