@@ -9,7 +9,7 @@ include(FindPkgConfig)
 # The version number.
 set(ECO_VERSION_MAJOR 4)
 set(ECO_VERSION_MINOR 1)
-set(ECO_VERSION_PATCH 0)
+set(ECO_VERSION_PATCH 1)
 
 pkg_search_module(LUA54 lua-5.4)
 
