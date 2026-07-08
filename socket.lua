@@ -280,6 +280,9 @@ end
 --
 -- For UDP/RAW sockets, destination address is provided after `data`.
 -- Arguments follow the same conventions as @{socket:connect}.
+-- Before each send attempt, this method waits up to 5 seconds for the socket
+-- to become writable. If the socket is still not writable, it returns
+-- `nil, "timeout"`.
 --
 -- @function socket:sendto
 -- @tparam string data
@@ -289,11 +292,16 @@ end
 function methods:sendto(data, ...)
     local mutex = self.mutex
     local total = #data
+    local timeout = 5.0
 
     mutex:lock()
 
     while #data > 0 do
-        self.wr:wait()
+        local ok, err = self.wr:wait(timeout)
+        if not ok then
+            mutex:unlock()
+            return nil, err
+        end
 
         local sent, err = self.sock:sendto(data, ...)
         if not sent then
@@ -317,10 +325,11 @@ end
 -- @tparam string path File path.
 -- @tparam[opt] int len Bytes to send. Defaults to file size minus offset.
 -- @tparam[opt=0] int offset File offset.
+-- @tparam[opt] number timeout Timeout in seconds.
 -- @treturn integer Bytes sent.
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function methods:sendfile(path, len, offset)
+function methods:sendfile(path, len, offset, timeout)
     local mutex = self.mutex
 
     offset = offset or 0
@@ -338,7 +347,7 @@ function methods:sendfile(path, len, offset)
     end
 
     mutex:lock()
-    local sent, err = self.wr:sendfile(path, offset, len)
+    local sent, err = self.wr:sendfile(path, offset, len, timeout)
     mutex:unlock()
 
     if sent then
