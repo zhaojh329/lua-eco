@@ -12,6 +12,8 @@
 local ubus = require 'eco.internal.ubus'
 local eco = require 'eco'
 
+local DEFAULT_CALL_TIMEOUT = 30.0
+
 local M = {
     --- Return status: success.
     STATUS_OK = ubus.STATUS_OK,
@@ -74,7 +76,7 @@ end
 -- @tparam string object UBus object path (e.g. `'network.interface.lan'`).
 -- @tparam string method Method name.
 -- @tparam[opt] table params Parameters table.
--- @tparam[opt] number timeout Timeout in seconds.
+-- @tparam[opt=30.0] number timeout Timeout in seconds. Pass 0 to wait indefinitely.
 -- @treturn table Result table.
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
@@ -152,7 +154,7 @@ end
 -- @tparam string object UBus object path.
 -- @tparam string method Method name.
 -- @tparam[opt] table params Parameters table.
--- @tparam[opt] number timeout Timeout in seconds.
+-- @tparam[opt=30.0] number timeout Timeout in seconds. Pass 0 to wait indefinitely.
 -- @treturn table Result table.
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message (`'timeout'` or a libubus message).
@@ -176,6 +178,10 @@ function methods:call(object, method, params, timeout)
             status = data
             eco._resume(co)
         end
+    end
+
+    if timeout == nil then
+        timeout = DEFAULT_CALL_TIMEOUT
     end
 
     if timeout and timeout > 0 then
