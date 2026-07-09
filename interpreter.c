@@ -12,6 +12,7 @@
 #include <fcntl.h>
 
 #include "config.h"
+#include "crash.h"
 #include "eco.h"
 
 /*
@@ -104,6 +105,8 @@ int main(int argc, char *const argv[])
     }
 
     close_inherited_fds();
+
+    eco_crash_backtrace_install();
 
     set_random_seed();
 
