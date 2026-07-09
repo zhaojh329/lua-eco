@@ -7,6 +7,8 @@ include(CheckIncludeFile)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # The version number.
 set(ECO_VERSION_MAJOR 4)
 set(ECO_VERSION_MINOR 1)
