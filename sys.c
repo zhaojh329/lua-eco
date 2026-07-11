@@ -248,6 +248,15 @@ static int lua_exec(lua_State *L)
         const char *cmd;
         char *cmdpath = NULL;
         int i, narg, ret;
+        sigset_t set;
+
+        /*
+         * sys.signal() uses signalfd, which requires signals to be blocked in
+         * the parent. Signal masks are inherited across fork/exec, so reset the
+         * child mask before running external programs.
+         */
+        sigemptyset(&set);
+        sigprocmask(SIG_SETMASK, &set, NULL);
 
         /* close unused read end */
         close(opipe[0]);

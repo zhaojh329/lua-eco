@@ -9,6 +9,21 @@ local function run_loop_case(name, fn)
     test.run_case_async(name, fn)
 end
 
+local function sigblk_has(status, signum)
+    local hex = status:match('SigBlk:%s*([0-9a-fA-F]+)')
+    assert(hex, 'missing SigBlk in child status')
+
+    local bit = signum - 1
+    local nibble_pos = #hex - math.floor(bit / 4)
+    if nibble_pos < 1 then
+        return false
+    end
+
+    local nibble = tonumber(hex:sub(nibble_pos, nibble_pos), 16) or 0
+
+    return (nibble & (1 << (bit % 4))) ~= 0
+end
+
 -- Constants/basic API checks.
 assert(math.type(sys.SIGINT) == 'integer')
 assert(math.type(sys.SIGTERM) == 'integer')
@@ -110,6 +125,29 @@ run_loop_case('signal reject SIGCHLD', function()
 
     assert(ok == false)
     assert(type(err) == 'string' and err:find('SIGCHLD', 1, true))
+end)
+
+run_loop_case('exec resets child signal mask', function()
+    local sigint<close>, serr = sys.signal(sys.SIGINT, function() end)
+    assert(sigint, serr)
+
+    local sigterm<close>, terr = sys.signal(sys.SIGTERM, function() end)
+    assert(sigterm, terr)
+
+    local p, perr = sys.exec('cat', '/proc/self/status')
+    assert(p, perr)
+
+    local stdout, rerr = p:read_stdout('*a', 1)
+    local stderr = p:read_stderr('*a', 1) or ''
+    local waited_pid, status = p:wait(1)
+
+    p:close()
+
+    assert(stdout, rerr)
+    assert(waited_pid == p.pid)
+    assert(type(status) == 'table' and status.exited == true and status.status == 0, stderr)
+    assert(not sigblk_has(stdout, sys.SIGINT), 'exec child inherited blocked SIGINT')
+    assert(not sigblk_has(stdout, sys.SIGTERM), 'exec child inherited blocked SIGTERM')
 end)
 
 -- Signal GC regression: after close, signal object should be collectible.
