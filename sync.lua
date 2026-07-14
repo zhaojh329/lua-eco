@@ -145,6 +145,13 @@ function cond_methods:wait(timeout)
 
     local ok, err = self.rd:read(8, remaining)
 
+    -- A signal may race with an I/O timeout after the timeout has queued this
+    -- coroutine but before it resumes. In that case, consume the signal and
+    -- let it win; otherwise the eventfd credit would become stale.
+    if not ok and info.signaled and not self.closed then
+        ok, err = self.rd:read(8, 0)
+    end
+
     waiters[co] = nil
 
     resume_pending_waiter(self)
@@ -363,17 +370,6 @@ end
 -- @type mutex
 local mutex_methods = {}
 
-local function mutex_remove_waiter(waiters, token)
-    for i, waiter in ipairs(waiters) do
-        if waiter == token then
-            table.remove(waiters, i)
-            return true
-        end
-    end
-
-    return false
-end
-
 --- Lock the mutex.
 --
 -- If the mutex is already locked, the current coroutine waits until it becomes
@@ -385,56 +381,19 @@ end
 -- @treturn[2] nil On timeout.
 -- @treturn[2] string Error message (`'timeout'`).
 function mutex_methods:lock(timeout)
-    local waiters = self.waiters
-
-    if not self.locked and #waiters == 0 then
+    if not self.locked then
         self.locked = true
         return true
     end
 
-    local token = {}
-    local deadline
+    self.nwaiters = self.nwaiters + 1
 
-    waiters[#waiters + 1] = token
+    local ok, err = self.cond:wait(timeout)
 
-    if timeout then
-        deadline = time.now() + timeout
-    end
+    self.nwaiters = self.nwaiters - 1
 
-    while true do
-        if waiters[1] == token and not self.locked then
-            self.locked = true
-            table.remove(waiters, 1)
-            return true
-        end
-
-        local remaining = timeout
-
-        if deadline then
-            remaining = deadline - time.now()
-
-            if remaining <= 0 then
-                mutex_remove_waiter(waiters, token)
-
-                if waiters[1] and not self.locked then
-                    self.cond:broadcast()
-                end
-
-                return nil, 'timeout'
-            end
-        end
-
-        local ok, err = self.cond:wait(remaining)
-        if not ok then
-            mutex_remove_waiter(waiters, token)
-
-            if waiters[1] and not self.locked then
-                self.cond:broadcast()
-            end
-
-            return nil, err
-        end
-    end
+    -- unlock() keeps the mutex locked while handing ownership to one waiter.
+    return ok, err
 end
 
 --- Unlock the mutex.
@@ -448,11 +407,13 @@ function mutex_methods:unlock()
         error('unlock of unlocked mutex')
     end
 
-    self.locked = false
-
-    if #self.waiters > 0 then
-        self.cond:broadcast()
+    -- Keep the mutex locked until the selected waiter resumes. This prevents
+    -- the unlocking coroutine or a newcomer from stealing the handoff.
+    if self.nwaiters > 0 and self.cond:signal() then
+        return
     end
+
+    self.locked = false
 end
 
 --- End of `mutex` class section.
@@ -468,7 +429,7 @@ function M.mutex()
     return setmetatable({
         locked = false,
         cond = M.cond(),
-        waiters = {}
+        nwaiters = 0
     }, mutex_mt)
 end
 

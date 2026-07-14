@@ -2,6 +2,7 @@
 
 local eco = require 'eco'
 local sync = require 'eco.sync'
+local time = require 'eco.time'
 local ifile = require 'eco.internal.file'
 local test = require 'test'
 
@@ -161,6 +162,76 @@ test.run_case_sync('mutex relock after queued waiter resume', function()
 
     assert(slow_count == loops and fast_count == loops,
            string.format('unexpected lock counts: slow=%d fast=%d', slow_count, fast_count))
+end)
+
+-- Regression: ownership handoff must not depend on cond waiter iteration order.
+test.run_case_sync('mutex handoff remains live under contention', function()
+    local m = sync.mutex()
+    local workers = 16
+    local loops = 100
+    local total = 0
+    local finished = 0
+
+    for _ = 1, workers do
+        eco.run(function()
+            for _ = 1, loops do
+                local ok, err = m:lock()
+                assert(ok == true, err)
+
+                total = total + 1
+                eco.sleep(0)
+
+                m:unlock()
+            end
+
+            finished = finished + 1
+        end)
+    end
+
+    test.wait_until('mutex handoff contention should complete', function()
+        return finished == workers
+    end, 5.0, 0.001)
+
+    assert(total == workers * loops,
+           string.format('counter mismatch: %d/%d', total, workers * loops))
+end)
+
+-- Regression: a signal queued after timeout expiry but before waiter resume
+-- must still transfer ownership instead of leaving a phantom lock owner.
+test.run_case_sync('mutex handoff wins timeout resume race', function()
+    local m = sync.mutex()
+    local acquired = false
+
+    assert(m:lock())
+
+    eco.run(function()
+        local ok, err = m:lock(0.001)
+        assert(ok == true and err == nil,
+               string.format('signal should win timeout race: ok=%s err=%s',
+                             tostring(ok), tostring(err)))
+
+        acquired = true
+        m:unlock()
+    end)
+
+    local unlocker = eco.run(function()
+        coroutine.yield()
+        m:unlock()
+    end)
+
+    local expired_at = time.now() + 0.005
+    while time.now() < expired_at do
+    end
+
+    -- Queue unlocker before the scheduler queues the already-expired waiter.
+    eco._resume(unlocker)
+
+    test.wait_until('mutex timeout race should transfer ownership', function()
+        return acquired
+    end, 1.0, 0.001)
+
+    assert(m:lock(0.1))
+    m:unlock()
 end)
 
 -- waitgroup: wait success, timeout and negative counter errors.
