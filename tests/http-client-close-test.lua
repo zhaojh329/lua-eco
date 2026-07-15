@@ -32,7 +32,7 @@ local function with_http_client(fake_socket, fn)
     package.loaded['eco.file'] = {}
     package.loaded['eco.http.client'] = nil
 
-    local ok, http_or_err = pcall(require, 'eco.http.client')
+    local ok, http_or_err = pcall(dofile, 'http/client.lua')
     if not ok then
         restore_modules(saved)
         error(http_or_err)
@@ -68,6 +68,10 @@ local function make_socket(reads)
         end
 
         return item[1]
+    end
+
+    function sock:readfull(mode)
+        return self:read(mode)
     end
 
     function sock:close()
@@ -145,4 +149,86 @@ do
     end)
 end
 
-print('http close-delimited client tests passed')
+do
+    local sock = make_socket({
+        { 'HTTP/1.1 200 OK' },
+        { 'Content-Length: 11' },
+        { '' },
+        { 'hello' },
+        { ' world' }
+    })
+
+    with_http_client(make_socket_module(sock), function(http)
+        local chunks = {}
+        local resp, err = http.request('GET', 'http://127.0.0.1/fixed', nil, {
+            timeout = 1.0,
+            body_to_file = function(data)
+                chunks[#chunks + 1] = data
+            end
+        })
+
+        assert(resp, err)
+        assert(resp.body == nil)
+        assert(table.concat(chunks) == 'hello world')
+        assert(sock.closed == true)
+    end)
+end
+
+do
+    local sock = make_socket({
+        { 'HTTP/1.1 200 OK' },
+        { 'Transfer-Encoding: chunked' },
+        { '' },
+        { '5' },
+        { 'hello' },
+        { '' },
+        { '6' },
+        { ' world' },
+        { '' },
+        { '0' },
+        { '' }
+    })
+
+    with_http_client(make_socket_module(sock), function(http)
+        local chunks = {}
+        local resp, err = http.request('GET', 'http://127.0.0.1/chunked', nil, {
+            timeout = 1.0,
+            body_to_file = function(data)
+                chunks[#chunks + 1] = data
+            end
+        })
+
+        assert(resp, err)
+        assert(resp.body == nil)
+        assert(#chunks == 2)
+        assert(table.concat(chunks) == 'hello world')
+        assert(sock.closed == true)
+    end)
+end
+
+do
+    local sock = make_socket({
+        { 'HTTP/1.1 200 OK' },
+        { '' },
+        { 'hello' },
+        { ' world' },
+        { false, 'closed' }
+    })
+
+    with_http_client(make_socket_module(sock), function(http)
+        local chunks = {}
+        local resp, err = http.request('GET', 'http://127.0.0.1/close-callback', nil, {
+            timeout = 1.0,
+            body_to_file = function(data)
+                chunks[#chunks + 1] = data
+            end
+        })
+
+        assert(resp, err)
+        assert(resp.body == nil)
+        assert(table.concat(chunks) == 'hello world')
+        assert(sock.closed == true)
+    end)
+end
+
+print('http close-delimited/body_to_file client tests passed')

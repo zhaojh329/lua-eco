@@ -138,6 +138,14 @@ local function recv_http_headers(sock, timeout)
     return headers
 end
 
+local function write_body_chunk(body_to_file, data)
+    if type(body_to_file) == 'function' then
+        body_to_file(data)
+    else
+        body_to_file:write(data)
+    end
+end
+
 local function receive_body_until_closed(resp, sock, timeout, body_to_file)
     local body = {}
 
@@ -152,7 +160,7 @@ local function receive_body_until_closed(resp, sock, timeout, body_to_file)
         end
 
         if body_to_file then
-            body_to_file:write(data)
+            write_body_chunk(body_to_file, data)
         else
             body[#body+1] = data
         end
@@ -177,7 +185,7 @@ local function receive_body(resp, sock, timeout, length, body_to_file)
         length = length - #data
 
         if body_to_file then
-            body_to_file:write(data)
+            write_body_chunk(body_to_file, data)
         else
             body[#body+1] = data
         end
@@ -237,7 +245,7 @@ local function receive_chunked_body(resp, sock, timeout, body_to_file)
         end
 
         if body_to_file then
-            body_to_file:write(data)
+            write_body_chunk(body_to_file, data)
         else
             body[#body + 1] = data
         end
@@ -284,13 +292,19 @@ local function do_http_request(self, method, path, headers, body, opts)
     end
 
     local body_to_file = opts.body_to_file
+    local close_body_to_file = false
 
-    if body_to_file then
+    if body_to_file ~= nil then
+        assert(type(body_to_file) == 'string' or type(body_to_file) == 'function')
+    end
+
+    if type(body_to_file) == 'string' then
         local f, err = io.open(body_to_file, 'w')
         if not f then
             return nil, 'create "' .. body_to_file .. '" fail: ' .. err
         end
         body_to_file = f
+        close_body_to_file = true
     end
 
     if headers['transfer-encoding'] == 'chunked' then
@@ -306,7 +320,7 @@ local function do_http_request(self, method, path, headers, body, opts)
         ok, err = receive_body_until_closed(resp, sock, timeout, body_to_file)
     end
 
-    if body_to_file then
+    if close_body_to_file then
         body_to_file:close()
     end
 
@@ -527,7 +541,8 @@ end
 --
 -- - `timeout` (number) request timeout in seconds (default 30).
 -- - `headers` (table) extra request headers.
--- - `body_to_file` (string) write response body to the given file path.
+-- - `body_to_file` (string|function) write response body to a file path, or
+--   call a function with each downloaded data chunk.
 -- - `ipv6` (boolean) resolve AAAA records.
 -- - `mark` (number) SO_MARK for sockets.
 -- - `device` (string) SO_BINDTODEVICE for sockets.
