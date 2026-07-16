@@ -406,6 +406,15 @@ static int lua_ubus_abort_request(lua_State *L)
     return 0;
 }
 
+static int lua_ubus_free_request(lua_State *L)
+{
+    struct ubus_request *req = (struct ubus_request *)lua_checkludata(L, 2);
+
+    free(req);
+
+    return 0;
+}
+
 static int lua_ubus_complete_deferred_request(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
@@ -449,8 +458,6 @@ static void ubus_call_complete_cb(struct ubus_request *req, int ret)
     lua_pushinteger(co, ret);
 
     lua_call(co, 3, 0);
-
-    free(req);
 }
 
 static int lua_ubus_call(lua_State *L)
@@ -1105,6 +1112,7 @@ static const struct luaL_Reg ubus_methods[] =  {
     {"handle_event", lua_ubus_handle_event},
     {"reconnect", lua_ubus_reconnect},
     {"abort_request", lua_ubus_abort_request},
+    {"free_request", lua_ubus_free_request},
     {"complete_deferred_request", lua_ubus_complete_deferred_request},
     {"call", lua_ubus_call},
     {"send", lua_ubus_send},

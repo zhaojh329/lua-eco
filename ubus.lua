@@ -197,6 +197,8 @@ function methods:call(object, method, params, timeout)
         return nil, 'timeout'
     end
 
+    ctx:free_request(req)
+
     if status ~= ubus.STATUS_OK then
         return nil, ubus.strerror(status)
     end
