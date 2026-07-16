@@ -278,6 +278,38 @@ test.run_case_sync('options and option errors', function()
     end, 'setoption should reject unsupported option')
 
     s:close()
+
+    s, err = socket.socket(socket.AF_INET, socket.SOCK_STREAM, nil, {
+        device = 'eco-no-if0'
+    })
+    assert(s == nil)
+    assert(err:find("failed to set socket option 'device'", 1, true), err)
+    assert(err:find('No such device', 1, true), err)
+end)
+
+test.run_case_sync('socket init ignores non-applicable options', function()
+    local s, err = socket.socket(socket.AF_INET, socket.SOCK_STREAM, nil, {
+        ipv6_v6only = false
+    })
+    assert(s, err)
+    s:close()
+
+    s, err = socket.socket(socket.AF_INET6, socket.SOCK_STREAM, nil, {
+        ipv6_v6only = false
+    })
+    assert(s, err)
+    s:close()
+
+    s, err = socket.listen_tcp('127.0.0.1', 0, {
+        ipv6_v6only = false,
+        tcp_nodelay = true,
+        tcp_keepidle = 10,
+        tcp_keepcnt = 3,
+        tcp_keepintvl = 10,
+        tcp_fastopen = 5
+    })
+    assert(s, err)
+    s:close()
 end)
 
 test.run_case_sync('socketpair one writer one reader stress', function()

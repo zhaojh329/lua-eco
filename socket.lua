@@ -46,18 +46,34 @@ local M = {
 -- @type socket
 local methods = {}
 
-local function socket_set_options(sock, names, options)
+local function option_applies(name, family, domain)
+    if name == 'ipv6_v6only' then
+        return family == socket.AF_INET6
+    end
+
+    if name == 'tcp_nodelay' or name == 'tcp_keepidle' or
+        name == 'tcp_keepcnt' or name == 'tcp_keepintvl' or
+        name == 'tcp_fastopen' then
+        return domain == socket.SOCK_STREAM and
+            (family == socket.AF_INET or family == socket.AF_INET6)
+    end
+
+    return true
+end
+
+local function socket_set_options(sock, names, options, family, domain)
     options = options or {}
 
     for _, name in ipairs(names) do
         local value = options[name]
-        if value ~= nil then
+        if value ~= nil and option_applies(name, family, domain) then
+            local option_name = name
             if name == 'device' then
                 name = 'bindtodevice'
             end
             local ok, err = sock:setoption(name, value)
             if not ok then
-                return nil, err
+                return nil, string.format("failed to set socket option '%s': %s", option_name, err)
             end
         end
     end
@@ -408,7 +424,7 @@ end
 --- End of `socket` class section.
 -- @section end
 
-local function socket_init(sock, options)
+local function socket_init(sock, options, family, domain)
     local fd = sock:getfd()
     local o = {
         sock = sock,
@@ -419,7 +435,7 @@ local function socket_init(sock, options)
 
     local opt_names = { 'reuseaddr', 'reuseport', 'ipv6_v6only', 'mark', 'device' }
 
-    local ok, err = socket_set_options(sock, opt_names, options)
+    local ok, err = socket_set_options(sock, opt_names, options, family, domain)
     if not ok then
         sock:close()
         return nil, err
@@ -451,7 +467,7 @@ function M.socket(family, domain, protocol, options)
         return nil, err
     end
 
-    return socket_init(sock, options)
+    return socket_init(sock, options, family, domain)
 end
 
 --- Create a pair of connected sockets.
@@ -474,13 +490,13 @@ function M.socketpair(family, domain, protocol, options)
         return nil, raw2
     end
 
-    sock1, err = socket_init(raw1, options)
+    sock1, err = socket_init(raw1, options, family, domain)
     if not sock1 then
         raw2:close()
         return nil, err
     end
 
-    sock2, err = socket_init(raw2, options)
+    sock2, err = socket_init(raw2, options, family, domain)
     if not sock2 then
         sock1:close()
         return nil, err
@@ -611,7 +627,7 @@ function M.listen_tcp(ipaddr, port, options)
         'tcp_keepintvl', 'tcp_fastopen'
     }
 
-    local ok, seterr = socket_set_options(sock, opt_names, options)
+    local ok, seterr = socket_set_options(sock, opt_names, options, family, socket.SOCK_STREAM)
     if not ok then
         sock:close()
         return nil, seterr
