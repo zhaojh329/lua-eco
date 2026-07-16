@@ -487,6 +487,73 @@ test.run_case_sync('ubus stress concurrent call throughput', function()
     end)
 end)
 
+test.run_case_sync('ubus shared connection mixed completion and timeout stress', function()
+    eco.run(function()
+        local workers = 8
+        local loops = 80
+        local done = 0
+        local successes = 0
+        local timeouts = 0
+
+        local srv<close>, serr = connect_retry(2.0)
+        assert(srv, serr)
+
+        local object = uniq('mixed_timeout')
+        local _, aerr = srv:add(object, {
+            echo = {
+                function(req, msg, c)
+                    if msg.slow then
+                        eco.sleep(0.01)
+                    end
+
+                    c:reply(req, { v = msg.v })
+                end,
+                { v = ubus.INT32, slow = ubus.BOOLEAN }
+            }
+        })
+        assert(aerr == nil)
+
+        local cli<close>, cerr = connect_retry(2.0)
+        assert(cli, cerr)
+
+        for w = 1, workers do
+            eco.run(function()
+                for i = 1, loops do
+                    local slow = (i + w) % 2 == 0
+                    local v = w * 100000 + i
+                    local timeout = slow and 0.001 or 1.0
+                    local res, rerr = cli:call(object, 'echo', {
+                        v = v,
+                        slow = slow
+                    }, timeout)
+
+                    if slow then
+                        assert(res == nil and rerr == 'timeout')
+                        timeouts = timeouts + 1
+                    else
+                        assert(res and rerr == nil)
+                        assert(res.v == v)
+                        successes = successes + 1
+                    end
+                end
+
+                done = done + 1
+            end)
+        end
+
+        local wok, werr = wait_until(20.0, function()
+            return done == workers
+        end)
+        assert(wok, werr)
+
+        assert(successes == workers * loops / 2)
+        assert(timeouts == workers * loops / 2)
+
+        -- Let deferred server handlers finish after their callers time out.
+        eco.sleep(0.1)
+    end)
+end)
+
 test.run_case_sync('ubus memory leak regression plateau', function()
     local function burst(rounds, per_round)
         for r = 1, rounds do
