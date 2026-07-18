@@ -89,9 +89,19 @@ static struct eco_shared_dict *check_dict(lua_State *L)
     return luaL_checkudata(L, 1, SHARED_MT);
 }
 
-static inline uint8_t *item_val_ptr(struct item_hdr *item)
+static inline void item_hdr_load(const void *record, struct item_hdr *item)
 {
-    return (uint8_t *)item->key + item->key_len;
+    memcpy(item, record, sizeof(*item));
+}
+
+static inline void item_hdr_store(void *record, const struct item_hdr *item)
+{
+    memcpy(record, item, sizeof(*item));
+}
+
+static inline uint8_t *item_val_ptr(uint8_t *record, const struct item_hdr *item)
+{
+    return record + sizeof(*item) + item->key_len;
 }
 
 static inline size_t item_size(const struct item_hdr *item)
@@ -129,8 +139,8 @@ static inline uint32_t calc_key_hash(const char *key, size_t key_len)
     return h;
 }
 
-static bool item_match(const struct item_hdr *item, const char *key, size_t key_len,
-                       uint32_t hash)
+static bool item_match(const uint8_t *record, const struct item_hdr *item,
+                       const char *key, size_t key_len, uint32_t hash)
 {
     if (item_is_dead(item))
         return false;
@@ -141,7 +151,7 @@ static bool item_match(const struct item_hdr *item, const char *key, size_t key_
     if (item->hash != hash)
         return false;
 
-    return !memcmp(item->key, key, key_len);
+    return !memcmp(record + sizeof(*item), key, key_len);
 }
 
 static void dict_gc(struct eco_shared_dict *dict)
@@ -151,12 +161,16 @@ static void dict_gc(struct eco_shared_dict *dict)
     size_t dst = 0;
 
     while (src < hdr->len) {
-        struct item_hdr *item = (struct item_hdr *)(hdr->base + src);
-        size_t len = item_size(item);
+        uint8_t *record = hdr->base + src;
+        struct item_hdr item;
+        size_t len;
 
-        if (!item_is_dead(item)) {
+        item_hdr_load(record, &item);
+        len = item_size(&item);
+
+        if (!item_is_dead(&item)) {
             if (dst != src)
-                memmove(hdr->base + dst, item, len);
+                memmove(hdr->base + dst, record, len);
 
             dst += len;
         }
@@ -167,17 +181,19 @@ static void dict_gc(struct eco_shared_dict *dict)
     hdr->len = dst;
 }
 
-static struct item_hdr *find_item(struct eco_shared_dict *dict, const char *key, size_t key_len,
-                                  uint32_t hash)
+static uint8_t *find_item(struct eco_shared_dict *dict, const char *key, size_t key_len,
+                          uint32_t hash, struct item_hdr *item)
 {
     struct shm_hdr *hdr = dict->hdr;
     size_t offset = 0;
 
     while (offset < hdr->len) {
-        struct item_hdr *item = (struct item_hdr *)(hdr->base + offset);
+        uint8_t *record = hdr->base + offset;
 
-        if (item_match(item, key, key_len, hash))
-            return item;
+        item_hdr_load(record, item);
+
+        if (item_match(record, item, key, key_len, hash))
+            return record;
 
         offset += item_size(item);
     }
@@ -188,10 +204,12 @@ static struct item_hdr *find_item(struct eco_shared_dict *dict, const char *key,
 static bool dict_del(struct eco_shared_dict *dict, const char *key, size_t key_len,
                      uint32_t hash)
 {
-    struct item_hdr *item = find_item(dict, key, key_len, hash);
+    struct item_hdr item;
+    uint8_t *record = find_item(dict, key, key_len, hash, &item);
 
-    if (item) {
-        item->dead = 1;
+    if (record) {
+        item.dead = 1;
+        item_hdr_store(record, &item);
         return true;
     }
 
@@ -256,7 +274,8 @@ static int lua_dict_set(lua_State *L)
     const char *key = luaL_checklstring(L, 2, &key_len);
     struct item_value value = {};
     lua_Number exptime = 0;
-    struct item_hdr *item;
+    struct item_hdr item = {};
+    uint8_t *record;
     size_t item_len;
     uint32_t hash;
 
@@ -311,25 +330,23 @@ static int lua_dict_set(lua_State *L)
 
     dict_del(dict, key, key_len, hash);
 
-    item = (struct item_hdr *)(hdr->base + hdr->len);
+    record = hdr->base + hdr->len;
 
-    item->dead = 0;
-    item->type = value.type;
-    item->hash = hash;
-    item->key_len = key_len;
-    item->val_len = value.len;
+    item.type = value.type;
+    item.hash = hash;
+    item.key_len = key_len;
+    item.val_len = value.len;
 
     if (exptime > 0)
-        item->expires_at = now_ms() + (int64_t)(exptime * 1000);
-    else
-        item->expires_at = 0;
+        item.expires_at = now_ms() + (int64_t)(exptime * 1000);
 
-    memcpy(item->key, key, key_len);
+    item_hdr_store(record, &item);
+    memcpy(record + sizeof(item), key, key_len);
 
     if (value.type == TYPE_STR)
-        memcpy(item_val_ptr(item), value.s, value.len);
+        memcpy(item_val_ptr(record, &item), value.s, value.len);
     else
-        memcpy(item_val_ptr(item), value.value, value.len);
+        memcpy(item_val_ptr(record, &item), value.value, value.len);
 
     hdr->len += item_len;
 
@@ -353,34 +370,38 @@ static int lua_dict_get(lua_State *L)
     struct eco_shared_dict *dict = check_dict(L);
     size_t key_len;
     const char *key = luaL_checklstring(L, 2, &key_len);
-    struct item_hdr *item;
+    struct item_hdr item;
+    uint8_t *record;
+    uint8_t *value;
     uint32_t hash;
 
     if (flock(dict->fd, LOCK_SH))
         return push_errno(L, errno);
 
     hash = calc_key_hash(key, key_len);
-    item = find_item(dict, key, key_len, hash);
-    if (!item) {
+    record = find_item(dict, key, key_len, hash, &item);
+    if (!record) {
         flock(dict->fd, LOCK_UN);
         return 0;
     }
 
-    switch (item->type) {
+    value = item_val_ptr(record, &item);
+
+    switch (item.type) {
     case TYPE_BOOL:
-        lua_pushboolean(L, *item_val_ptr(item));
+        lua_pushboolean(L, *value);
         break;
 
     case TYPE_NUM: {
         lua_Number n;
 
-        memcpy(&n, item_val_ptr(item), sizeof(n));
+        memcpy(&n, value, sizeof(n));
         lua_pushnumber(L, n);
         break;
     }
 
     case TYPE_STR:
-        lua_pushlstring(L, (char *)item_val_ptr(item), item->val_len);
+        lua_pushlstring(L, (char *)value, item.val_len);
         break;
 
     default:
@@ -415,7 +436,9 @@ static int lua_dict_incr(lua_State *L)
     lua_Number delta = luaL_checknumber(L, 3);
     lua_Number exptime = 0;
     bool has_exptime = false;
-    struct item_hdr *item;
+    struct item_hdr item;
+    uint8_t *record;
+    uint8_t *value;
     uint32_t hash;
     lua_Number n;
 
@@ -432,35 +455,38 @@ static int lua_dict_incr(lua_State *L)
 
     hash = calc_key_hash(key, key_len);
 
-    item = find_item(dict, key, key_len, hash);
-    if (!item) {
+    record = find_item(dict, key, key_len, hash, &item);
+    if (!record) {
         flock(dict->fd, LOCK_UN);
         return 0;
     }
 
-    if (item->type != TYPE_NUM) {
+    if (item.type != TYPE_NUM) {
         flock(dict->fd, LOCK_UN);
         lua_pushnil(L);
         lua_pushliteral(L, "not a number");
         return 2;
     }
 
-    if (item->val_len != sizeof(lua_Number)) {
+    if (item.val_len != sizeof(lua_Number)) {
         flock(dict->fd, LOCK_UN);
         lua_pushnil(L);
         lua_pushliteral(L, "corrupted number value");
         return 2;
     }
 
-    memcpy(&n, item_val_ptr(item), sizeof(n));
+    value = item_val_ptr(record, &item);
+    memcpy(&n, value, sizeof(n));
     n += delta;
-    memcpy(item_val_ptr(item), &n, sizeof(n));
+    memcpy(value, &n, sizeof(n));
 
     if (has_exptime) {
         if (exptime > 0)
-            item->expires_at = now_ms() + (int64_t)(exptime * 1000);
+            item.expires_at = now_ms() + (int64_t)(exptime * 1000);
         else
-            item->expires_at = 0;
+            item.expires_at = 0;
+
+        item_hdr_store(record, &item);
     }
 
     flock(dict->fd, LOCK_UN);
@@ -484,7 +510,8 @@ static int lua_dict_ttl(lua_State *L)
     struct eco_shared_dict *dict = check_dict(L);
     size_t key_len;
     const char *key = luaL_checklstring(L, 2, &key_len);
-    struct item_hdr *item;
+    struct item_hdr item;
+    uint8_t *record;
     lua_Number exptime;
     uint32_t hash;
 
@@ -493,13 +520,13 @@ static int lua_dict_ttl(lua_State *L)
 
     hash = calc_key_hash(key, key_len);
 
-    item = find_item(dict, key, key_len, hash);
-    if (!item) {
+    record = find_item(dict, key, key_len, hash, &item);
+    if (!record) {
         flock(dict->fd, LOCK_UN);
         return 0;
     }
 
-    exptime = (lua_Number)(item->expires_at - now_ms()) / 1000.0;
+    exptime = (lua_Number)(item.expires_at - now_ms()) / 1000.0;
 
     flock(dict->fd, LOCK_UN);
 
@@ -527,7 +554,8 @@ static int lua_dict_expire(lua_State *L)
     size_t key_len;
     const char *key = luaL_checklstring(L, 2, &key_len);
     lua_Number exptime = luaL_checknumber(L, 3);
-    struct item_hdr *item;
+    struct item_hdr item;
+    uint8_t *record;
     uint32_t hash;
 
     luaL_argcheck(L, isfinite(exptime), 3, "exptime must be finite");
@@ -537,16 +565,18 @@ static int lua_dict_expire(lua_State *L)
 
     hash = calc_key_hash(key, key_len);
 
-    item = find_item(dict, key, key_len, hash);
-    if (!item) {
+    record = find_item(dict, key, key_len, hash, &item);
+    if (!record) {
         flock(dict->fd, LOCK_UN);
         return 0;
     }
 
     if (exptime > 0)
-        item->expires_at = now_ms() + (int64_t)(exptime * 1000);
+        item.expires_at = now_ms() + (int64_t)(exptime * 1000);
     else
-        item->expires_at = 0;
+        item.expires_at = 0;
+
+    item_hdr_store(record, &item);
 
     flock(dict->fd, LOCK_UN);
     lua_pushboolean(L, true);
@@ -591,14 +621,17 @@ static int lua_dict_get_keys(lua_State *L)
         return push_errno(L, errno);
 
     while (offset < hdr->len) {
-        struct item_hdr *item = (struct item_hdr *)(hdr->base + offset);
+        uint8_t *record = hdr->base + offset;
+        struct item_hdr item;
 
-        if (!item_is_dead(item)) {
-            lua_pushlstring(L, item->key, item->key_len);
+        item_hdr_load(record, &item);
+
+        if (!item_is_dead(&item)) {
+            lua_pushlstring(L, (char *)record + sizeof(item), item.key_len);
             lua_rawseti(L, -2, i++);
         }
 
-        offset += item_size(item);
+        offset += item_size(&item);
     }
 
     flock(dict->fd, LOCK_UN);
