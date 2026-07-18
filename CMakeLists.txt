@@ -40,6 +40,16 @@ option(ECO_UCI_SUPPORT "uci" ON)
 option(ECO_SSH_SUPPORT "ssh" ON)
 option(ECO_CRASH_BACKTRACE "print C backtrace on fatal signals" OFF)
 
+# Run with ASAN_OPTIONS='abort_on_error=1:detect_leaks=0:symbolize=1' UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1'
+option(ECO_ENABLE_SANITIZERS "build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+if (ECO_ENABLE_SANITIZERS)
+    add_compile_options(-g3 -fno-omit-frame-pointer -fsanitize=address,undefined)
+    link_libraries(-fsanitize=address,undefined)
+
+    message(STATUS "Sanitizers: AddressSanitizer and UndefinedBehaviorSanitizer")
+endif()
+
 if (ECO_CRASH_BACKTRACE)
     add_compile_options(-g3 -fno-omit-frame-pointer)
 endif()
