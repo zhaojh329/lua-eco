@@ -12,7 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # The version number.
 set(ECO_VERSION_MAJOR 4)
 set(ECO_VERSION_MINOR 1)
-set(ECO_VERSION_PATCH 4)
+set(ECO_VERSION_PATCH 5)
 
 pkg_search_module(LUA54 lua-5.4)
 
