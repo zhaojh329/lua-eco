@@ -2105,7 +2105,8 @@ static int lua_eco_loop(lua_State *L)
     sched->quit = false;
 
     got_sigint = 0;
-    got_sigchld = 0;
+    /* Reap children that may have exited before the handler is installed. */
+    got_sigchld = 1;
 
     if (install_signal_handler(SIGPIPE, SIG_IGN, &old_sigpipe) < 0) {
         err = errno;

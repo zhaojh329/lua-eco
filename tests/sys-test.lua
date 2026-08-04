@@ -2,11 +2,31 @@
 
 local eco = require 'eco'
 local sys = require 'eco.sys'
+local time = require 'eco.time'
 local ifile = require 'eco.internal.file'
 local test = require 'test'
 
 local function run_loop_case(name, fn)
     test.run_case_async(name, fn)
+end
+
+local function wait_process_state(pid, expected)
+    local path = string.format('/proc/%d/status', pid)
+    local deadline = time.now() + 2
+    local state
+
+    repeat
+        local f = io.open(path, 'rb')
+        if f then
+            local status = f:read('*a')
+            f:close()
+
+            state = status:match('State:%s+(%u)')
+        end
+    until state == expected or time.now() >= deadline
+
+    assert(state == expected,
+           string.format('process %d did not enter state %s', pid, expected))
 end
 
 local function sigblk_has(status, signum)
@@ -54,6 +74,21 @@ assert(ok == true, err)
 
 ok, err = sys.prctl(0x7fffffff, 0)
 assert(ok == nil and err == 'unsupported option')
+
+-- A fast child may exit before the interpreter enters eco.loop() and installs
+-- its SIGCHLD handler. The loop must still reap that already-zombie child.
+do
+    local p, perr = sys.exec('/bin/true')
+    assert(p, perr)
+
+    wait_process_state(p.pid, 'Z')
+
+    local waited_pid, status = p:wait(1)
+    assert(waited_pid == p.pid)
+    assert(type(status) == 'table' and status.exited == true and status.status == 0)
+
+    p:close()
+end
 
 -- getpwnam success and not-found behavior.
 do
