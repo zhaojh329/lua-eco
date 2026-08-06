@@ -90,6 +90,30 @@ do
     p:close()
 end
 
+-- A child may exit while a timer-resumed coroutine is running, after the event
+-- loop has already processed SIGCHLD for the current iteration.
+eco.sleep(0.01)
+
+do
+    local p, perr = sys.exec('/bin/true')
+    assert(p, perr)
+
+    wait_process_state(p.pid, 'Z')
+
+    local sent, serr = sys.kill(sys.getpid(), sys.SIGCHLD)
+    assert(sent == true, serr)
+
+    local started = time.now()
+    local waited_pid, status = p:wait(1)
+    local elapsed = time.now() - started
+
+    assert(waited_pid == p.pid)
+    assert(type(status) == 'table' and status.exited == true and status.status == 0)
+    assert(elapsed < 0.5, 'SIGCHLD wakeup was delayed until the wait timeout')
+
+    p:close()
+end
+
 -- getpwnam success and not-found behavior.
 do
     local name = os.getenv('USER') or os.getenv('LOGNAME') or 'root'

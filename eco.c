@@ -2137,6 +2137,8 @@ static int lua_eco_loop(lua_State *L)
 
         eco_process_ready(L, sched);
 
+        eco_process_sigchld(L, sched);
+
         if (sched->quit)
             break;
 
