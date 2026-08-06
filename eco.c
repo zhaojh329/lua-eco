@@ -50,6 +50,7 @@
 
 #define _GNU_SOURCE
 
+#include <sys/signalfd.h>
 #include <sys/sendfile.h>
 #include <sys/epoll.h>
 #include <sys/wait.h>
@@ -74,7 +75,6 @@ static char eco_co_key;
 static char eco_ready_key;
 
 static volatile sig_atomic_t got_sigint;
-static volatile sig_atomic_t got_sigchld;
 
 #define MAX_EVENTS 128
 #define MAX_TIMER_CACHE 32
@@ -87,7 +87,12 @@ static volatile sig_atomic_t got_sigchld;
 #define ECO_READER_MT "struct eco_reader *"
 #define ECO_WRITER_MT "struct eco_writer *"
 
+struct eco_sigchld {
+    int fd;
+};
+
 struct eco_scheduler {
+    struct eco_sigchld sigchld;
     struct list_head timer_cache;
     struct list_head timers;
     struct list_head fds[FD_HASH_BUCKETS];
@@ -599,11 +604,6 @@ static void sigint_handler(int signo)
     got_sigint = 1;
 }
 
-static void sigchld_handler(int signo)
-{
-    got_sigchld = 1;
-}
-
 static int install_signal_handler(int signo, void (*handler)(int), struct sigaction *oldact)
 {
     struct sigaction sa = {};
@@ -636,15 +636,26 @@ static void eco_push_wait_status(lua_State *L, int status)
     lua_setfield(L, -2, "status");
 }
 
-static void eco_process_sigchld(lua_State *L, struct eco_scheduler *sched)
+static int eco_process_sigchld(lua_State *L, struct eco_scheduler *sched)
 {
+    struct signalfd_siginfo siginfo[8];
+    ssize_t n;
     int status;
     pid_t pid;
 
-    if (!got_sigchld)
-        return;
+    while (1) {
+        n = read(sched->sigchld.fd, siginfo, sizeof(siginfo));
+        if (n > 0)
+            continue;
 
-    got_sigchld = 0;
+        if (n < 0 && errno == EINTR)
+            continue;
+
+        if (n < 0 && errno_wouldblock())
+            break;
+
+        return -1;
+    }
 
     while (1) {
         pid = waitpid(-1, &status, WNOHANG | WUNTRACED);
@@ -665,6 +676,49 @@ static void eco_process_sigchld(lua_State *L, struct eco_scheduler *sched)
         eco_push_wait_status(L, status);
         lua_call(L, 2, 0);
     }
+
+    return 0;
+}
+
+static int eco_sigchld_init(struct eco_scheduler *sched)
+{
+    struct epoll_event ev = {};
+    sigset_t oldmask;
+    sigset_t mask;
+    int fd;
+    int err;
+
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGCHLD);
+
+    if (sigprocmask(SIG_BLOCK, &mask, &oldmask) < 0)
+        return -1;
+
+    fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+    if (fd < 0)
+        goto err_restore_mask;
+
+    ev.events = EPOLLIN;
+    ev.data.ptr = &sched->sigchld;
+
+    if (epoll_ctl(sched->epoll_fd, EPOLL_CTL_ADD, fd, &ev) < 0)
+        goto err_close_fd;
+
+    sched->sigchld.fd = fd;
+
+    return 0;
+
+err_close_fd:
+    err = errno;
+    close(fd);
+    errno = err;
+
+err_restore_mask:
+    err = errno;
+    sigprocmask(SIG_SETMASK, &oldmask, NULL);
+    errno = err;
+
+    return -1;
 }
 
 static int eco_set_callback_ref(lua_State *L, int idx, int *ref)
@@ -693,6 +747,17 @@ static int eco_scheduler_init(lua_State *L)
     sched->epoll_fd = epoll_create1(0);
     if (sched->epoll_fd < 0)
         return luaL_error(L, "failed to create epoll: %s", strerror(errno));
+
+    sched->sigchld.fd = -1;
+
+    if (eco_sigchld_init(sched) < 0) {
+        int err = errno;
+
+        close(sched->epoll_fd);
+        free(sched);
+
+        return luaL_error(L, "failed to initialize SIGCHLD: %s", strerror(err));
+    }
 
     sched->panic_hook = LUA_NOREF;
     sched->sigchld_hook = LUA_NOREF;
@@ -2007,12 +2072,17 @@ static void eco_process_timeouts(struct eco_scheduler *sched, lua_State *L, uint
 
 static void eco_process_ready(lua_State *L, struct eco_scheduler *sched);
 
-static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
+static int eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
 {
     struct eco_scheduler *sched = get_eco_scheduler(L);
+    int err = 0;
 
     for (int i = 0; i < nfds; i++) {
         struct eco_fd *efd = events[i].data.ptr;
+
+        if (events[i].data.ptr == &sched->sigchld)
+            continue;
+
         eco_fd_ref(efd);
     }
 
@@ -2021,6 +2091,15 @@ static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
         int ev = events[i].events;
         uintptr_t resumed_io = 0;
         struct eco_io *io;
+
+        if (events[i].data.ptr == &sched->sigchld) {
+            if (eco_process_sigchld(L, sched) < 0) {
+                err = errno;
+                break;
+            }
+
+            continue;
+        }
 
         if (ev & (EPOLLIN | EPOLLERR | EPOLLHUP)) {
             io = efd->read_io;
@@ -2045,8 +2124,19 @@ static void eco_process_io(lua_State *L, int nfds, struct epoll_event *events)
 
     for (int i = 0; i < nfds; i++) {
         struct eco_fd *efd = events[i].data.ptr;
+
+        if (events[i].data.ptr == &sched->sigchld)
+            continue;
+
         eco_fd_put(efd);
     }
+
+    if (err) {
+        errno = err;
+        return -1;
+    }
+
+    return 0;
 }
 
 static void eco_process_ready(lua_State *L, struct eco_scheduler *sched)
@@ -2096,17 +2186,13 @@ static int lua_eco_loop(lua_State *L)
     struct epoll_event events[MAX_EVENTS];
     struct sigaction old_sigpipe;
     struct sigaction old_sigint;
-    struct sigaction old_sigchld;
     bool sigpipe_installed = false;
     bool sigint_installed = false;
-    bool sigchld_installed = false;
     int err = 0;
 
     sched->quit = false;
 
     got_sigint = 0;
-    /* Reap children that may have exited before the handler is installed. */
-    got_sigchld = 1;
 
     if (install_signal_handler(SIGPIPE, SIG_IGN, &old_sigpipe) < 0) {
         err = errno;
@@ -2120,12 +2206,6 @@ static int lua_eco_loop(lua_State *L)
     }
     sigint_installed = true;
 
-    if (install_signal_handler(SIGCHLD, sigchld_handler, &old_sigchld) < 0) {
-        err = errno;
-        goto out;
-    }
-    sigchld_installed = true;
-
     while (!sched->quit) {
         uint64_t now = eco_time_now();
         int next_time;
@@ -2133,11 +2213,7 @@ static int lua_eco_loop(lua_State *L)
 
         eco_process_timeouts(sched, L, now);
 
-        eco_process_sigchld(L, sched);
-
         eco_process_ready(L, sched);
-
-        eco_process_sigchld(L, sched);
 
         if (sched->quit)
             break;
@@ -2160,22 +2236,20 @@ static int lua_eco_loop(lua_State *L)
             goto out;
         }
 
-        eco_process_io(L, nfds, events);
+        if (eco_process_io(L, nfds, events) < 0) {
+            err = errno;
+            goto out;
+        }
 
         if (got_sigint)
             break;
     }
-
-    eco_process_sigchld(L, sched);
 
     lua_pushboolean(L, true);
 
 out:
     if (sigpipe_installed)
         sigaction(SIGPIPE, &old_sigpipe, NULL);
-
-    if (sigchld_installed)
-        sigaction(SIGCHLD, &old_sigchld, NULL);
 
     if (sigint_installed)
         sigaction(SIGINT, &old_sigint, NULL);
@@ -2211,12 +2285,18 @@ static int lua_eco_init(lua_State *L)
         return luaL_error(L, "eco._init() is only allowed in child process after fork()");
 
     close(sched->epoll_fd);
+    close(sched->sigchld.fd);
 
     epoll_fd = epoll_create1(0);
     if (epoll_fd < 0)
         return luaL_error(L, "failed to create epoll: %s", strerror(errno));
 
     sched->epoll_fd = epoll_fd;
+    sched->sigchld.fd = -1;
+
+    if (eco_sigchld_init(sched) < 0)
+        return luaL_error(L, "failed to initialize SIGCHLD: %s", strerror(errno));
+
     sched->pid = curpid;
 
     INIT_LIST_HEAD(&sched->timer_cache);

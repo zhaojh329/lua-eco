@@ -31,7 +31,7 @@ end
 
 local function sigblk_has(status, signum)
     local hex = status:match('SigBlk:%s*([0-9a-fA-F]+)')
-    assert(hex, 'missing SigBlk in child status')
+    assert(hex, 'missing SigBlk in process status')
 
     local bit = signum - 1
     local nibble_pos = #hex - math.floor(bit / 4)
@@ -60,6 +60,16 @@ local ppid = sys.getppid()
 assert(math.type(pid) == 'integer' and pid > 0)
 assert(math.type(ppid) == 'integer' and ppid > 0)
 
+-- signalfd can only receive signals that remain blocked in the process mask.
+do
+    local f = assert(io.open('/proc/self/status', 'rb'))
+    local status = f:read('*a')
+    f:close()
+
+    assert(sigblk_has(status, sys.SIGCHLD),
+           'scheduler must block SIGCHLD before creating child processes')
+end
+
 local up = sys.uptime()
 assert(math.type(up) == 'integer' and up >= 0)
 
@@ -75,8 +85,8 @@ assert(ok == true, err)
 ok, err = sys.prctl(0x7fffffff, 0)
 assert(ok == nil and err == 'unsupported option')
 
--- A fast child may exit before the interpreter enters eco.loop() and installs
--- its SIGCHLD handler. The loop must still reap that already-zombie child.
+-- A fast child may exit before the interpreter enters eco.loop(). The
+-- scheduler's SIGCHLD event source must retain the notification until then.
 do
     local p, perr = sys.exec('/bin/true')
     assert(p, perr)
@@ -90,8 +100,8 @@ do
     p:close()
 end
 
--- A child may exit while a timer-resumed coroutine is running, after the event
--- loop has already processed SIGCHLD for the current iteration.
+-- A child may exit while a timer-resumed coroutine is running. Its SIGCHLD
+-- notification must remain readable until the event loop waits again.
 eco.sleep(0.01)
 
 do
@@ -99,9 +109,6 @@ do
     assert(p, perr)
 
     wait_process_state(p.pid, 'Z')
-
-    local sent, serr = sys.kill(sys.getpid(), sys.SIGCHLD)
-    assert(sent == true, serr)
 
     local started = time.now()
     local waited_pid, status = p:wait(1)
@@ -207,6 +214,7 @@ run_loop_case('exec resets child signal mask', function()
     assert(type(status) == 'table' and status.exited == true and status.status == 0, stderr)
     assert(not sigblk_has(stdout, sys.SIGINT), 'exec child inherited blocked SIGINT')
     assert(not sigblk_has(stdout, sys.SIGTERM), 'exec child inherited blocked SIGTERM')
+    assert(not sigblk_has(stdout, sys.SIGCHLD), 'exec child inherited blocked SIGCHLD')
 end)
 
 -- Signal GC regression: after close, signal object should be collectible.
@@ -238,6 +246,15 @@ run_loop_case('spawn child callback', function()
     os.remove(marker)
 
     local child_pid, serr = sys.spawn(function()
+        local p, perr = sys.exec('/bin/true')
+        assert(p, perr)
+
+        local waited_pid, status = p:wait(1)
+        p:close()
+
+        assert(waited_pid == p.pid)
+        assert(type(status) == 'table' and status.exited == true and status.status == 0)
+
         local f = io.open(marker, 'wb')
         if f then
             f:write('spawn-ok')
