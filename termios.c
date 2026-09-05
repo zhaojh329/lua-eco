@@ -20,8 +20,9 @@
  *   `IUTF8`
  * - output flags: `OPOST`, `OLCUC`, `ONLCR`, `OCRNL`, `ONOCR`, `ONLRET`,
  *   `OFILL`, `OFDEL`, `NLDLY`, `CRDLY`, `TABDLY`, `BSDLY`, `VTDLY`, `FFDLY`
- * - control flags: `CBAUD`, `CBAUDEX`, `CSIZE`, `CSTOPB`, `CREAD`, `PARENB`,
- *   `PARODD`, `HUPCL`, `CLOCAL`, `CIBAUD`, `CMSPAR`, `CRTSCTS`
+ * - control flags: `CBAUD`, `CBAUDEX`, `CSIZE`, `CS5`, `CS6`, `CS7`, `CS8`,
+ *   `CSTOPB`, `CREAD`, `PARENB`, `PARODD`, `HUPCL`, `CLOCAL`, `CIBAUD`,
+ *   `CMSPAR`, `CRTSCTS`
  * - local flags: `ISIG`, `ICANON`, `XCASE`, `ECHO`, `ECHOE`, `ECHOK`,
  *   `ECHONL`, `ECHOCTL`, `ECHOPRT`, `ECHOKE`, `FLUSHO`, `NOFLSH`, `TOSTOP`,
  *   `PENDIN`, `IEXTEN`
@@ -435,6 +436,10 @@ int luaopen_eco_termios(lua_State *L)
     lua_add_constant(L, "CBAUD", CBAUD);
     lua_add_constant(L, "CBAUDEX", CBAUDEX);
     lua_add_constant(L, "CSIZE", CSIZE);
+    lua_add_constant(L, "CS5", CS5);
+    lua_add_constant(L, "CS6", CS6);
+    lua_add_constant(L, "CS7", CS7);
+    lua_add_constant(L, "CS8", CS8);
     lua_add_constant(L, "CSTOPB", CSTOPB);
     lua_add_constant(L, "CREAD", CREAD);
     lua_add_constant(L, "PARENB", PARENB);

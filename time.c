@@ -35,6 +35,28 @@ static int lua_now(lua_State *L)
     return 1;
 }
 
+/**
+ * Get monotonic time.
+ *
+ * Unlike @{now}, this clock is not affected by wall-clock adjustments and is
+ * suitable for measuring intervals and constructing deadlines.
+ *
+ * @function monotonic
+ * @treturn number Monotonic time in seconds.
+ */
+static int lua_monotonic(lua_State *L)
+{
+    struct timespec ts;
+    double seconds;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    seconds = (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+
+    lua_pushnumber(L, seconds);
+
+    return 1;
+}
+
 static int lua_timerfd_create(lua_State *L)
 {
     int clock_id = luaL_checkinteger(L, 1);
@@ -74,6 +96,7 @@ static int lua_timerfd_settime(lua_State *L)
 
 static const luaL_Reg funcs[] = {
     {"now", lua_now},
+    {"monotonic", lua_monotonic},
     {"timerfd_create", lua_timerfd_create},
     {"timerfd_settime", lua_timerfd_settime},
     {NULL, NULL}
