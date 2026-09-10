@@ -693,6 +693,10 @@ local function parse_cipher(data)
 end
 
 local function parse_rsn(data, defcipher, defauth)
+    if #data < 2 then
+        return
+    end
+
     local res = {
         version = str_byte(data, 1) | str_byte(data, 2) << 8,
         group_cipher = defcipher,
@@ -768,7 +772,7 @@ local function parse_rsn(data, defcipher, defauth)
     return res
 end
 
-local function parse_vendor_specific_ie(info, data)
+local function parse_vendor_specific_ie(info, data, fallback)
     if #data < 4 then
         return
     end
@@ -776,14 +780,21 @@ local function parse_vendor_specific_ie(info, data)
     local oui = data:sub(1, 3)
     local id = str_byte(data, 4)
 
-    if oui == OUI_MICROSOFT then
-        if id == 1 then
-            info.wpa = parse_rsn(data:sub(5), 'TKIP', 'PSK')
-        end
+    if oui ~= OUI_MICROSOFT or id ~= 1 then
+        return
+    end
+
+    if fallback and info.wpa then
+        return
+    end
+
+    local wpa = parse_rsn(data:sub(5), 'TKIP', 'PSK')
+    if wpa then
+        info.wpa = wpa
     end
 end
 
-local function parse_bss_ie(info, data, keep_elems)
+local function parse_bss_ie(info, data, keep_elems, fallback)
     local elems = {}
 
     while #data > 1 do
@@ -797,11 +808,18 @@ local function parse_bss_ie(info, data, keep_elems)
         local elem_data = data:sub(3, 2 + elem_len)
 
         if typ == M.WLAN_EID_SSID or typ == M.WLAN_EID_MESH_ID then
-            info.ssid = elem_data
+            if not fallback or not info.ssid then
+                info.ssid = elem_data
+            end
         elseif typ == M.WLAN_EID_RSN then
-            info.rsn = parse_rsn(elem_data, 'CCMP', '8021x')
+            if not fallback or not info.rsn then
+                local rsn = parse_rsn(elem_data, 'CCMP', '8021x')
+                if rsn then
+                    info.rsn = rsn
+                end
+            end
         elseif typ == M.WLAN_EID_VENDOR_SPECIFIC then
-            parse_vendor_specific_ie(info, elem_data)
+            parse_vendor_specific_ie(info, elem_data, fallback)
         end
 
         if keep_elems then
@@ -860,6 +878,10 @@ local function parse_bss(nest, keep_elems)
 
     if attrs[nl80211.BSS_INFORMATION_ELEMENTS] then
         parse_bss_ie(info, nl.attr_get_payload(attrs[nl80211.BSS_INFORMATION_ELEMENTS]), keep_elems)
+    end
+
+    if attrs[nl80211.BSS_BEACON_IES] then
+        parse_bss_ie(info, nl.attr_get_payload(attrs[nl80211.BSS_BEACON_IES]), false, true)
     end
 
     if attrs[nl80211.BSS_STATUS] then
