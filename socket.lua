@@ -207,7 +207,7 @@ function methods:connect(...)
     local ok, err = self.sock:connect(...)
     if not ok then
         if ok == false then
-            ok, err = self.wr:wait(5.0)
+            ok, err = self.wr:wait(self.connect_timeout or 5.0)
             if not ok then
                 return nil, err
             end
@@ -425,9 +425,16 @@ end
 -- @section end
 
 local function socket_init(sock, options, family, domain)
+    local connect_timeout = options and options.connect_timeout
+
+    assert(connect_timeout == nil or type(connect_timeout) == 'number' and
+           connect_timeout > 0 and connect_timeout < math.huge,
+           'connect_timeout must be a finite positive number')
+
     local fd = sock:getfd()
     local o = {
         sock = sock,
+        connect_timeout = connect_timeout,
         mutex = sync.mutex(),
         rd = eco.reader(fd),
         wr = eco.writer(fd)
@@ -457,6 +464,7 @@ end
 -- - `ipv6_v6only` (boolean)
 -- - `mark` (int)
 -- - `device` (string) bind to device name
+-- - `connect_timeout` (positive number, defaults to 5 seconds)
 --
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
@@ -674,7 +682,13 @@ function M.connect_tcp(ipaddr, port, options)
         return nil, err
     end
 
-    return sock:connect(ipaddr, port)
+    local connected, cerr = sock:connect(ipaddr, port)
+    if not connected then
+        sock:close()
+        return nil, cerr
+    end
+
+    return connected
 end
 
 --- Create and bind a UDP socket.

@@ -13,6 +13,10 @@ assert(math.type(time.TFD_TIMER_ABSTIME) == 'integer')
 local t0 = time.now()
 assert(type(t0) == 'number' and t0 > 0, 'time.now() should return unix timestamp in seconds')
 
+local monotonic = time.monotonic()
+assert(type(monotonic) == 'number' and monotonic > 0,
+       'time.monotonic() should return monotonic seconds')
+
 local os_now = os.time()
 assert(math.abs(t0 - os_now) <= 1,
 	   string.format('time.now() should be close to os.time(): now=%.3f os=%d', t0, os_now))

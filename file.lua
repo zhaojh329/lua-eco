@@ -215,6 +215,13 @@ function file_methods:close()
         return
     end
 
+    local before_close = self.before_close
+    self.before_close = nil
+
+    if before_close then
+        pcall(before_close, self.fd)
+    end
+
     file.close(self.fd)
     self.fd = -1
 
