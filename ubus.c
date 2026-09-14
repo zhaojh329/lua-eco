@@ -22,6 +22,7 @@ struct lua_ubus_context {
     struct ubus_context ctx;
     int connection_lost_cb;
     int data_cb;
+    /* Lua state of the active libubus call; nested calls restore it. */
     lua_State *co;
     char path[];
 };
@@ -339,8 +340,12 @@ static int lua_ubus_getfd(lua_State *L)
 static int lua_ubus_handle_event(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
+
     ctx->co = L;
     ubus_handle_event(&ctx->ctx);
+    ctx->co = prev_co;
+
     return 0;
 }
 
@@ -375,16 +380,23 @@ static int lua_ubus_reregister_events(lua_State *L, struct lua_ubus_context *ctx
 static int lua_ubus_reconnect(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *path = ctx->path[0] ? ctx->path : NULL;
     int ret;
 
+    ctx->co = L;
     ret = ubus_reconnect(&ctx->ctx, path);
+    ctx->co = prev_co;
+
     if (ret) {
         lua_pushnil(L);
         return 1;
     }
 
+    ctx->co = L;
     ret = lua_ubus_reregister_events(L, ctx);
+    ctx->co = prev_co;
+
     if (ret) {
         lua_pushnil(L);
         lua_pushstring(L, ubus_strerror(ret));
@@ -463,6 +475,7 @@ static void ubus_call_complete_cb(struct ubus_request *req, int ret)
 static int lua_ubus_call(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *path = luaL_checkstring(L, 2);
     const char *func = luaL_checkstring(L, 3);
     struct ubus_request *req;
@@ -470,7 +483,11 @@ static int lua_ubus_call(lua_State *L)
     uint32_t id;
     int ret;
 
-    if (ubus_lookup_id(&ctx->ctx, path, &id)) {
+    ctx->co = L;
+    ret = ubus_lookup_id(&ctx->ctx, path, &id);
+    ctx->co = prev_co;
+
+    if (ret) {
         lua_pushnil(L);
         lua_pushliteral(L, "not found");
         return 2;
@@ -506,6 +523,7 @@ static int lua_ubus_call(lua_State *L)
 static int lua_ubus_send(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *event = luaL_checkstring(L, 2);
     struct blob_buf buf = {};
     int ret;
@@ -513,7 +531,9 @@ static int lua_ubus_send(lua_State *L)
     if (lua_arg_to_blob(L, 3, &buf))
         return 2;
 
+    ctx->co = L;
     ret = ubus_send_event(&ctx->ctx, event, buf.head);
+    ctx->co = prev_co;
 
     blob_buf_free(&buf);
 
@@ -569,6 +589,7 @@ static void ubus_event_handler(struct ubus_context *ctx, struct ubus_event_handl
 static int lua_ubus_listen(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *name = luaL_checkstring(L, 2);
     struct lua_ubus_event *lev;
     struct ubus_event_handler *ev;
@@ -583,7 +604,10 @@ static int lua_ubus_listen(lua_State *L)
 
     strcpy(lev->pattern, name);
 
+    ctx->co = L;
     ret = ubus_register_event_handler(&ctx->ctx, ev, lev->pattern);
+    ctx->co = prev_co;
+
     if (ret) {
         free(lev);
         lua_pushnil(L);
@@ -715,6 +739,7 @@ static int lua_ubus_load_object(lua_State *L, struct lua_ubus_object *lobj, int 
 static int lua_ubus_add(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *name = luaL_checkstring(L, 2);
     struct lua_ubus_object *obj;
     int ret, mlen, plen;
@@ -722,7 +747,11 @@ static int lua_ubus_add(lua_State *L)
 
     luaL_checktype(L, 3, LUA_TTABLE);
 
-    if (!ubus_lookup_id(&ctx->ctx, name, &id)) {
+    ctx->co = L;
+    ret = ubus_lookup_id(&ctx->ctx, name, &id);
+    ctx->co = prev_co;
+
+    if (!ret) {
         lua_pushnil(L);
         lua_pushliteral(L, "object exists");
         return 2;
@@ -751,14 +780,15 @@ static int lua_ubus_add(lua_State *L)
     obj->object.methods = obj->methods;
     obj->object.n_methods = mlen;
 
-    ctx->co = L;
-
     if (lua_ubus_load_object(L, obj, mlen) < 0) {
         lua_ubus_free_object(obj);
         return push_errno(L, errno);
     }
 
+    ctx->co = L;
     ret = ubus_add_object(&ctx->ctx, &obj->object);
+    ctx->co = prev_co;
+
     if (ret) {
         lua_ubus_free_object(obj);
         lua_pushnil(L);
@@ -819,6 +849,7 @@ static bool ubus_subscriber_new_obj_cb(struct ubus_context *ctx,
 static int lua_ubus_subscribe(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *path = luaL_checkstring(L, 2);
     bool auto_sub = lua_toboolean(L, 3);
     struct lua_ubus_subscriber *lsub;
@@ -826,10 +857,16 @@ static int lua_ubus_subscribe(lua_State *L)
     uint32_t id;
     int ret;
 
-    if (!auto_sub && ubus_lookup_id(&ctx->ctx, path, &id)) {
-        lua_pushnil(L);
-        lua_pushliteral(L, "not found");
-        return 2;
+    if (!auto_sub) {
+        ctx->co = L;
+        ret = ubus_lookup_id(&ctx->ctx, path, &id);
+        ctx->co = prev_co;
+
+        if (ret) {
+            lua_pushnil(L);
+            lua_pushliteral(L, "not found");
+            return 2;
+        }
     }
 
     lsub = calloc(1, sizeof(struct lua_ubus_subscriber) + strlen(path) + 1);
@@ -845,7 +882,10 @@ static int lua_ubus_subscribe(lua_State *L)
         sub->new_obj_cb = ubus_subscriber_new_obj_cb;
     }
 
+    ctx->co = L;
     ret = ubus_register_subscriber(&ctx->ctx, sub);
+    ctx->co = prev_co;
+
     if (ret) {
         free(lsub);
         lua_pushnil(L);
@@ -854,9 +894,15 @@ static int lua_ubus_subscribe(lua_State *L)
     }
 
     if (!auto_sub) {
+        ctx->co = L;
         ret = ubus_subscribe(&ctx->ctx, sub, id);
+        ctx->co = prev_co;
+
         if (ret) {
+            ctx->co = L;
             ubus_unregister_subscriber(&ctx->ctx, sub);
+            ctx->co = prev_co;
+
             free(lsub);
             lua_pushnil(L);
             lua_pushstring(L, ubus_strerror(ret));
@@ -873,6 +919,7 @@ static int lua_ubus_subscribe(lua_State *L)
 static int lua_ubus_unsubscribe(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     struct ubus_subscriber *sub = (struct ubus_subscriber *)lua_checkludata(L, 2);
 
     if (ctx->ctx.sock.eof) {
@@ -887,7 +934,9 @@ static int lua_ubus_unsubscribe(lua_State *L)
         return 2;
     }
 
+    ctx->co = L;
     ubus_unregister_subscriber(&ctx->ctx, sub);
+    ctx->co = prev_co;
 
     lua_ubus_ctx_remove_obj(L, 1, NULL, sub);
 
@@ -945,11 +994,15 @@ static void lua_ubus_objects_cb(struct ubus_context *c, struct ubus_object_data 
 static int lua_ubus_objects(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     int ret;
 
     lua_newtable(L);
 
+    ctx->co = L;
     ret = ubus_lookup(&ctx->ctx, NULL, lua_ubus_objects_cb, L);
+    ctx->co = prev_co;
+
     if (ret != UBUS_STATUS_OK) {
         lua_pop(L, 1);
         lua_pushnil(L);
@@ -973,12 +1026,16 @@ static void lua_ubus_signatures_cb(struct ubus_context *c, struct ubus_object_da
 static int lua_ubus_signatures(lua_State *L)
 {
     struct lua_ubus_context *ctx = luaL_checkudata(L, 1, UBUS_CTX_MT);
+    lua_State *prev_co = ctx->co;
     const char *path = luaL_checkstring(L, 2);
     int ret;
 
     lua_newtable(L);
 
+    ctx->co = L;
     ret = ubus_lookup(&ctx->ctx, path, lua_ubus_signatures_cb, L);
+    ctx->co = prev_co;
+
     if (ret != UBUS_STATUS_OK) {
         lua_pop(L, 1);
         lua_pushnil(L);
@@ -1073,6 +1130,7 @@ static int lua_ubus_connect(lua_State *L)
         size += strlen(path);
 
     ctx = lua_newuserdatauv(L, size, 1);
+    ctx->co = NULL;
     lua_newtable(L);
     lua_setuservalue(L, -2);
 

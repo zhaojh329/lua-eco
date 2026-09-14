@@ -153,6 +153,50 @@ test.run_case_sync('ubus connection smoke', function()
     end)
 end)
 
+test.run_case_sync('ubus listen dispatches pending events before first IO handling', function()
+    eco.run(function()
+        local recv<close>, rerr = connect_retry(2.0)
+        assert(recv, rerr)
+
+        local send<close>, serr = connect_retry(2.0)
+        assert(send, serr)
+
+        local first_event = uniq('listen_pending')
+        local second_event = uniq('listen_next')
+        local first_msgs = {}
+        local second_msg
+
+        assert(recv:listen(first_event, function(ev, msg, con)
+            assert(ev == first_event and con == recv)
+
+            -- Re-enter libubus from the callback coroutine. The next pending
+            -- event must still be dispatched on the outer caller's Lua state.
+            assert(con:objects())
+            first_msgs[#first_msgs + 1] = msg
+        end))
+
+        -- Keep recv's IO coroutine suspended: the next listen must dispatch
+        -- these events while libubus waits for the registration response.
+        assert(send:send(first_event, { seq = 1 }))
+        assert(send:send(first_event, { seq = 2 }))
+        assert(recv:listen(second_event, function(ev, msg, con)
+            assert(ev == second_event and con == recv)
+            second_msg = msg
+        end))
+
+        assert(#first_msgs == 2, 'pending events must be dispatched before listen returns')
+        assert(first_msgs[1].seq == 1 and first_msgs[2].seq == 2)
+
+        assert(send:send(second_event, { seq = 2 }))
+
+        local ok, err = wait_until(1.0, function()
+            return second_msg ~= nil
+        end)
+        assert(ok, err)
+        assert(second_msg.seq == 2)
+    end)
+end)
+
 test.run_case_sync('ubus call/add/signatures/objects/errors/closed', function()
     eco.run(function()
         local con<close>, cerr = connect_retry(2.0)
