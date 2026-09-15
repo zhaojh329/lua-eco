@@ -211,7 +211,7 @@ local function ssl_handshake(ssock, sock)
             return true
         end
 
-        if ret == ssl.SSL_WANT_READ then
+        if ret == ssl.WANT_READ then
             ret, err = sock.rd:wait(timeout)
         else
             ret, err = sock.wr:wait(timeout)
