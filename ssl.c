@@ -330,7 +330,7 @@ static int lua_ssl_read(void *buf, size_t len, void *ctx, const char **err)
             return -1;
         }
 
-        return -EAGAIN;
+        return ret == SSL_WANT_READ ? ECO_IO_WANT_READ : ECO_IO_WANT_WRITE;
     }
 
     return ret;
@@ -353,7 +353,8 @@ static int lua_ssl_write(const void *buf, size_t len, void *ctx, const char **er
             *err = ssl_last_error_string(s->ssl, err_buf, sizeof(err_buf));
             return -1;
         }
-        return -EAGAIN;
+
+        return ret == SSL_WANT_READ ? ECO_IO_WANT_READ : ECO_IO_WANT_WRITE;
     }
 
     return ret;

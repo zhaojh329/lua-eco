@@ -39,6 +39,15 @@
 
 int luaopen_eco(lua_State *L);
 
+/* Custom reader/writer callbacks may request either readiness direction.
+ * -EAGAIN retains the default direction; other negative values report *err.
+ * Keep these values outside the errno range.
+ */
+enum {
+    ECO_IO_WANT_READ = -0x10000,
+    ECO_IO_WANT_WRITE = -0x10001
+};
+
 static inline int push_errno(lua_State *L, int err)
 {
     lua_pushnil(L);
