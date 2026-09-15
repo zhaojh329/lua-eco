@@ -92,7 +92,7 @@ local function with_socket_env(stat_sizes, fn)
     package.loaded['eco.sync'] = {
         mutex = function()
             return {
-                lock = function() end,
+                lock = function() return true end,
                 unlock = function() end
             }
         end

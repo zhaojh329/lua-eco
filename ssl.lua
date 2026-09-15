@@ -12,6 +12,7 @@ local socket = require 'eco.socket'
 local ssl = require 'eco.internal.ssl'
 local file = require 'eco.file'
 local sync = require 'eco.sync'
+local time = require 'eco.time'
 local eco = require 'eco'
 
 local M = {}
@@ -45,6 +46,9 @@ local cli_methods = {}
 
 --- Send data.
 --
+-- Time spent waiting for the write lock is deducted from a positive timeout.
+-- A missing or nonpositive timeout allows unlimited waiting.
+--
 -- @function ssl_client:send
 -- @tparam string data Data to send.
 -- @tparam[opt] number timeout Timeout in seconds
@@ -53,9 +57,29 @@ local cli_methods = {}
 -- @treturn[2] string Error message.
 function cli_methods:send(data, timeout)
     local mutex = self.mutex
+    local started
 
-    mutex:lock()
-    local sent, err = self.wr:write(data, timeout)
+    if timeout and timeout > 0 then
+        started = time.now(time.CLOCK_MONOTONIC)
+    else
+        timeout = nil
+    end
+
+    local ok, err = mutex:lock(timeout)
+    if not ok then
+        return nil, err
+    end
+
+    if started then
+        timeout = timeout - (time.now(time.CLOCK_MONOTONIC) - started)
+        if timeout <= 0 then
+            mutex:unlock()
+            return nil, 'timeout'
+        end
+    end
+
+    local sent
+    sent, err = self.wr:write(data, timeout)
     mutex:unlock()
 
     if sent then

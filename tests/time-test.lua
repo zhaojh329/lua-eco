@@ -17,6 +17,15 @@ local os_now = os.time()
 assert(math.abs(t0 - os_now) <= 1,
 	   string.format('time.now() should be close to os.time(): now=%.3f os=%d', t0, os_now))
 
+do
+	local started = assert(time.now(time.CLOCK_MONOTONIC))
+	eco.sleep(0.02)
+	local elapsed = time.now(time.CLOCK_MONOTONIC) - started
+	assert(elapsed >= 0.01 and elapsed < 1, 'monotonic clock should advance during sleep')
+	local value, err = time.now(-1)
+	assert(value == nil and type(err) == 'string', 'invalid clock should return an error')
+end
+
 -- Argument validation.
 test.expect_error(function()
 	time.timer(1)
