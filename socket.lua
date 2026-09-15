@@ -7,6 +7,7 @@
 local socket = require 'eco.internal.socket'
 local file = require 'eco.internal.file'
 local sync = require 'eco.sync'
+local time = require 'eco.time'
 local eco = require 'eco'
 
 local M = {
@@ -262,21 +263,53 @@ function methods:accept(timeout)
     }, metatable), perr
 end
 
+-- Return the remaining timeout (nil if unlimited), or nil and an error.
+local function lock_writer(mutex, timeout)
+    local started
+
+    if timeout and timeout > 0 then
+        started = time.now(time.CLOCK_MONOTONIC)
+    else
+        timeout = nil
+    end
+
+    local ok, err = mutex:lock(timeout)
+    if not ok then
+        return nil, err
+    end
+
+    if started then
+        timeout = timeout - (time.now(time.CLOCK_MONOTONIC) - started)
+        if timeout <= 0 then
+            mutex:unlock()
+            return nil, 'timeout'
+        end
+    end
+
+    return timeout
+end
+
 --- Send data on a connected stream socket.
 --
 -- This method serializes concurrent writers using an internal mutex.
 --
 -- @function socket:send
 -- @tparam string data Data to send.
--- @tparam[opt] number timeout Timeout in seconds
+-- @tparam[opt] number timeout Timeout in seconds, including lock wait (nil or <= 0: unlimited).
 -- @treturn integer Bytes sent.
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function methods:send(data, timeout)
     local mutex = self.mutex
+    local err
 
-    mutex:lock()
-    local sent, err = self.wr:write(data, timeout)
+    timeout, err = lock_writer(mutex, timeout)
+    if err then
+        return nil, err
+    end
+
+    local sent
+    sent, err = self.wr:write(data, timeout)
     mutex:unlock()
 
     if sent then
@@ -336,6 +369,7 @@ end
 --- Send file contents on a connected stream socket.
 --
 -- If `len` is omitted, sends from `offset` to the end of the file.
+-- Time spent waiting for the write lock is deducted from a positive timeout.
 --
 -- @function socket:sendfile
 -- @tparam string path File path.
@@ -362,8 +396,14 @@ function methods:sendfile(path, len, offset, timeout)
         end
     end
 
-    mutex:lock()
-    local sent, err = self.wr:sendfile(path, offset, len, timeout)
+    local err
+    timeout, err = lock_writer(mutex, timeout)
+    if err then
+        return nil, err
+    end
+
+    local sent
+    sent, err = self.wr:sendfile(path, offset, len, timeout)
     mutex:unlock()
 
     if sent then

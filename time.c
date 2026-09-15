@@ -20,14 +20,20 @@
  * Get current time
  *
  * @function now
+ * @tparam[opt=CLOCK_REALTIME] integer clock_id Clock to read.
  * @treturn number Current time in seconds.
+ * @treturn[2] nil On failure.
+ * @treturn[2] string Error message.
  */
 static int lua_now(lua_State *L)
 {
     struct timespec ts;
     double seconds;
+    int clock_id = luaL_optinteger(L, 1, CLOCK_REALTIME);
 
-    clock_gettime(CLOCK_REALTIME, &ts);
+    if (clock_gettime(clock_id, &ts) < 0)
+        return push_errno(L, errno);
+
     seconds = (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
 
     lua_pushnumber(L, seconds);
