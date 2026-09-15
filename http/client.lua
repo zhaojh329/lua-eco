@@ -50,7 +50,7 @@ local function build_http_headers(data, headers)
     end
 end
 
-local function send_http_request(sock, method, path, headers, body)
+local function send_http_request(sock, method, path, headers, body, timeout)
     local data = {}
 
     data[#data + 1] = string.format('%s %s HTTP/1.1\r\n', method, path)
@@ -59,7 +59,7 @@ local function send_http_request(sock, method, path, headers, body)
 
     data[#data + 1] = '\r\n'
 
-    local _, err = sock:send(concat(data))
+    local _, err = sock:send(concat(data), timeout)
     if err then
         return nil, err
     end
@@ -69,22 +69,22 @@ local function send_http_request(sock, method, path, headers, body)
     end
 
     if type(body) == 'string' then
-        _, err = sock:send(body)
+        _, err = sock:send(body, timeout)
     elseif body_is_file(body) then
-        _, err = sock:sendfile(body.name, body.size)
+        _, err = sock:sendfile(body.name, body.size, nil, timeout)
     elseif body_is_form(body) then
         for _, content in ipairs(body.contents) do
             if type(content) == 'string' then
-                _, err = sock:send(content)
+                _, err = sock:send(content, timeout)
             else
-                _, err = sock:sendfile(content.path, content.size)
+                _, err = sock:sendfile(content.path, content.size, nil, timeout)
             end
 
             if err then break end
         end
 
         if not err then
-            _, err = sock:send(body.tail)
+            _, err = sock:send(body.tail, timeout)
         end
     end
 
@@ -259,16 +259,15 @@ end
 
 local function do_http_request(self, method, path, headers, body, opts)
     local sock = self:sock()
-
-    local ok, err = send_http_request(sock, method, path, headers, body)
-    if not ok then
-        return nil, err
-    end
-
     local timeout = opts.timeout
 
     if not timeout or timeout <= 0 then
         timeout = 30
+    end
+
+    local ok, err = send_http_request(sock, method, path, headers, body, timeout)
+    if not ok then
+        return nil, err
     end
 
     local code, status = recv_status_line(sock, timeout)
@@ -539,7 +538,8 @@ end
 --
 -- `opts` options commonly used:
 --
--- - `timeout` (number) request timeout in seconds (default 30).
+-- - `timeout` (number) timeout for request sends and response reads in seconds
+--   (default 30).
 -- - `headers` (table) extra request headers.
 -- - `body_to_file` (string|function) write response body to a file path, or
 --   call a function with each downloaded data chunk.
