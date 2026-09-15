@@ -153,7 +153,7 @@ struct eco_reader {
             size_t needle_len;
         };
     };
-    int (*read)(void *buf, size_t len, void *ctx, char **err);
+    int (*read)(void *buf, size_t len, void *ctx, const char **err);
     void *ctx;
     size_t len;
     char buf[RD_BUFSIZE];
@@ -173,7 +173,7 @@ struct eco_writer {
     };
     size_t total;
     size_t written;
-    int (*write)(const void *buf, size_t len, void *ctx, char **err);
+    int (*write)(const void *buf, size_t len, void *ctx, const char **err);
     void *ctx;
 };
 
@@ -501,6 +501,12 @@ static int eco_io_yieldk(lua_State *L, struct eco_io *io, int events, lua_KFunct
 {
     struct eco_scheduler *sched = get_eco_scheduler(L);
     struct eco_fd *efd = io->efd;
+
+    if (((events & EPOLLIN) && efd->read_io && efd->read_io != io) ||
+        ((events & EPOLLOUT) && efd->write_io && efd->write_io != io)) {
+        errno = EBUSY;
+        return -1;
+    }
 
     if (events & EPOLLIN)
         efd->read_io = io;
@@ -1091,12 +1097,14 @@ static int eco_reader_read_once(lua_State *L, struct eco_reader *rd,
             buf = rd->buf;
 
         if (rd->read) {
-            char *err = "";
+            const char *err = "";
 
             ret = rd->read(buf, size, rd->ctx, &err);
             if (ret < 0) {
-                if (ret == -EAGAIN) {
-                    ret = eco_io_yieldk(L, io, EPOLLIN, k);
+                if (ret == -EAGAIN || ret == ECO_IO_WANT_READ || ret == ECO_IO_WANT_WRITE) {
+                    int events = ret == ECO_IO_WANT_WRITE ? EPOLLOUT : EPOLLIN;
+
+                    ret = eco_io_yieldk(L, io, events, k);
                     if (ret < 0)
                         goto err;
                     return ret;
@@ -1435,6 +1443,8 @@ static const struct luaL_Reg reader_metatable[] = {
  *
  * Wraps a file descriptor in an `eco.reader` object for async I/O.
  * Optionally, a custom read function and context pointer can be provided.
+ * Custom callbacks can return ECO_IO_WANT_READ or ECO_IO_WANT_WRITE (eco.h)
+ * to select the retry direction; -EAGAIN waits for readability.
  *
  * @function reader
  * @tparam integer fd File descriptor to wrap
@@ -1505,6 +1515,7 @@ static int eco_write_once(lua_State *L, struct eco_writer *wr,
             lua_KFunction k, bool continuation)
 {
     struct eco_io *io = &wr->io;
+    int events = EPOLLOUT;
     int ret;
 
     if (continuation) {
@@ -1517,10 +1528,14 @@ static int eco_write_once(lua_State *L, struct eco_writer *wr,
         eco_io_fairness(L, io, k);
 
     if (wr->write) {
-        char *err = "";
+        const char *err = "";
+
         ret = wr->write(wr->data.data + wr->written, wr->total - wr->written, wr->ctx, &err);
         if (ret < 0) {
-            if (ret == -EAGAIN) {
+            if (ret == -EAGAIN || ret == ECO_IO_WANT_READ || ret == ECO_IO_WANT_WRITE) {
+                if (ret == ECO_IO_WANT_READ)
+                    events = EPOLLIN;
+
                 ret = 0;
             } else {
                 push_nil_string(L, err);
@@ -1540,7 +1555,7 @@ static int eco_write_once(lua_State *L, struct eco_writer *wr,
     wr->written += ret;
 
     if (wr->written < wr->total) {
-        ret = eco_io_yieldk(L, io, EPOLLOUT, k);
+        ret = eco_io_yieldk(L, io, events, k);
         if (ret < 0)
             goto err;
         return ret;
@@ -1780,6 +1795,8 @@ static const struct luaL_Reg writer_metatable[] = {
  * Wraps a file descriptor in an `eco.writer` object for asynchronous
  * write operations. Optionally, a custom write function and context
  * pointer can be provided.
+ * Custom callbacks can return ECO_IO_WANT_READ or ECO_IO_WANT_WRITE (eco.h)
+ * to select the retry direction; -EAGAIN waits for writability.
  *
  * @function eco.writer
  * @tparam integer fd File descriptor to wrap
