@@ -153,6 +153,39 @@ test.run_case_sync('ubus connection smoke', function()
     end)
 end)
 
+test.run_case_sync('ubus connect preserves pending SIGCHLD', function()
+    eco.run(function()
+        for _, path in ipairs({ false, '/proc/self/eco-missing-ubus.sock' }) do
+            local p, perr = sys.exec('/bin/true')
+            assert(p, perr)
+
+            local state
+            local deadline = time.now() + 2
+
+            repeat
+                local f = assert(io.open(string.format('/proc/%d/status', p.pid), 'rb'))
+                state = f:read('*a'):match('State:%s+(%u)')
+                f:close()
+            until state == 'Z' or time.now() >= deadline
+
+            assert(state == 'Z', 'child did not exit before ubus connect')
+
+            local con, cerr = ubus.connect(path or nil)
+            if path then
+                assert(con == nil and type(cerr) == 'string')
+            else
+                assert(con, cerr)
+                con:close()
+            end
+
+            local waited_pid, status = p:wait(1)
+            assert(waited_pid == p.pid, 'ubus connect lost the child exit notification')
+            assert(status and status.exited and status.status == 0)
+            p:close()
+        end
+    end)
+end)
+
 test.run_case_sync('ubus listen dispatches pending events before first IO handling', function()
     eco.run(function()
         local recv<close>, rerr = connect_retry(2.0)

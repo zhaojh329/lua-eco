@@ -1117,6 +1117,8 @@ static int lua_ubus_connect(lua_State *L)
     size_t size = sizeof(struct lua_ubus_context) + 1;
     const char *path = luaL_optstring(L, 1, NULL);
     struct lua_ubus_context *ctx;
+    bool old_handle_sigchld;
+    int ret;
 
     luaL_checktype(L, 2, LUA_TTABLE);
 
@@ -1134,14 +1136,20 @@ static int lua_ubus_connect(lua_State *L)
     lua_newtable(L);
     lua_setuservalue(L, -2);
 
-    if (ubus_connect_ctx(&ctx->ctx, path)) {
-        uloop_done();
+    /* Leave SIGCHLD to eco's signalfd, including while uloop is torn down. */
+    old_handle_sigchld = uloop_handle_sigchld;
+    uloop_handle_sigchld = false;
+
+    ret = ubus_connect_ctx(&ctx->ctx, path);
+    uloop_done();
+
+    uloop_handle_sigchld = old_handle_sigchld;
+
+    if (ret) {
         lua_pushnil(L);
         lua_pushliteral(L, "failed to connect to ubus");
         return 2;
     }
-
-    uloop_done();
 
     luaL_setmetatable(L, UBUS_CTX_MT);
 
