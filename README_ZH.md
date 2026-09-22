@@ -133,6 +133,9 @@ end)
 - `http`：HTTP client/server（`eco.http.client` / `eco.http.server` / `eco.http.url`）
 - `websocket`：WebSocket client/server
 - `mqtt`：MQTT 3.1.1 客户端实现
+- `modbus`：Modbus 客户端（主站），支持 TCP 与 RTU（串口）。TCP 直连默认使用
+  标准 Unit Identifier `0xFF`；RTU 默认参数为 9600/8E1，无校验时使用两个停止位，
+  地址 `0` 仅用于写广播。
 - `dns`：UDP DNS 解析
 
 Linux / 系统集成：
