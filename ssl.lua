@@ -356,13 +356,18 @@ end
 -- - `cert`: Path to client certificate file (optional, for mTLS).
 -- - `key`: Path to client private key file (optional, for mTLS).
 -- - `insecure`: When true, disables/relaxes peer verification (backend dependent).
--- - `server_name`: SNI server name.
+-- - `server_name`: Server identity to verify; also sent as SNI for DNS names.
 -- - `ctx`: An existing ssl context object to reuse.
 --
 -- Other fields are passed to @{eco.socket.connect_tcp}.
 --
 -- If `options.ctx` is provided, it is reused and will NOT be freed when the
--- returned client is closed.
+-- returned client is closed. The caller must configure its verification mode
+-- with `ctx:require_validation(not insecure)` before creating any sessions.
+-- This function does not change a supplied context's verification mode;
+-- `insecure` cannot override a backend handshake failure in that mode.
+-- Use separate contexts for connections with different verification policies.
+-- Without `server_name`, no server identity match is requested.
 --
 -- @function connect
 -- @tparam string ipaddr Remote address.
@@ -384,6 +389,8 @@ function M.connect(ipaddr, port, options)
 
     if not ctx then
         ctx = ssl.context()
+        ctx:require_validation(not options.insecure)
+
         local ok, err = set_ssl_opt(ctx, options or {})
         if not ok then
             sock:close()
