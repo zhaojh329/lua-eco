@@ -614,7 +614,6 @@ static int install_signal_handler(int signo, void (*handler)(int), struct sigact
 {
     struct sigaction sa = {};
 
-    /* Keep SA_RESTART disabled so epoll_wait can be interrupted by signals. */
     sa.sa_flags = 0;
 
     sigemptyset(&sa.sa_mask);
@@ -654,9 +653,6 @@ static int eco_process_sigchld(lua_State *L, struct eco_scheduler *sched)
         if (n > 0)
             continue;
 
-        if (n < 0 && errno == EINTR)
-            continue;
-
         if (n < 0 && errno_wouldblock())
             break;
 
@@ -665,13 +661,7 @@ static int eco_process_sigchld(lua_State *L, struct eco_scheduler *sched)
 
     while (1) {
         pid = waitpid(-1, &status, WNOHANG | WUNTRACED);
-        if (pid < 0) {
-            if (errno == EINTR)
-                continue;
-            break;
-        }
-
-        if (pid == 0)
+        if (pid <= 0)
             break;
 
         if (sched->sigchld_hook == LUA_NOREF)
