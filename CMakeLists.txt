@@ -226,12 +226,18 @@ install(
 install(
     FILES time.lua sys.lua file.lua dns.lua socket.lua
         packet.lua mqtt.lua websocket.lua sync.lua channel.lua net.lua cli.lua
+        modbus.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco
 )
 
 install(
     FILES http/client.lua http/server.lua http/url.lua
     DESTINATION ${LUA_INSTALL_PREFIX}/eco/http
+)
+
+install(
+    FILES modbus/proto.lua modbus/tcp.lua modbus/rtu.lua
+    DESTINATION ${LUA_INSTALL_PREFIX}/eco/modbus
 )
 
 add_subdirectory(nl)

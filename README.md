@@ -130,6 +130,10 @@ Networking:
 - `http`: HTTP client/server (`eco.http.client`, `eco.http.server`, `eco.http.url`)
 - `websocket`: WebSocket client/server (HTTP upgrade)
 - `mqtt`: MQTT 3.1.1 client implementation
+- `modbus`: Modbus client (master) over TCP and RTU (serial). TCP uses the
+  standard direct-server Unit Identifier `0xFF` by default. RTU defaults to
+  9600/8E1; no parity uses two stop bits, and address `0` is write-broadcast
+  only.
 - `dns`: UDP DNS resolver
 
 Linux / system integrations:

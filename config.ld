@@ -7,6 +7,7 @@ file = {
     'uci.c', 'ubus.lua', 'socket.lua', 'socket.c', 'packet.lua', 'dns.lua', 'ssl.lua',
     'mqtt.lua', 'net.lua', 'nl/nl.lua', 'nl/nl.c', 'nl/genl.lua', 'nl/genl.c', 'nl/rtnl.c', 'nl/ip.lua',
     'nl/nl80211.lua', 'nl/nl80211.c', 'websocket.lua', 'termios.c',
+    'modbus.lua', 'modbus/proto.lua', 'modbus/tcp.lua', 'modbus/rtu.lua',
     'ssh.lua', 'http/server.lua', 'http/client.lua',
     'hex.lua', 'base64.c', 'hash/md5.c', 'hash/sha1.c', 'hash/sha256.c', 'hash/hmac.lua'
 }
