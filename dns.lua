@@ -133,18 +133,14 @@ local function parse_resolvconf()
     local conf = {}
 
     for line in io.lines(RESOLV_CONF_PATH) do
-        if line:match('search') then
-            local search = line:match('search%s+(%S+)')
-            if not search:match('%.') then
-                conf.search = search
-            end
-        elseif line:match('nameserver') then
-            local nameserver = line:match('nameserver%s+(%S+)')
-            if nameserver then
-                if socket.is_ipv4_address(nameserver) or socket.is_ipv6_address(nameserver) then
-                    nameservers[#nameservers + 1] = { nameserver, 53, socket.is_ipv6_address(nameserver) }
-                end
-            end
+        line = line:gsub('[#;].*', '')
+        local directive, value = line:match('^%s*(%S+)%s+(%S+)')
+
+        if directive == 'search' then
+            -- Only the first search suffix is used by this resolver.
+            conf.search = value
+        elseif directive == 'nameserver' and socket.is_ip_address(value) then
+            nameservers[#nameservers + 1] = { value, 53, socket.is_ipv6_address(value) }
         end
     end
 

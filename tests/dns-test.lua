@@ -527,6 +527,66 @@ test.run_case_async('dns query applies search domain from resolv.conf', function
     end)
 end)
 
+test.run_case_async('dns resolv.conf directives and comments', function()
+    local cases = {
+        {
+            lines = {
+                '# search', '; search', '  # nameserver 192.0.2.99',
+                '  ; nameserver 192.0.2.98', 'nameserver 192.0.2.53 # search'
+            },
+            host = '192.0.2.53', name = 'nas'
+        },
+        {
+            lines = { '', '   ', 'search', 'search   ', 'nameserver', 'nameserver # missing' },
+            host = '127.0.0.1', name = 'nas'
+        },
+        {
+            lines = {
+                'notsearch wrong.example', 'xnameserver 192.0.2.99',
+                'options search bogus', 'nameserver invalid-address',
+                'nameserver 192.0.2.53'
+            },
+            host = '192.0.2.53', name = 'nas'
+        },
+        {
+            lines = { '  search corp.example # comment', '  nameserver 192.0.2.53; search bogus' },
+            host = '192.0.2.53', name = 'nas.corp.example'
+        },
+        {
+            lines = {
+                'search old.example', '\tsearch\tcorp.example other.example ; ignored',
+                '\tnameserver\t2001:db8::53 # comment'
+            },
+            host = '2001:db8::53', name = 'nas.corp.example', ipv6 = true
+        },
+        {
+            lines = {
+                'search corp.example', 'search # missing', 'search ; missing',
+                'nameserver 192.0.2.53'
+            },
+            host = '192.0.2.53', name = 'nas.corp.example'
+        }
+    }
+
+    for _, case in ipairs(cases) do
+        with_stubbed_dns(function()
+            return make_env({
+                resolv_lines = case.lines,
+                recv_builder = function(idx, state)
+                    return build_a_response(state.send_records[idx].meta, '192.0.2.9')
+                end
+            })
+        end, function(dns_mod, state)
+            local answers, err = dns_mod.query('nas')
+            assert(answers and answers[1].address == '192.0.2.9', err)
+            assert(state.send_records[1].host == case.host)
+            assert(state.send_records[1].meta.qname == case.name)
+            assert(state.udp_calls == (case.ipv6 and 0 or 1))
+            assert(state.udp6_calls == (case.ipv6 and 1 or 0))
+        end)
+    end
+end)
+
 -- nameserver option validation.
 test.run_case_async('dns query nameserver validation', function()
     with_stubbed_dns(function()
