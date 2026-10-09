@@ -83,7 +83,7 @@ local function build_hosts_index()
     }
 
     for line in io.lines(HOSTS_PATH) do
-        if line:sub(1, 1) ~= '#' and line ~= '' then
+        if line:match('^%s*[^%s#]') then
             local fields = {}
 
             for field in line:gmatch('%S+') do
@@ -221,8 +221,8 @@ local function name_from_hosts(qname, opts)
     end
 
     if hosts_cache.version ~= version then
-        hosts_cache.version = version
         hosts_cache.index = build_hosts_index()
+        hosts_cache.version = version
     end
 
     local address = hosts_cache.index[typ][qname]

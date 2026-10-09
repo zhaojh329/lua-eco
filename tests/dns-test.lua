@@ -413,6 +413,75 @@ test.run_case_async('dns query hosts first', function()
     end)
 end)
 
+test.run_case_async('dns hosts whitespace and comments', function()
+    with_stubbed_dns(function()
+        return make_env({
+            hosts_lines = {
+                '', '   ', '\t', ' \t ', '# comment', '  # indented comment',
+                '\t192.0.2.7 printer alias # ignored', '  ::1 printer6',
+                '192.0.2.8 printer', '192.0.2.9', 'invalid-address ignored'
+            },
+            is_ipv4 = socket.is_ipv4_address,
+            is_ipv6 = socket.is_ipv6_address
+        })
+    end, function(dns_mod, state)
+        for _, name in ipairs({ 'printer', 'alias' }) do
+            local answers, err = dns_mod.query(name)
+            assert(answers and answers[1].address == '192.0.2.7', err)
+        end
+
+        local answers, err = dns_mod.query('printer6', { type = dns_mod.TYPE_AAAA })
+        assert(answers and answers[1].address == '::1', err)
+        assert(state.udp_calls == 0 and state.udp6_calls == 0)
+    end)
+end)
+
+test.run_case_async('dns retries failed hosts index builds', function()
+    for _, cached in ipairs({ false, true }) do
+        local cfg = { hosts_lines = { '192.0.2.1 printer' }, hosts_mtime = 1 }
+        local fail = false
+        local reads = 0
+
+        with_stubbed_dns(function()
+            local env = make_env(cfg)
+            local io_lines = env.io_lines
+
+            env.io_lines = function(path)
+                if path == '/etc/hosts' then
+                    reads = reads + 1
+                    if fail then
+                        error('hosts read failed')
+                    end
+                end
+
+                return io_lines(path)
+            end
+
+            return env
+        end, function(dns_mod, state)
+            if cached then
+                assert(dns_mod.query('printer')[1].address == '192.0.2.1')
+                cfg.hosts_mtime = 2
+            end
+
+            fail = true
+            test.expect_error_contains(function()
+                dns_mod.query('printer')
+            end, 'hosts read failed')
+
+            fail = false
+            cfg.hosts_lines = { '192.0.2.2 printer' }
+
+            local answers, err = dns_mod.query('printer')
+            assert(answers and answers[1].address == '192.0.2.2', err)
+            assert(reads == (cached and 3 or 2))
+            assert(dns_mod.query('printer')[1].address == '192.0.2.2')
+            assert(reads == (cached and 3 or 2), 'successful index should be cached')
+            assert(state.udp_calls == 0 and state.udp6_calls == 0)
+        end)
+    end
+end)
+
 test.run_case_async('dns non-address queries bypass hosts', function()
     local types = {
         dns.TYPE_NS, dns.TYPE_CNAME, dns.TYPE_SOA, dns.TYPE_PTR,
