@@ -188,7 +188,7 @@ local function build_request(qname, id, opts)
     end)
 
     return string.pack('>I2I2I2I2I2I2zI2I2',
-        id, flags, nqs, nan, nns, nar, name, opts.type or M.TYPE_A, M.CLASS_IN)
+        id, flags, nqs, nan, nns, nar, name, opts.type, M.CLASS_IN)
 end
 
 local function query(s, id, req, nameserver)
@@ -207,6 +207,11 @@ local function query(s, id, req, nameserver)
 end
 
 local function name_from_hosts(qname, opts)
+    local typ = opts.type
+    if typ ~= M.TYPE_A and typ ~= M.TYPE_AAAA then
+        return
+    end
+
     local version = get_file_version(HOSTS_PATH)
     if not version then
         return
@@ -217,7 +222,6 @@ local function name_from_hosts(qname, opts)
         hosts_cache.index = build_hosts_index()
     end
 
-    local typ = opts.type or M.TYPE_A
     local address = hosts_cache.index[typ][qname]
 
     if address then
@@ -282,6 +286,7 @@ function M.query(qname, opts)
     end
 
     opts = opts or {}
+    opts.type = opts.type or M.TYPE_A
 
     local res = name_from_hosts(qname, opts)
     if res then

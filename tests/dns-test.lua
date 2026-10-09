@@ -368,6 +368,44 @@ test.run_case_async('dns query hosts first', function()
     end)
 end)
 
+test.run_case_async('dns non-address queries bypass hosts', function()
+    local types = {
+        dns.TYPE_NS, dns.TYPE_CNAME, dns.TYPE_SOA, dns.TYPE_PTR,
+        dns.TYPE_MX, dns.TYPE_TXT, dns.TYPE_SRV, dns.TYPE_SPF
+    }
+
+    for _, typ in ipairs(types) do
+        local hosts_reads = 0
+
+        with_stubbed_dns(function()
+            local env = make_env({
+                hosts_lines = { '192.0.2.1 service.example' },
+                recv_builder = function(idx, state)
+                    return build_error_response(state.send_records[idx].meta, 0)
+                end
+            })
+            local io_lines = env.io_lines
+
+            env.io_lines = function(path)
+                if path == '/etc/hosts' then
+                    hosts_reads = hosts_reads + 1
+                end
+
+                return io_lines(path)
+            end
+
+            return env
+        end, function(dns_mod, state)
+            local answers, err = dns_mod.query('service.example', { type = typ })
+            assert(answers and #answers == 0 and err == nil, err)
+            assert(state.udp_calls == 1)
+            assert(state.send_records[1].meta.qtype == typ)
+            assert(hosts_reads == 0, 'non-address queries should not read hosts')
+            assert(state.close_count == 1)
+        end)
+    end
+end)
+
 -- nameservers, retry, no_recurse, mark/device and socket family selection.
 test.run_case_async('dns query nameserver retry and options', function()
     with_stubbed_dns(function()
