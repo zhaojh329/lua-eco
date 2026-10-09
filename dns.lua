@@ -1,8 +1,6 @@
 -- SPDX-License-Identifier: MIT
 -- Author: Jianhui Zhao <zhaojh329@gmail.com>
-
--- Referenced from https://github.com/openresty/lua-resty-dns/blob/master/lib/resty/dns/resolver.lua
-
+--
 --- DNS resolver utilities.
 --
 -- This module implements a simple DNS client over UDP.
