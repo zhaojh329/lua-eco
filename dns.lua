@@ -62,8 +62,6 @@ local hosts_cache = {
     index = nil
 }
 
-local transaction_id_init
-
 local function get_file_version(path)
     if not file.access(path, 'r') then
         return nil
@@ -159,16 +157,6 @@ local function parse_resolvconf()
     resolv_cache.conf = conf
 
     return conf
-end
-
-local function get_next_transaction_id()
-    if not transaction_id_init then
-        transaction_id_init = math.random(0, 65535)
-    else
-        transaction_id_init = transaction_id_init % 65535 + 1
-    end
-
-    return transaction_id_init
 end
 
 local function build_request(qname, id, opts)
@@ -331,10 +319,13 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local answers, err
+    local id, answers, err
 
     for _, nameserver in ipairs(nameservers) do
-        local id = get_next_transaction_id()
+        id, err = dns.transaction_id()
+        if not id then
+            return nil, err
+        end
 
         local req = build_request(qname, id, opts)
 

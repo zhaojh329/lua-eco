@@ -3,12 +3,14 @@
  * Author: Jianhui Zhao <zhaojh329@gmail.com>
  */
 
+#include <sys/random.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "eco.h"
 
@@ -395,8 +397,28 @@ static int lua_parse_response(lua_State *L)
     return 1;
 }
 
+static int lua_transaction_id(lua_State *L)
+{
+    uint16_t id;
+    ssize_t n;
+
+    do {
+        n = getrandom(&id, sizeof(id), GRND_NONBLOCK);
+    } while (n < 0 && errno == EINTR);
+
+    if (n < 0)
+        return push_errno(L, errno);
+
+    if (n != sizeof(id))
+        return push_error(L, "short random read");
+
+    lua_pushinteger(L, id);
+    return 1;
+}
+
 static const luaL_Reg funcs[] = {
     {"parse_response", lua_parse_response},
+    {"transaction_id", lua_transaction_id},
     {NULL, NULL}
 };
 

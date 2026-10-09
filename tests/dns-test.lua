@@ -89,7 +89,8 @@ local function with_stubbed_dns(factory, fn)
     local module_names = {
         'eco.dns',
         'eco.socket',
-        'eco.internal.file'
+        'eco.internal.file',
+        'eco.internal.dns'
     }
 
     local saved_modules = {}
@@ -109,6 +110,9 @@ local function with_stubbed_dns(factory, fn)
 
     package.loaded['eco.socket'] = env.socket
     package.loaded['eco.internal.file'] = env.file
+    if env.dns then
+        package.loaded['eco.internal.dns'] = env.dns
+    end
     package.loaded['eco.dns'] = nil
 
     local ok, mod_or_err = pcall(require, 'eco.dns')
@@ -578,6 +582,23 @@ test.run_case_async('dns query parser failures', function()
 
         assert(answers == nil)
         assert(type(err) == 'string' and err:find('unknown query class', 1, true))
+    end)
+end)
+
+test.run_case_async('dns random source failure', function()
+    with_stubbed_dns(function()
+        local env = make_env()
+        env.dns = {
+            transaction_id = function()
+                return nil, 'random source unavailable'
+            end
+        }
+
+        return env
+    end, function(dns_mod, state)
+        local answers, err = dns_mod.query('service.example')
+        assert(answers == nil and err == 'random source unavailable')
+        assert(state.udp_calls == 0 and state.udp6_calls == 0)
     end)
 end)
 
