@@ -348,7 +348,10 @@ function M.query(qname, opts)
 
         local req = build_request(qname, id, opts)
 
-        local s<close> = nameserver[3] and socket.udp6() or socket.udp()
+        local s<close>, socket_err = (nameserver[3] and socket.udp6 or socket.udp)()
+        if not s then
+            return nil, socket_err
+        end
 
         if opts.mark then
             s:setoption('mark', opts.mark)

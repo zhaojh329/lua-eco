@@ -247,10 +247,18 @@ local function make_env(cfg)
     local socket = {
         udp = function()
             state.udp_calls = state.udp_calls + 1
+            if cfg.udp_error then
+                return nil, cfg.udp_error
+            end
+
             return make_socket('udp4')
         end,
         udp6 = function()
             state.udp6_calls = state.udp6_calls + 1
+            if cfg.udp6_error then
+                return nil, cfg.udp6_error
+            end
+
             return make_socket('udp6')
         end,
         is_ipv4_address = is_ipv4,
@@ -681,6 +689,30 @@ test.run_case_async('dns unrelated datagrams do not reset deadline', function()
         assert(state.recv_records[1].count == 3)
         assert(state.close_count == 1)
     end)
+end)
+
+test.run_case_async('dns socket creation failures', function()
+    for _, ipv6 in ipairs({ false, true }) do
+        with_stubbed_dns(function()
+            return make_env({
+                udp_error = not ipv6 and 'Too many open files' or nil,
+                udp6_error = ipv6 and 'Address family not supported' or nil
+            })
+        end, function(dns_mod, state)
+            local answers, err = dns_mod.query('service.example', {
+                nameservers = { ipv6 and '::1' or '127.0.0.1' },
+                mark = 1,
+                device = 'lo'
+            })
+
+            assert(answers == nil)
+            assert(err == (ipv6 and 'Address family not supported' or 'Too many open files'))
+            assert(state.udp_calls == (ipv6 and 0 or 1))
+            assert(state.udp6_calls == (ipv6 and 1 or 0))
+            assert(#state.setoptions == 0 and #state.connect_records == 0)
+            assert(#state.send_records == 0 and state.close_count == 0)
+        end)
+    end
 end)
 
 test.run_case_async('dns connect failure', function()
