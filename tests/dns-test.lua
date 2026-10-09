@@ -188,6 +188,12 @@ local function make_env(cfg)
                 name = name,
                 value = value
             }
+
+            local err = cfg.setoption_errors and cfg.setoption_errors[name]
+            if err then
+                return nil, err
+            end
+
             return true
         end
 
@@ -712,6 +718,31 @@ test.run_case_async('dns socket creation failures', function()
             assert(#state.setoptions == 0 and #state.connect_records == 0)
             assert(#state.send_records == 0 and state.close_count == 0)
         end)
+    end
+end)
+
+test.run_case_async('dns socket option failures', function()
+    for _, ipv6 in ipairs({ false, true }) do
+        for _, option in ipairs({ 'mark', 'bindtodevice' }) do
+            local expected_err = option == 'mark' and 'Operation not permitted' or 'No such device'
+
+            with_stubbed_dns(function()
+                return make_env({ setoption_errors = { [option] = expected_err } })
+            end, function(dns_mod, state)
+                local answers, err = dns_mod.query('service.example', {
+                    nameservers = { ipv6 and '::1' or '127.0.0.1', '192.0.2.53' },
+                    mark = 0,
+                    device = 'lo'
+                })
+
+                assert(answers == nil and err == expected_err)
+                assert(state.udp_calls == (ipv6 and 0 or 1))
+                assert(state.udp6_calls == (ipv6 and 1 or 0))
+                assert(#state.setoptions == (option == 'mark' and 1 or 2))
+                assert(#state.connect_records == 0 and #state.send_records == 0)
+                assert(#state.recv_records == 0 and state.close_count == 1)
+            end)
+        end
     end
 end)
 

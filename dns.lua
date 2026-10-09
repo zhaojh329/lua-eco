@@ -338,7 +338,7 @@ function M.query(qname, opts)
         qname = qname .. '.' .. resolvconf.search
     end
 
-    local id, answers, err
+    local id, ok, answers, err
 
     for _, nameserver in ipairs(nameservers) do
         id, err = dns.transaction_id()
@@ -354,11 +354,17 @@ function M.query(qname, opts)
         end
 
         if opts.mark then
-            s:setoption('mark', opts.mark)
+            ok, err = s:setoption('mark', opts.mark)
+            if not ok then
+                return nil, err
+            end
         end
 
         if opts.device then
-            s:setoption('bindtodevice', opts.device)
+            ok, err = s:setoption('bindtodevice', opts.device)
+            if not ok then
+                return nil, err
+            end
         end
 
         answers, err = query(s, req, nameserver)
