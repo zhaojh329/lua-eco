@@ -2,6 +2,8 @@
 
 local test = require 'test'
 local dns = require 'eco.dns'
+local socket = require 'eco.socket'
+local eco = require 'eco'
 
 local SENTINEL = {}
 
@@ -90,7 +92,8 @@ local function with_stubbed_dns(factory, fn)
         'eco.dns',
         'eco.socket',
         'eco.internal.file',
-        'eco.internal.dns'
+        'eco.internal.dns',
+        'eco.time'
     }
 
     local saved_modules = {}
@@ -110,6 +113,7 @@ local function with_stubbed_dns(factory, fn)
 
     package.loaded['eco.socket'] = env.socket
     package.loaded['eco.internal.file'] = env.file
+    package.loaded['eco.time'] = env.time
     if env.dns then
         package.loaded['eco.internal.dns'] = env.dns
     end
@@ -136,6 +140,8 @@ local function make_env(cfg)
     cfg = cfg or {}
 
     local state = {
+        now = 0,
+        connect_records = {},
         udp_calls = 0,
         udp6_calls = 0,
         send_records = {},
@@ -164,6 +170,16 @@ local function make_env(cfg)
         local idx = #state.recv_records + 1
 
         local s = {}
+        local recv_count = 0
+
+        function s:connect(host, port)
+            state.connect_records[idx] = { host, port }
+            if cfg.connect_error then
+                return nil, cfg.connect_error
+            end
+
+            return self
+        end
 
         function s:setoption(name, value)
             state.setoptions[#state.setoptions + 1] = {
@@ -175,18 +191,19 @@ local function make_env(cfg)
             return true
         end
 
-        function s:sendto(req, host, port)
+        function s:send(req)
+            local peer = assert(state.connect_records[idx], 'send requires a connected socket')
             local meta = parse_dns_request(req)
 
             state.send_records[idx] = {
-                host = host,
-                port = port,
+                host = peer[1],
+                port = peer[2],
                 family = family,
                 req = req,
                 meta = meta
             }
 
-            local err = cfg.sendto_errors and cfg.sendto_errors[idx]
+            local err = cfg.send_errors and cfg.send_errors[idx]
             if err then
                 return nil, err
             end
@@ -194,15 +211,18 @@ local function make_env(cfg)
             return #req, nil
         end
 
-        function s:recv(n, timeout)
+        function s:recvfrom(n, timeout)
+            recv_count = recv_count + 1
+            state.now = state.now + (cfg.recv_elapsed or 0)
             state.recv_records[idx] = {
                 n = n,
                 timeout = timeout,
-                family = family
+                family = family,
+                count = recv_count
             }
 
             if cfg.recv_builder then
-                return cfg.recv_builder(idx, state)
+                return cfg.recv_builder(idx, state, recv_count)
             end
 
             local entry = cfg.recv_entries and cfg.recv_entries[idx]
@@ -310,6 +330,13 @@ local function make_env(cfg)
 
     return {
         socket = socket,
+        time = {
+            CLOCK_MONOTONIC = 1,
+            now = function(clock)
+                assert(clock == 1)
+                return state.now
+            end
+        },
         file = file,
         io_lines = io_lines,
         state = state
@@ -419,13 +446,7 @@ test.run_case_async('dns query nameserver retry and options', function()
                 local req_meta = state.send_records[idx].meta
 
                 if idx == 1 then
-                    -- Force parse failure on first nameserver to trigger retry.
-                    return build_a_response({
-                        id = (req_meta.id + 1) % 65536,
-                        qname = req_meta.qname,
-                        qtype = req_meta.qtype,
-                        qclass = req_meta.qclass
-                    }, '10.0.0.1')
+                    return build_error_response(req_meta, 2)
                 end
 
                 return build_a_response(req_meta, '10.0.0.8')
@@ -518,7 +539,7 @@ test.run_case_async('dns query send recv failures', function()
     with_stubbed_dns(function()
         return make_env({
             hosts_lines = {},
-            sendto_errors = {
+            send_errors = {
                 [1] = 'boom'
             }
         })
@@ -528,7 +549,7 @@ test.run_case_async('dns query send recv failures', function()
         })
 
         assert(answers == nil)
-        assert(type(err) == 'string' and err:find('sendto "8.8.8.8:53" fail: boom', 1, true))
+        assert(type(err) == 'string' and err:find('send "8.8.8.8:53" fail: boom', 1, true))
     end)
 
     with_stubbed_dns(function()
@@ -569,7 +590,11 @@ test.run_case_async('dns query parser failures', function()
     with_stubbed_dns(function()
         return make_env({
             hosts_lines = {},
-            recv_builder = function(idx, state)
+            recv_builder = function(idx, state, count)
+                if count > 1 then
+                    return nil, 'timeout'
+                end
+
                 local meta = state.send_records[idx].meta
                 local question = encode_name(meta.qname) .. string.pack('>I2I2', meta.qtype, 3)
                 return string.pack('>I2I2I2I2I2I2', meta.id, 0x8180, 1, 0, 0, 0) .. question
@@ -581,7 +606,91 @@ test.run_case_async('dns query parser failures', function()
         })
 
         assert(answers == nil)
-        assert(type(err) == 'string' and err:find('unknown query class', 1, true))
+        assert(type(err) == 'string' and err:find('timeout', 1, true))
+    end)
+end)
+
+test.run_case_async('dns ignores unrelated datagrams', function()
+    with_stubbed_dns(function()
+        return make_env({
+            recv_elapsed = 0.1,
+            recv_builder = function(idx, state, count)
+                local meta = state.send_records[idx].meta
+                local reply = {
+                    id = meta.id,
+                    qname = meta.qname,
+                    qtype = meta.qtype,
+                    qclass = meta.qclass
+                }
+
+                if count == 1 then
+                    return ''
+                elseif count == 2 then
+                    reply.id = (meta.id + 1) % 65536
+                elseif count == 3 then
+                    reply.qname = 'other.example'
+                elseif count == 4 then
+                    reply.qtype = dns.TYPE_AAAA
+                elseif count == 5 then
+                    reply.qclass = 3
+                elseif count == 6 then
+                    reply.qname = 'other.example'
+                    return build_error_response(reply, 3)
+                elseif count == 7 then
+                    reply.qname = 'other.example'
+                    return build_a_response(reply, '192.0.2.99', 0x8380)
+                elseif count == 8 then
+                    return build_a_response(reply, '192.0.2.99', 0x8980)
+                elseif count == 9 then
+                    return build_a_response(reply, '192.0.2.99', 0x0100)
+                else
+                    assert(count == 10, 'resolver must accept the matching response')
+                    reply.qname = meta.qname:upper()
+                    return build_a_response(reply, '192.0.2.8')
+                end
+
+                return build_a_response(reply, '192.0.2.99')
+            end
+        })
+    end, function(dns_mod, state)
+        local answers, err = dns_mod.query('service.example.', {
+            nameservers = { '192.0.2.53' }
+        })
+        assert(answers and answers[1].address == '192.0.2.8', err)
+        assert(state.udp_calls == 1 and state.close_count == 1)
+        assert(state.connect_records[1][1] == '192.0.2.53')
+        assert(state.connect_records[1][2] == 53)
+        assert(state.recv_records[1].count == 10)
+        assert(state.recv_records[1].timeout < 5)
+    end)
+end)
+
+test.run_case_async('dns unrelated datagrams do not reset deadline', function()
+    with_stubbed_dns(function()
+        return make_env({
+            recv_elapsed = 2,
+            recv_builder = function(idx, state, count)
+                assert(count <= 3, 'unrelated packets must not extend the deadline')
+                assert(state.recv_records[idx].timeout == 7 - count * 2)
+                return ''
+            end
+        })
+    end, function(dns_mod, state)
+        local answers, err = dns_mod.query('service.example')
+        assert(answers == nil and err:find('timeout', 1, true))
+        assert(state.recv_records[1].count == 3)
+        assert(state.close_count == 1)
+    end)
+end)
+
+test.run_case_async('dns connect failure', function()
+    with_stubbed_dns(function()
+        return make_env({ connect_error = 'Network is unreachable' })
+    end, function(dns_mod, state)
+        local answers, err = dns_mod.query('service.example')
+        assert(answers == nil and err:find('connect', 1, true))
+        assert(err:find('Network is unreachable', 1, true))
+        assert(#state.send_records == 0 and state.close_count == 1)
     end)
 end)
 
@@ -601,5 +710,86 @@ test.run_case_async('dns random source failure', function()
         assert(state.udp_calls == 0 and state.udp6_calls == 0)
     end)
 end)
+
+test.run_case_async('dns question label boundaries and compression', function()
+    local parser = require 'eco.internal.dns'
+    local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0)
+        .. encode_name('a.b') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)
+    local header = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, 0, 0, 0)
+    local tail = string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)
+
+    for _, name in ipairs({ '\3a.b\0', '\3a\0b\0', '\192\12', '\192\255', '\192', '\64' }) do
+        local answers, err = parser.parse_response(header .. name .. tail, req)
+        assert(answers == nil and err == nil, 'unmatchable questions must be ignored')
+    end
+
+    -- The question's root label points to the zero byte in the transaction ID.
+    local compressed_req = string.pack('>I2I2I2I2I2I2', 0, 0x0100, 1, 0, 0, 0) .. '\0' .. tail
+    local compressed_reply = string.pack('>I2I2I2I2I2I2', 0, 0x8000, 1, 0, 0, 0) .. '\192\0' .. tail
+    local answers, err = parser.parse_response(compressed_reply, compressed_req)
+    assert(answers and #answers == 0 and err == nil)
+end)
+
+test.run_case_async('dns shared name parser preserves record fields', function()
+    local parser = require 'eco.internal.dns'
+    local question = encode_name('service.example') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)
+    local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0) .. question
+    local records = {
+        { dns.TYPE_CNAME, '\192\12', { cname = 'service.example' } },
+        { dns.TYPE_NS, '\0', { nsdname = '' } },
+        { dns.TYPE_PTR, '\192\12', { ptrdname = 'service.example' } },
+        { dns.TYPE_MX, string.pack('>I2', 10) .. '\192\12',
+            { preference = 10, exchange = 'service.example' } },
+        { dns.TYPE_SRV, string.pack('>I2I2I2', 1, 2, 443) .. '\192\12',
+            { priority = 1, weight = 2, port = 443, target = 'service.example' } },
+        { dns.TYPE_SOA, '\192\12\192\12' .. string.pack('>I4I4I4I4I4', 1, 2, 3, 4, 5),
+            { mname = 'service.example', rname = 'service.example', serial = 1,
+                refresh = 2, retry = 3, expire = 4, minimum = 5 } }
+    }
+    local response = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, #records, 0, 0) .. question
+
+    for _, record in ipairs(records) do
+        response = response .. '\192\12'
+            .. string.pack('>I2I2I4I2', record[1], dns.CLASS_IN, 30, #record[2]) .. record[2]
+    end
+
+    local answers, err = parser.parse_response(response, req)
+    assert(answers and #answers == #records, err)
+
+    for i, record in ipairs(records) do
+        assert(answers[i].name == 'service.example' and answers[i].type == record[1])
+        for field, value in pairs(record[3]) do
+            assert(answers[i][field] == value, field)
+        end
+    end
+end)
+
+for _, host in ipairs({ '127.0.0.1', '::1' }) do
+    test.run_case_async('dns rejects foreign UDP source ' .. host, function()
+        local server<close> = assert(socket.listen_udp(host, 0, { ipv6 = host == '::1' }))
+        local rogue<close> = assert(socket.listen_udp(host, 0, { ipv6 = host == '::1' }))
+        local port = assert(server:getsockname()).port
+        local other<close> = host == '127.0.0.1' and assert(socket.listen_udp('127.0.0.2', port))
+        local done = false
+
+        eco.run(function()
+            local req, peer = server:recvfrom(512, 1)
+            assert(req, peer)
+            local meta = parse_dns_request(req)
+            if other then
+                assert(other:sendto(build_a_response(meta, '192.0.2.98'), peer.ipaddr, peer.port))
+            end
+
+            assert(rogue:sendto(build_a_response(meta, '192.0.2.99'), peer.ipaddr, peer.port))
+            eco.sleep(0.02)
+            assert(server:sendto(build_a_response(meta, '192.0.2.8'), peer.ipaddr, peer.port))
+            done = true
+        end)
+
+        local answers, err = dns.query('dns-review.invalid', { nameservers = {{ host, port }} })
+        assert(answers and answers[1].address == '192.0.2.8', err)
+        assert(done, 'query must wait for the configured server')
+    end)
+end
 
 print('dns tests passed')

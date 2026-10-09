@@ -56,7 +56,7 @@ static void set_string_field(lua_State *L, const char *k, const char *v)
 }
 
 static int parse_name(const uint8_t *data, size_t data_len, int *offset,
-                      char *buf, int buf_len) {
+                      char *buf, int buf_len, bool wire) {
     int pos = *offset;
     int written = 0;
     int jumped = 0;
@@ -70,15 +70,15 @@ static int parse_name(const uint8_t *data, size_t data_len, int *offset,
 
         len = data[pos++];
         if (len == 0) {
-            if (written > 0 && buf[written-1] == '.')
-                buf[written-1] = '\0';
-            else
-                buf[written] = '\0';
+            if (!wire && written > 0)
+                written--;
 
-            if (!jumped) {
+            buf[written] = '\0';
+
+            if (!jumped)
                 *offset = pos;
-            }
-            return 0;
+
+            return wire ? written + 1 : written;
         }
 
         if ((len & 0xc0) == 0xc0) {
@@ -100,34 +100,50 @@ static int parse_name(const uint8_t *data, size_t data_len, int *offset,
             continue;
         }
 
-        if (written + len + 1 >= buf_len)
+        if (len > 63 || written + len + 1 >= buf_len)
             return -1;
 
         if (pos + len > data_len)
             return -1;
 
+        if (wire)
+            buf[written++] = len;
+
         for (int i = 0; i < len; i++)
             buf[written++] = data[pos++];
 
-        buf[written++] = '.';
+        if (!wire)
+            buf[written++] = '.';
     }
 }
 
-static int parse_question(const uint8_t *data, size_t data_len, int *offset, uint16_t *qclass)
+static bool match_question(const uint8_t *data, size_t data_len, int *offset,
+                           const uint8_t *question, size_t question_len)
 {
-    char name[512];
+    char name[255];
+    int len = parse_name(data, data_len, offset, name, sizeof(name), true);
 
-    if (parse_name(data, data_len, offset, name, sizeof(name)))
-        return -1;
+    if (len < 0 || len + 4 != question_len || *offset + 4 > data_len)
+        return false;
 
-    if (*offset + 4 > data_len)
-        return -1;
+    /* Wire format preserves label boundaries and embedded NUL bytes. */
+    for (int i = 0; i < len; i++) {
+        uint8_t a = name[i];
+        uint8_t b = question[i];
 
-    *qclass = (uint16_t)((data[*offset + 2] << 8) | data[*offset + 3]);
+        if (a >= 'A' && a <= 'Z')
+            a += 'a' - 'A';
+        if (b >= 'A' && b <= 'Z')
+            b += 'a' - 'A';
+        if (a != b)
+            return false;
+    }
+
+    if (memcmp(data + *offset, question + len, 4))
+        return false;
 
     *offset += 4;
-
-    return 0;
+    return true;
 }
 
 static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offset)
@@ -136,7 +152,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
     char name[512];
     int rstart;
 
-    if (parse_name(buf, buf_len, offset, name, sizeof(name)))
+    if (parse_name(buf, buf_len, offset, name, sizeof(name), false) < 0)
         return push_error(L, "malformed name");
 
     if (*offset + 10 > buf_len)
@@ -181,7 +197,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         char cname[512];
         int p = *offset;
 
-        if (parse_name(buf, buf_len, &p, cname, sizeof(cname)))
+        if (parse_name(buf, buf_len, &p, cname, sizeof(cname), false) < 0)
             return push_error(L, "malformed cname");
 
         if ((uint32_t)(p - *offset) != rdlength)
@@ -202,7 +218,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
         p = *offset + 2;
 
-        if (parse_name(buf, buf_len, &p, host, sizeof(host)))
+        if (parse_name(buf, buf_len, &p, host, sizeof(host), false) < 0)
             return push_error(L, "malformed mx exchange");
 
         if ((p - *offset) != rdlength)
@@ -228,7 +244,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
         p = *offset + 6;
 
-        if (parse_name(buf, buf_len, &p, target, sizeof(target)))
+        if (parse_name(buf, buf_len, &p, target, sizeof(target), false) < 0)
             return push_error(L, "malformed srv target");
 
         if (p - *offset != rdlength)
@@ -240,7 +256,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         char nsdname[512];
         int p = *offset;
 
-        if (parse_name(buf, buf_len, &p, nsdname, sizeof(nsdname)))
+        if (parse_name(buf, buf_len, &p, nsdname, sizeof(nsdname), false) < 0)
             return push_error(L, "malformed nsdname");
 
         if (p - *offset != rdlength)
@@ -284,7 +300,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         char ptrdname[512];
         int p = *offset;
 
-        if (parse_name(buf, buf_len, &p, ptrdname, sizeof(ptrdname)))
+        if (parse_name(buf, buf_len, &p, ptrdname, sizeof(ptrdname), false) < 0)
             return push_error(L, "malformed ptrdname");
 
         if ((p - *offset) != rdlength)
@@ -300,10 +316,10 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         int p = *offset;
         int i;
 
-        if (parse_name(buf, buf_len, &p, mname, sizeof(mname)))
+        if (parse_name(buf, buf_len, &p, mname, sizeof(mname), false) < 0)
             return push_error(L, "malformed soa mname");
 
-        if (parse_name(buf, buf_len, &p, rname, sizeof(rname)))
+        if (parse_name(buf, buf_len, &p, rname, sizeof(rname), false) < 0)
             return push_error(L, "malformed soa rname");
 
         set_string_field(L, "mname", mname);
@@ -334,26 +350,28 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
 static int lua_parse_response(lua_State *L)
 {
-    size_t buf_len;
+    size_t buf_len, req_len;
     const uint8_t *buf = (const uint8_t *)luaL_checklstring(L, 1, &buf_len);
-    int tid = luaL_checkinteger(L, 2);
-    uint16_t qclass;
-    int ans_tid, flags, code, qdcount, ancount;
+    const uint8_t *req = (const uint8_t *)luaL_checklstring(L, 2, &req_len);
+    int flags, code, qdcount, ancount;
     int offset = 12;
 
-    if (buf_len < 12)
-        return push_error(L, "malformed response");
+    luaL_argcheck(L, req_len >= 17, 2, "malformed request");
 
-    ans_tid = (buf[0] << 8) | buf[1];
+    /* No return values means an unrelated or unmatchable datagram. */
+    if (buf_len < 12 || memcmp(buf, req, 2))
+        return 0;
+
     flags   = (buf[2] << 8) | buf[3];
     qdcount = (buf[4] << 8) | buf[5];
     ancount = (buf[6] << 8) | buf[7];
 
-    if (ans_tid != tid)
-        return push_error(L, "transaction ID mismatch");
+    if ((flags & 0x8000) == 0 || (buf[2] & 0x78) != (req[2] & 0x78) ||
+        qdcount != 1)
+        return 0;
 
-    if ((flags & 0x8000) == 0)
-        return push_error(L, "not a response");
+    if (!match_question(buf, buf_len, &offset, req + 12, req_len - 12))
+        return 0;
 
     if ((flags & 0x0200) != 0)
         return push_error(L, "truncated");
@@ -368,21 +386,6 @@ static int lua_parse_response(lua_State *L)
 
         lua_pushnil(L);
         lua_pushfstring(L, err ? err : "unknown error code: %d", code);
-        return 2;
-    }
-
-    if (qdcount != 1) {
-        lua_pushnil(L);
-        lua_pushfstring(L, "unexpected number of questions: %d", qdcount);
-        return 2;
-    }
-
-    if (parse_question(buf, buf_len, &offset, &qclass))
-        return push_error(L, "malformed question section");
-
-    if (qclass != 1) {
-        lua_pushnil(L);
-        lua_pushfstring(L, "unknown query class %d in DNS response", qclass);
         return 2;
     }
 

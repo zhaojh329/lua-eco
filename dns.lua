@@ -15,6 +15,7 @@
 local file = require 'eco.internal.file'
 local dns = require 'eco.internal.dns'
 local socket = require 'eco.socket'
+local time = require 'eco.time'
 
 local M = {
     --- Resource record type: A.
@@ -179,19 +180,37 @@ local function build_request(qname, id, opts)
         id, flags, nqs, nan, nns, nar, name, opts.type, M.CLASS_IN)
 end
 
-local function query(s, id, req, nameserver)
+local function query(s, req, nameserver)
     local host, port = nameserver[1], nameserver[2]
-    local n, err = s:sendto(req, host, port)
+
+    local ok, err = s:connect(host, port)
+    if not ok then
+        return nil, string.format('connect "%s:%d" fail: %s', host, port, err)
+    end
+
+    local n, err = s:send(req)
     if not n then
-        return nil, string.format('sendto "%s:%d" fail: %s', host, port, err)
+        return nil, string.format('send "%s:%d" fail: %s', host, port, err)
     end
 
-    local data, err = s:recv(512, 5.0)
-    if not data then
-        return nil, string.format('recv from "%s:%d" fail: %s', host, port, err)
-    end
+    local deadline = time.now(time.CLOCK_MONOTONIC) + 5.0
 
-    return dns.parse_response(data, id)
+    while true do
+        local remaining = deadline - time.now(time.CLOCK_MONOTONIC)
+        if remaining <= 0 then
+            return nil, string.format('recv from "%s:%d" fail: timeout', host, port)
+        end
+
+        local data, err = s:recvfrom(512, remaining)
+        if not data then
+            return nil, string.format('recv from "%s:%d" fail: %s', host, port, err)
+        end
+
+        local answers, err = dns.parse_response(data, req)
+        if answers or err then
+            return answers, err
+        end
+    end
 end
 
 local function name_from_hosts(qname, opts)
@@ -339,7 +358,7 @@ function M.query(qname, opts)
             s:setoption('bindtodevice', opts.device)
         end
 
-        answers, err = query(s, id, req, nameserver)
+        answers, err = query(s, req, nameserver)
         if answers then
             return answers
         end
