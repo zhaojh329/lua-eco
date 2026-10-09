@@ -160,7 +160,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
     type  = (buf[*offset] << 8) | buf[*offset + 1];
     class = (buf[*offset + 2] << 8) | buf[*offset + 3];
-    ttl   = (buf[*offset + 4] << 24) | (buf[*offset + 5] << 16) |
+    ttl   = ((uint32_t)buf[*offset + 4] << 24) | (buf[*offset + 5] << 16) |
             (buf[*offset + 6] << 8)  | buf[*offset + 7];
     rdlength = (buf[*offset + 8] << 8) | buf[*offset + 9];
 
@@ -329,7 +329,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
             return push_error(L, "bad SOA record value length");
 
         for (i = 0; i < 5; i++) {
-            uint32_t v = (buf[p] << 24) | (buf[p + 1] << 16) |
+            uint32_t v = ((uint32_t)buf[p] << 24) | (buf[p + 1] << 16) |
                          (buf[p + 2] << 8) | buf[p + 3];
             set_integer_field(L, soa_fields[i], v);
             p += 4;

@@ -956,6 +956,25 @@ test.run_case_async('dns shared name parser preserves record fields', function()
     end
 end)
 
+test.run_case_async('dns unsigned 32-bit record fields', function()
+    local parser = require 'eco.internal.dns'
+    local question = encode_name('service.example') .. string.pack('>I2I2', dns.TYPE_SOA, dns.CLASS_IN)
+    local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0) .. question
+    local header = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, 1, 0, 0) .. question
+
+    for _, value in ipairs({ 0, 0x7fffffff, 0x80000000, 0x89abcdef, 0xffffffff }) do
+        local rdata = '\192\12\192\12' .. string.pack('>I4I4I4I4I4', value, value, value, value, value)
+        local response = header .. '\192\12'
+            .. string.pack('>I2I2I4I2', dns.TYPE_SOA, dns.CLASS_IN, value, #rdata) .. rdata
+        local answers, err = parser.parse_response(response, req)
+        assert(answers and #answers == 1, err)
+
+        for _, field in ipairs({ 'ttl', 'serial', 'refresh', 'retry', 'expire', 'minimum' }) do
+            assert(answers[1][field] == value, field)
+        end
+    end
+end)
+
 for _, host in ipairs({ '127.0.0.1', '::1' }) do
     test.run_case_async('dns rejects foreign UDP source ' .. host, function()
         local server<close> = assert(socket.listen_udp(host, 0, { ipv6 = host == '::1' }))
