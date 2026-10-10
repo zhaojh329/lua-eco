@@ -956,6 +956,52 @@ test.run_case_async('dns shared name parser preserves record fields', function()
     end
 end)
 
+test.run_case_async('dns TXT and SPF string lengths', function()
+    local parser = require 'eco.internal.dns'
+    local cases = {
+        { '\5ab' },
+        { '' },
+        { '\1' },
+        { '\1a\2b' },
+        { '\0\255' .. string.rep('x', 254) },
+        { '\0', '' },
+        { '\3a\0b', 'a\0b' },
+        { '\255' .. string.rep('x', 255), string.rep('x', 255) },
+        { '\0\1a\0', { '', 'a', '' } }
+    }
+
+    for _, typ in ipairs({ dns.TYPE_TXT, dns.TYPE_SPF }) do
+        local key = typ == dns.TYPE_TXT and 'txt' or 'spf'
+        local question = encode_name('service.example') .. string.pack('>I2I2', typ, dns.CLASS_IN)
+        local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0) .. question
+        local header = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, 2, 0, 0) .. question
+
+        for _, case in ipairs(cases) do
+            local response = header .. '\192\12'
+                .. string.pack('>I2I2I4I2', typ, dns.CLASS_IN, 30, #case[1]) .. case[1]
+                .. '\192\12' .. string.pack('>I2I2I4I2', dns.TYPE_A, dns.CLASS_IN, 30, 4)
+                .. '\192\0\2\1'
+            local answers, err = parser.parse_response(response, req)
+
+            if case[2] == nil then
+                assert(answers == nil and type(err) == 'string', key .. ' must reject malformed strings')
+            else
+                assert(answers and #answers == 2 and answers[2].address == '192.0.2.1', err)
+                local value = answers[1][key]
+
+                if type(case[2]) == 'table' then
+                    assert(type(value) == 'table' and #value == #case[2])
+                    for i, expected in ipairs(case[2]) do
+                        assert(value[i] == expected, key)
+                    end
+                else
+                    assert(value == case[2], key)
+                end
+            end
+        end
+    end
+end)
+
 test.run_case_async('dns unsigned 32-bit record fields', function()
     local parser = require 'eco.internal.dns'
     local question = encode_name('service.example') .. string.pack('>I2I2', dns.TYPE_SOA, dns.CLASS_IN)

@@ -277,7 +277,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
             slen = buf[p++];
             if (p + slen > last)
-                slen = (uint8_t)(last - p);
+                return push_error(L, "malformed TXT/SPF string");
 
             lua_pushlstring(L, (const char *)(buf + p), slen);
             lua_rawseti(L, -2, ++count);
@@ -285,9 +285,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         }
 
         if (count == 0) {
-            lua_pop(L, 1);
-            lua_pushliteral(L, "");
-            lua_setfield(L, -2, key);
+            return push_error(L, "bad TXT/SPF record length");
         } else if (count == 1) {
             lua_rawgeti(L, -1, 1);
             lua_setfield(L, -3, key);
