@@ -50,6 +50,19 @@ local M = {
     SECTION_AR  = 3
 }
 
+local type_names = {
+    [M.TYPE_A]      = 'A',
+    [M.TYPE_NS]     = 'NS',
+    [M.TYPE_CNAME]  = 'CNAME',
+    [M.TYPE_SOA]    = 'SOA',
+    [M.TYPE_PTR]    = 'PTR',
+    [M.TYPE_MX]     = 'MX',
+    [M.TYPE_TXT]    = 'TXT',
+    [M.TYPE_AAAA]   = 'AAAA',
+    [M.TYPE_SRV]    = 'SRV',
+    [M.TYPE_SPF]    = 'SPF'
+}
+
 local RESOLV_CONF_PATH = '/etc/resolv.conf'
 local HOSTS_PATH = '/etc/hosts'
 
@@ -404,20 +417,7 @@ end
 -- @tparam integer n RR type number.
 -- @treturn string
 function M.type_name(n)
-    local names = {
-        [M.TYPE_A]      = 'A',
-        [M.TYPE_NS]     = 'NS',
-        [M.TYPE_CNAME]  = 'CNAME',
-        [M.TYPE_SOA]    = 'SOA',
-        [M.TYPE_PTR]    = 'PTR',
-        [M.TYPE_MX]     = 'MX',
-        [M.TYPE_TXT]    = 'TXT',
-        [M.TYPE_AAAA]   = 'AAAA',
-        [M.TYPE_SRV]    = 'SRV',
-        [M.TYPE_SPF]    = 'SPF'
-    }
-
-    return names[n] or 'unknown'
+    return type_names[n] or 'unknown'
 end
 
 return M
