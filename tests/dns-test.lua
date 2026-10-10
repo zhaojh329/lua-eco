@@ -1127,6 +1127,37 @@ test.run_case_async('dns shared name parser preserves record fields', function()
     end
 end)
 
+test.run_case_async('dns answer count fits remaining packet', function()
+    local parser = require 'eco.internal.dns'
+    local question = encode_name('a.b') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)
+    local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0) .. question
+    local rr_header = string.pack('>I2I2I4I2', 65000, dns.CLASS_IN, 30, 0)
+    local smallest = '\0' .. rr_header
+
+    for _, case in ipairs({
+        { 0, '', true },
+        { 1, smallest, true },
+        { 2, smallest .. smallest, true },
+        { 1, '\192\12' .. rr_header, true },
+        { 1, '' },
+        { 1, smallest:sub(1, -2) },
+        { 2, smallest },
+        { 3, smallest .. smallest },
+        { 65535, '' },
+        { 65535, smallest }
+    }) do
+        local response = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, case[1], 0, 0)
+            .. question .. case[2]
+        local answers, err = parser.parse_response(response, req)
+
+        if case[3] then
+            assert(answers and #answers == case[1] and err == nil, 'valid answer count rejected')
+        else
+            assert(answers == nil and err == 'invalid answer count', 'impossible answer count accepted')
+        end
+    end
+end)
+
 test.run_case_async('dns name record length errors', function()
     local parser = require 'eco.internal.dns'
     local question = encode_name('service.example') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)

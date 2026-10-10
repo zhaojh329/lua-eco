@@ -422,6 +422,10 @@ static int lua_parse_response(lua_State *L)
         return 2;
     }
 
+    /* Each RR needs at least a root label and a 10-byte fixed header. */
+    if (ancount > (buf_len - offset) / 11)
+        return push_error(L, "invalid answer count");
+
     lua_createtable(L, ancount, 0);
 
     for (int i = 0; i < ancount; i++) {
