@@ -106,10 +106,10 @@ local function with_stubbed_dns(factory, fn)
         end
     end
 
-    local saved_io_lines = io.lines
-    local env = factory(saved_io_lines)
+    local saved_io_open = io.open
+    local env = factory(saved_io_open)
 
-    io.lines = env.io_lines
+    io.open = env.io_open
 
     package.loaded['eco.socket'] = env.socket
     package.loaded['eco.internal.file'] = env.file
@@ -121,7 +121,7 @@ local function with_stubbed_dns(factory, fn)
 
     local ok, mod_or_err = pcall(require, 'eco.dns')
     if not ok then
-        io.lines = saved_io_lines
+        io.open = saved_io_open
         restore_modules(saved_modules)
         error(mod_or_err)
     end
@@ -130,7 +130,7 @@ local function with_stubbed_dns(factory, fn)
 
     local run_ok, run_err = pcall(fn, dns_mod, env.state)
 
-    io.lines = saved_io_lines
+    io.open = saved_io_open
     restore_modules(saved_modules)
 
     assert(run_ok, run_err)
@@ -141,6 +141,8 @@ local function make_env(cfg)
 
     local state = {
         now = 0,
+        file_opens = {},
+        file_closes = {},
         connect_records = {},
         udp_calls = 0,
         udp6_calls = 0,
@@ -275,24 +277,8 @@ local function make_env(cfg)
     }
 
     local file = {
-        access = function(path)
-            if path == '/etc/resolv.conf' then
-                if cfg.resolv_exists == nil then
-                    return true
-                end
-
-                return cfg.resolv_exists
-            end
-
-            if path == '/etc/hosts' then
-                if cfg.hosts_exists == nil then
-                    return true
-                end
-
-                return cfg.hosts_exists
-            end
-
-            return true
+        access = function()
+            error('unexpected access check')
         end,
         stat = function(path)
             if path == '/etc/resolv.conf' then
@@ -330,16 +316,30 @@ local function make_env(cfg)
         end
     end
 
-    local io_lines = function(path)
+    local original_open = io.open
+    local io_open = function(path, mode)
+        local lines
+
         if path == '/etc/hosts' then
-            return lines_from(cfg.hosts_lines or {})
+            lines = cfg.hosts_lines or {}
+        elseif path == '/etc/resolv.conf' then
+            lines = cfg.resolv_lines or {}
+        else
+            return original_open(path, mode)
         end
 
-        if path == '/etc/resolv.conf' then
-            return lines_from(cfg.resolv_lines or {})
+        state.file_opens[path] = (state.file_opens[path] or 0) + 1
+
+        local err = cfg.open_errors and cfg.open_errors[path]
+        if err then
+            return nil, err
         end
 
-        return io.lines(path)
+        return setmetatable({ lines = function() return lines_from(lines) end }, {
+            __close = function()
+                state.file_closes[path] = (state.file_closes[path] or 0) + 1
+            end
+        })
     end
 
     return {
@@ -352,7 +352,7 @@ local function make_env(cfg)
             end
         },
         file = file,
-        io_lines = io_lines,
+        io_open = io_open,
         state = state
     }
 end
@@ -546,9 +546,9 @@ test.run_case_async('dns retries failed hosts index builds', function()
 
         with_stubbed_dns(function()
             local env = make_env(cfg)
-            local io_lines = env.io_lines
+            local io_open = env.io_open
 
-            env.io_lines = function(path)
+            env.io_open = function(path)
                 if path == '/etc/hosts' then
                     reads = reads + 1
                     if fail then
@@ -556,7 +556,7 @@ test.run_case_async('dns retries failed hosts index builds', function()
                     end
                 end
 
-                return io_lines(path)
+                return io_open(path)
             end
 
             return env
@@ -584,6 +584,65 @@ test.run_case_async('dns retries failed hosts index builds', function()
     end
 end)
 
+test.run_case_async('dns configuration file failures and recovery', function()
+    for _, path in ipairs({ '/etc/hosts', '/etc/resolv.conf' }) do
+        for _, cached in ipairs({ false, true }) do
+            for _, failure in ipairs({ 'stat', 'No such file or directory', 'Permission denied' }) do
+                local hosts = path == '/etc/hosts'
+                local cfg = {
+                    hosts_lines = hosts and { '192.0.2.1 printer' } or {},
+                    resolv_lines = { 'nameserver 192.0.2.53', 'search old.example' },
+                    open_errors = {},
+                    recv_builder = function(idx, state)
+                        return build_a_response(state.send_records[idx].meta, '192.0.2.99')
+                    end
+                }
+
+                with_stubbed_dns(function()
+                    return make_env(cfg)
+                end, function(dns_mod, state)
+                    if cached then
+                        local answers = assert(dns_mod.query('printer'))
+                        assert(answers[1].address == (hosts and '192.0.2.1' or '192.0.2.99'))
+                    end
+
+                    cfg[hosts and 'hosts_mtime' or 'resolv_mtime'] = 2
+                    if failure == 'stat' then
+                        cfg[hosts and 'hosts_exists' or 'resolv_exists'] = false
+                    else
+                        cfg.open_errors[path] = failure
+                    end
+
+                    local opens = state.file_opens[path] or 0
+                    local answers = assert(dns_mod.query('printer'))
+                    assert(answers[1].address == '192.0.2.99', 'failed file must not use stale data')
+                    local sent = state.send_records[#state.send_records]
+                    assert(sent.host == (hosts and '192.0.2.53' or '127.0.0.1'))
+                    assert(sent.meta.qname == (hosts and 'printer.old.example' or 'printer'))
+                    assert((state.file_opens[path] or 0) == opens + (failure == 'stat' and 0 or 1))
+
+                    cfg[hosts and 'hosts_exists' or 'resolv_exists'] = true
+                    cfg.open_errors[path] = nil
+                    cfg.hosts_lines = hosts and { '192.0.2.2 printer' } or {}
+                    cfg.resolv_lines = { 'nameserver 192.0.2.54', 'search new.example' }
+
+                    answers = assert(dns_mod.query('printer'))
+                    assert(answers[1].address == (hosts and '192.0.2.2' or '192.0.2.99'))
+                    if not hosts then
+                        sent = state.send_records[#state.send_records]
+                        assert(sent.host == '192.0.2.54' and sent.meta.qname == 'printer.new.example')
+                    end
+
+                    opens = state.file_opens[path]
+                    assert(dns_mod.query('printer'))
+                    assert(state.file_opens[path] == opens, 'successful load must be cached')
+                    assert(state.file_closes[path] == opens - (failure == 'stat' and 0 or 1))
+                end)
+            end
+        end
+    end
+end)
+
 test.run_case_async('dns non-address queries bypass hosts', function()
     local types = {
         dns.TYPE_NS, dns.TYPE_CNAME, dns.TYPE_SOA, dns.TYPE_PTR,
@@ -600,14 +659,14 @@ test.run_case_async('dns non-address queries bypass hosts', function()
                     return build_error_response(state.send_records[idx].meta, 0)
                 end
             })
-            local io_lines = env.io_lines
+            local io_open = env.io_open
 
-            env.io_lines = function(path)
+            env.io_open = function(path)
                 if path == '/etc/hosts' then
                     hosts_reads = hosts_reads + 1
                 end
 
-                return io_lines(path)
+                return io_open(path)
             end
 
             return env

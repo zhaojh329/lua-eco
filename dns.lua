@@ -77,10 +77,6 @@ local hosts_cache = {
 }
 
 local function get_file_version(path)
-    if not file.access(path, 'r') then
-        return nil
-    end
-
     local st = file.stat(path)
     if not st then
         return nil
@@ -90,12 +86,17 @@ local function get_file_version(path)
 end
 
 local function build_hosts_index()
+    local f<close> = io.open(HOSTS_PATH, 'r')
+    if not f then
+        return
+    end
+
     local index = {
         [M.TYPE_A] = {},
         [M.TYPE_AAAA] = {}
     }
 
-    for line in io.lines(HOSTS_PATH) do
+    for line in f:lines() do
         if line:match('^%s*[^%s#]') then
             local fields = {}
 
@@ -144,10 +145,15 @@ local function parse_resolvconf()
         return resolv_cache.conf
     end
 
+    local f<close> = io.open(RESOLV_CONF_PATH, 'r')
+    if not f then
+        return
+    end
+
     local nameservers = {}
     local conf = {}
 
-    for line in io.lines(RESOLV_CONF_PATH) do
+    for line in f:lines() do
         line = line:gsub('[#;].*', '')
         local directive, value = line:match('^%s*(%S+)%s+(%S+)')
 
@@ -260,7 +266,12 @@ local function name_from_hosts(qname, opts)
     end
 
     if hosts_cache.version ~= version then
-        hosts_cache.index = build_hosts_index()
+        local index = build_hosts_index()
+        if not index then
+            return
+        end
+
+        hosts_cache.index = index
         hosts_cache.version = version
     end
 
