@@ -473,6 +473,48 @@ test.run_case_async('dns query hosts first', function()
     end)
 end)
 
+test.run_case_async('dns hosts ignores ASCII case', function()
+    with_stubbed_dns(function()
+        return make_env({
+            hosts_lines = {
+                '192.0.2.1 Printer AlIaS Printer.Local',
+                '192.0.2.2 PRINTER ALIAS PRINTER.LOCAL',
+                '2001:db8::1 pRiNtEr aLiAs pRiNtEr.LoCaL',
+                '2001:db8::2 PRINTER ALIAS PRINTER.LOCAL',
+                '192.0.2.3 Printer.',
+                '192.0.2.4 \192HOST',
+                '192.0.2.5 \224host'
+            },
+            recv_builder = function(idx, state)
+                return build_a_response(state.send_records[idx].meta, '192.0.2.99')
+            end
+        })
+    end, function(dns_mod, state)
+        for _, typ in ipairs({ dns_mod.TYPE_A, dns_mod.TYPE_AAAA }) do
+            local expected = typ == dns_mod.TYPE_A and '192.0.2.1' or '2001:db8::1'
+
+            for _, name in ipairs({ 'Printer', 'printer', 'PRINTER', 'alias', 'ALIAS',
+                'printer.local', 'PRINTER.LOCAL' }) do
+                local answers, err = dns_mod.query(name, { type = typ })
+                assert(answers and answers[1].address == expected, err or 'hosts case or precedence mismatch')
+            end
+        end
+
+        for _, case in ipairs({ { 'pRiNtEr.', '192.0.2.3' },
+            { '\192host', '192.0.2.4' }, { '\224HOST', '192.0.2.5' } }) do
+            local answers, err = dns_mod.query(case[1])
+            assert(answers and answers[1].address == case[2], err or 'hosts name normalization mismatch')
+        end
+        assert(state.udp_calls == 0 and state.udp6_calls == 0)
+
+        for i, name in ipairs({ 'MiXeD.example', 'Printer.Local.' }) do
+            local answers, err = dns_mod.query(name)
+            assert(answers and answers[1].address == '192.0.2.99', err)
+            assert(state.send_records[i].meta.qname == name:gsub('%.$', ''))
+        end
+    end)
+end)
+
 test.run_case_async('dns hosts whitespace and comments', function()
     with_stubbed_dns(function()
         return make_env({

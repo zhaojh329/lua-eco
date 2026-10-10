@@ -108,6 +108,8 @@ local function build_hosts_index()
                         break
                     end
 
+                    name = name:lower()
+
                     if not names[name] then
                         names[name] = address
                     end
@@ -249,7 +251,7 @@ local function name_from_hosts(qname, opts)
         hosts_cache.version = version
     end
 
-    local address = hosts_cache.index[typ][qname]
+    local address = hosts_cache.index[typ][qname:lower()]
 
     if address then
         return {{
