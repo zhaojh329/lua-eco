@@ -762,20 +762,30 @@ end)
 test.run_case_async('dns query nameserver validation', function()
     with_stubbed_dns(function()
         return make_env({
-            hosts_lines = {}
+            hosts_lines = {},
+            is_ipv4 = socket.is_ipv4_address,
+            is_ipv6 = socket.is_ipv6_address
         })
-    end, function(dns_mod)
+    end, function(dns_mod, state)
         test.expect_error_contains(function()
             dns_mod.query('example.com', {
                 nameservers = { 1 }
             })
         end, 'invalid nameservers', 'non-string/table nameserver entry should throw')
 
-        test.expect_error_contains(function()
-            dns_mod.query('example.com', {
-                nameservers = { 'not-an-ip' }
-            })
-        end, 'invalid nameserver: not-an-ip', 'invalid nameserver ip should throw')
+        for _, case in ipairs({
+            { 'not-an-ip', 'not-an-ip' },
+            { { 'not-an-ip', 53 }, 'not-an-ip' },
+            { {}, 'nil' },
+            { { [2] = 53 }, 'nil' },
+            { { false, 53 }, 'false' },
+            { { 123, 53 }, '123' }
+        }) do
+            test.expect_error_contains(function()
+                dns_mod.query('example.com', { nameservers = { case[1] } })
+            end, 'invalid nameserver: ' .. case[2])
+        end
+        assert(state.udp_calls == 0 and state.udp6_calls == 0)
     end)
 end)
 

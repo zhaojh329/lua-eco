@@ -337,8 +337,8 @@ function M.query(qname, opts)
             error('invalid nameservers')
         end
 
-        if not socket.is_ip_address(host) then
-            error('invalid nameserver: ' .. nameserver)
+        if type(host) ~= 'string' or not socket.is_ip_address(host) then
+            error('invalid nameserver: ' .. tostring(host))
         end
 
         nameservers[#nameservers + 1] = { host, port, socket.is_ipv6_address(host) }
