@@ -1068,6 +1068,35 @@ test.run_case_async('dns shared name parser preserves record fields', function()
     end
 end)
 
+test.run_case_async('dns name record length errors', function()
+    local parser = require 'eco.internal.dns'
+    local question = encode_name('service.example') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)
+    local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0) .. question
+    local header = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, 1, 0, 0) .. question
+    local cases = {
+        { '', 'malformed %s' },
+        { '\3ab', 'malformed %s' },
+        { '\192', 'malformed %s' },
+        { '\255\255', 'malformed %s' },
+        { '\0\0', 'bad %s record length' },
+        { '\192\12\0', 'bad %s record length' },
+        { '\192\12', 'bad %s record length', 1 },
+        { encode_name('target.example') .. '\0', 'bad %s record length' }
+    }
+
+    for _, record in ipairs({ { dns.TYPE_CNAME, 'cname' },
+        { dns.TYPE_NS, 'nsdname' }, { dns.TYPE_PTR, 'ptrdname' } }) do
+        for _, case in ipairs(cases) do
+            local response = header .. '\192\12'
+                .. string.pack('>I2I2I4I2', record[1], dns.CLASS_IN, 30, case[3] or #case[1])
+                .. case[1]
+            local answers, err = parser.parse_response(response, req)
+            assert(answers == nil and err == string.format(case[2], record[2]),
+                'unexpected name record error: ' .. tostring(err))
+        end
+    end
+end)
+
 test.run_case_async('dns response name boundaries and escaping', function()
     local parser = require 'eco.internal.dns'
     local question = encode_name('a.b') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)

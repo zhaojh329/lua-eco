@@ -161,6 +161,28 @@ static bool match_question(const uint8_t *data, size_t data_len, int *offset,
     return true;
 }
 
+static int parse_name_rdata(lua_State *L, const uint8_t *buf, size_t buf_len,
+                            int offset, uint32_t rdlength, const char *field)
+{
+    char name[1024];
+    int p = offset;
+
+    if (parse_name(buf, buf_len, &p, name, sizeof(name), false) < 0) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "malformed %s", field);
+        return 2;
+    }
+
+    if (p - offset != rdlength) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "bad %s record length", field);
+        return 2;
+    }
+
+    set_string_field(L, field, name);
+    return 0;
+}
+
 static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offset)
 {
     uint32_t type, class, ttl, rdlength;
@@ -192,7 +214,9 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
     set_integer_field(L, "ttl", ttl);
     set_string_field(L, "name", name);
 
-    if (type == TYPE_A || type == TYPE_AAAA) {
+    switch (type) {
+    case TYPE_A:
+    case TYPE_AAAA: {
         char ip[INET6_ADDRSTRLEN];
 
         if (type == TYPE_A) {
@@ -208,19 +232,15 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
         set_string_field(L, "address", ip);
 
-    } else if (type == TYPE_CNAME) {
-        char cname[1024];
-        int p = *offset;
+        break;
+    }
 
-        if (parse_name(buf, buf_len, &p, cname, sizeof(cname), false) < 0)
-            return push_error(L, "malformed cname");
+    case TYPE_CNAME:
+        if (parse_name_rdata(L, buf, buf_len, *offset, rdlength, "cname"))
+            return 2;
+        break;
 
-        if ((uint32_t)(p - *offset) != rdlength)
-            return push_error(L, "bad cname record length");
-
-        set_string_field(L, "cname", cname);
-
-    } else if (type == TYPE_MX) {
+    case TYPE_MX: {
         char host[1024];
         uint16_t pref;
         int p;
@@ -241,7 +261,10 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
         set_string_field(L, "exchange", host);
 
-    } else if (type == TYPE_SRV) {
+        break;
+    }
+
+    case TYPE_SRV: {
         uint16_t priority, weight, port;
         char target[1024];
         int p;
@@ -267,19 +290,16 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
         set_string_field(L, "target", target);
 
-    } else if (type == TYPE_NS) {
-        char nsdname[1024];
-        int p = *offset;
+        break;
+    }
 
-        if (parse_name(buf, buf_len, &p, nsdname, sizeof(nsdname), false) < 0)
-            return push_error(L, "malformed nsdname");
+    case TYPE_NS:
+        if (parse_name_rdata(L, buf, buf_len, *offset, rdlength, "nsdname"))
+            return 2;
+        break;
 
-        if (p - *offset != rdlength)
-            return push_error(L, "bad nsdname record length");
-
-        set_string_field(L, "nsdname", nsdname);
-
-    } else if (type == TYPE_TXT || type == TYPE_SPF) {
+    case TYPE_TXT:
+    case TYPE_SPF: {
         const char *key = (type == TYPE_TXT) ? "txt" : "spf";
         int p = *offset;
         int last = *offset + rdlength;
@@ -309,19 +329,15 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
             lua_setfield(L, -2, key);
         }
 
-    } else if (type == TYPE_PTR) {
-        char ptrdname[1024];
-        int p = *offset;
+        break;
+    }
 
-        if (parse_name(buf, buf_len, &p, ptrdname, sizeof(ptrdname), false) < 0)
-            return push_error(L, "malformed ptrdname");
+    case TYPE_PTR:
+        if (parse_name_rdata(L, buf, buf_len, *offset, rdlength, "ptrdname"))
+            return 2;
+        break;
 
-        if ((p - *offset) != rdlength)
-            return push_error(L, "bad ptrdname record length");
-
-        set_string_field(L, "ptrdname", ptrdname);
-
-    } else if (type == TYPE_SOA) {
+    case TYPE_SOA: {
         static const char *soa_fields[] = {
             "serial", "refresh", "retry", "expire", "minimum"
         };
@@ -351,9 +367,13 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         if (p - *offset != rdlength)
             return push_error(L, "bad SOA record length");
 
-    } else {
+        break;
+    }
+
+    default:
         lua_pushlstring(L, (const char *)(buf + *offset), rdlength);
         lua_setfield(L, -2, "rdata");
+        break;
     }
 
     *offset = rstart + rdlength;
