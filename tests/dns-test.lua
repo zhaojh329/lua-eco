@@ -390,6 +390,66 @@ test.run_case_async('dns query bad name', function()
     assert(answers == nil and err == 'bad name')
 end)
 
+test.run_case_async('dns query name wire boundaries', function()
+    local label = string.rep('a', 63)
+    local longest = label .. '.' .. label .. '.' .. label .. '.' .. string.rep('b', 61)
+    local invalid = {
+        '', '.bad', '..', 'a..b', 'a..', 'a\0b', string.rep('a', 64),
+        string.rep('a', 256), longest .. 'b', longest .. 'b.'
+    }
+
+    with_stubbed_dns(function()
+        return make_env({
+            hosts_lines = { '192.0.2.1 a..b' },
+            resolv_lines = { 'search example.com' },
+            recv_builder = function(idx, state)
+                return build_a_response(state.send_records[idx].meta, '192.0.2.1')
+            end
+        })
+    end, function(dns_mod, state)
+        for _, name in ipairs(invalid) do
+            local answers, err = dns_mod.query(name)
+            assert(answers == nil and err == 'bad name', 'invalid query name accepted')
+        end
+        assert(state.udp_calls == 0 and state.udp6_calls == 0)
+
+        for i, name in ipairs({ '.', 'a.', label .. '.', longest, longest .. '.' }) do
+            local answers, err = dns_mod.query(name)
+            assert(answers and answers[1].address == '192.0.2.1', err)
+            local expected = name:gsub('%.$', '')
+            local record = state.send_records[i]
+            assert(record.meta.qname == expected, 'absolute name must not use search suffix')
+            assert(record.req:sub(13, -5) == encode_name(expected), 'incorrect wire name')
+        end
+    end)
+end)
+
+test.run_case_async('dns query validates search suffix', function()
+    local label = string.rep('a', 63)
+    local suffix = label .. '.' .. label .. '.' .. string.rep('b', 61)
+
+    for _, search in ipairs({ suffix, suffix .. 'b', 'a..b', '.bad', 'a\0b', string.rep('a', 64) }) do
+        with_stubbed_dns(function()
+            return make_env({
+                resolv_lines = { 'search ' .. search },
+                recv_builder = function(idx, state)
+                    return build_a_response(state.send_records[idx].meta, '192.0.2.1')
+                end
+            })
+        end, function(dns_mod, state)
+            local answers, err = dns_mod.query(label)
+
+            if search == suffix then
+                assert(answers and answers[1].address == '192.0.2.1', err)
+                assert(#state.send_records[1].req:sub(13, -5) == 255)
+            else
+                assert(answers == nil and err == 'bad name')
+                assert(state.udp_calls == 0 and state.udp6_calls == 0)
+            end
+        end)
+    end
+end)
+
 -- /etc/hosts should be consulted before DNS queries.
 test.run_case_async('dns query hosts first', function()
     with_stubbed_dns(function()

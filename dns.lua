@@ -156,6 +156,30 @@ local function parse_resolvconf()
     return conf
 end
 
+local function is_valid_name(qname)
+    if qname == '.' then
+        return true
+    end
+
+    if qname:find('%z') or qname:sub(1, 1) == '.' or qname:find('..', 1, true) then
+        return false
+    end
+
+    qname = qname:gsub('%.$', '')
+
+    if #qname == 0 or #qname > 253 then
+        return false
+    end
+
+    for label in qname:gmatch('[^.]+') do
+        if #label > 63 then
+            return false
+        end
+    end
+
+    return true
+end
+
 local function build_request(qname, id, opts)
     local flags = 0
 
@@ -168,7 +192,7 @@ local function build_request(qname, id, opts)
     local nns = 0
     local nar = 0
 
-    local name = qname:gsub('([^.]+)%.?', function(s)
+    local name = qname == '.' and '' or qname:gsub('([^.]+)%.?', function(s)
         return string.char(#s) .. s
     end)
 
@@ -270,7 +294,7 @@ end
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function M.query(qname, opts)
-    if string.byte(qname, 1) == string.byte('.') or #qname > 255 then
+    if not is_valid_name(qname) then
         return nil, 'bad name'
     end
 
@@ -332,6 +356,10 @@ function M.query(qname, opts)
 
     if not qname:match('%.') and resolvconf.search then
         qname = qname .. '.' .. resolvconf.search
+
+        if not is_valid_name(qname) then
+            return nil, 'bad name'
+        end
     end
 
     local id, ok, answers, err
