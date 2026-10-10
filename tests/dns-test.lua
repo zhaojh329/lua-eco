@@ -1016,6 +1016,75 @@ test.run_case_async('dns shared name parser preserves record fields', function()
     end
 end)
 
+test.run_case_async('dns response name boundaries and escaping', function()
+    local parser = require 'eco.internal.dns'
+    local question = encode_name('a.b') .. string.pack('>I2I2', dns.TYPE_A, dns.CLASS_IN)
+    local req = string.pack('>I2I2I2I2I2I2', 123, 0x0100, 1, 0, 0, 0) .. question
+    local header = string.pack('>I2I2I2I2I2I2', 123, 0x8180, 1, 1, 0, 0) .. question
+    local label = string.rep('a', 63)
+    local longest = label .. '.' .. label .. '.' .. label .. '.' .. string.rep('b', 61)
+    local binary = '\63' .. string.rep('\255', 63)
+    local cases = {
+        { '\0', '' },
+        { encode_name(longest), longest },
+        { encode_name(longest .. 'b') },
+        { '\3a\0b\0', 'a\\000b' },
+        { '\3a.b\0', 'a\\.b' },
+        { '\4a\\.b\0', 'a\\\\\\.b' },
+        { '\1a\1b\0', 'a.b' },
+        { '\4\1\32\127\255\0', '\\001\\032\\127\\255' },
+        { binary .. binary .. binary .. '\61' .. string.rep('\255', 61) .. '\0',
+            string.rep('\\255', 63) .. '.' .. string.rep('\\255', 63) .. '.'
+                .. string.rep('\\255', 63) .. '.' .. string.rep('\\255', 61) },
+        { '\192\12', 'a.b' },
+        { '\63' .. label .. '\63' .. label .. '\63' .. label
+            .. '\57' .. string.rep('b', 57) .. '\192\12',
+            label .. '.' .. label .. '.' .. label .. '.' .. string.rep('b', 57) .. '.a.b' },
+        { '\63' .. label .. '\63' .. label .. '\63' .. label
+            .. '\58' .. string.rep('b', 58) .. '\192\12' },
+        { '\64' .. string.rep('a', 64) .. '\0' },
+        { '\128\0' },
+        { '\192' },
+        { '\255\255' },
+        { '\3ab' }
+    }
+
+    for _, case in ipairs(cases) do
+        local name, expected = case[1], case[2]
+        local records = {
+            { name, dns.TYPE_A, '\192\0\2\1', { 'name' } },
+            { '\192\12', dns.TYPE_CNAME, name, { 'cname' } },
+            { '\192\12', dns.TYPE_NS, name, { 'nsdname' } },
+            { '\192\12', dns.TYPE_PTR, name, { 'ptrdname' } },
+            { '\192\12', dns.TYPE_MX, string.pack('>I2', 10) .. name, { 'exchange' } },
+            { '\192\12', dns.TYPE_SRV, string.pack('>I2I2I2', 1, 2, 443) .. name, { 'target' } },
+            { '\192\12', dns.TYPE_SOA, name .. name .. string.pack('>I4I4I4I4I4', 1, 2, 3, 4, 5),
+                { 'mname', 'rname' } }
+        }
+
+        for _, record in ipairs(records) do
+            local response = header .. record[1]
+                .. string.pack('>I2I2I4I2', record[2], dns.CLASS_IN, 30, #record[3]) .. record[3]
+            local answers, err = parser.parse_response(response, req)
+
+            if expected == nil then
+                assert(answers == nil and type(err) == 'string', 'malformed name accepted')
+            else
+                assert(answers and #answers == 1, err)
+                for _, field in ipairs(record[4]) do
+                    assert(answers[1][field] == expected, field .. ' was not preserved')
+                end
+            end
+        end
+    end
+
+    local owner_offset = #header
+    local loop = string.pack('>I2', 0xc000 | owner_offset)
+    local answers, err = parser.parse_response(header .. loop
+        .. string.pack('>I2I2I4I2', dns.TYPE_A, dns.CLASS_IN, 30, 4) .. '\192\0\2\1', req)
+    assert(answers == nil and type(err) == 'string', 'compression loop accepted')
+end)
+
 test.run_case_async('dns TXT and SPF string lengths', function()
     local parser = require 'eco.internal.dns'
     local cases = {

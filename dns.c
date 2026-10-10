@@ -59,6 +59,7 @@ static int parse_name(const uint8_t *data, size_t data_len, int *offset,
                       char *buf, int buf_len, bool wire) {
     int pos = *offset;
     int written = 0;
+    int name_len = 1;
     int jumped = 0;
     int jump_count = 0;
 
@@ -100,7 +101,11 @@ static int parse_name(const uint8_t *data, size_t data_len, int *offset,
             continue;
         }
 
-        if (len > 63 || written + len + 1 >= buf_len)
+        name_len += len + 1;
+        if (len > 63 || name_len > 255)
+            return -1;
+
+        if (written + (wire ? len : len * 4) + 1 >= buf_len)
             return -1;
 
         if (pos + len > data_len)
@@ -109,8 +114,18 @@ static int parse_name(const uint8_t *data, size_t data_len, int *offset,
         if (wire)
             buf[written++] = len;
 
-        for (int i = 0; i < len; i++)
-            buf[written++] = data[pos++];
+        for (int i = 0; i < len; i++) {
+            uint8_t c = data[pos++];
+
+            if (!wire && (c <= 0x20 || c >= 0x7f)) {
+                snprintf(buf + written, buf_len - written, "\\%03u", (unsigned int)c);
+                written += 4;
+            } else {
+                if (!wire && (c == '.' || c == '\\'))
+                    buf[written++] = '\\';
+                buf[written++] = c;
+            }
+        }
 
         if (!wire)
             buf[written++] = '.';
@@ -149,7 +164,7 @@ static bool match_question(const uint8_t *data, size_t data_len, int *offset,
 static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offset)
 {
     uint32_t type, class, ttl, rdlength;
-    char name[512];
+    char name[1024];
     int rstart;
 
     if (parse_name(buf, buf_len, offset, name, sizeof(name), false) < 0)
@@ -194,7 +209,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         set_string_field(L, "address", ip);
 
     } else if (type == TYPE_CNAME) {
-        char cname[512];
+        char cname[1024];
         int p = *offset;
 
         if (parse_name(buf, buf_len, &p, cname, sizeof(cname), false) < 0)
@@ -206,7 +221,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         set_string_field(L, "cname", cname);
 
     } else if (type == TYPE_MX) {
-        char host[512];
+        char host[1024];
         uint16_t pref;
         int p;
 
@@ -228,7 +243,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
 
     } else if (type == TYPE_SRV) {
         uint16_t priority, weight, port;
-        char target[512];
+        char target[1024];
         int p;
 
         if (rdlength < 7)
@@ -253,7 +268,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         set_string_field(L, "target", target);
 
     } else if (type == TYPE_NS) {
-        char nsdname[512];
+        char nsdname[1024];
         int p = *offset;
 
         if (parse_name(buf, buf_len, &p, nsdname, sizeof(nsdname), false) < 0)
@@ -295,7 +310,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         }
 
     } else if (type == TYPE_PTR) {
-        char ptrdname[512];
+        char ptrdname[1024];
         int p = *offset;
 
         if (parse_name(buf, buf_len, &p, ptrdname, sizeof(ptrdname), false) < 0)
@@ -310,7 +325,7 @@ static int parse_rr(lua_State *L, const uint8_t *buf, size_t buf_len, int *offse
         static const char *soa_fields[] = {
             "serial", "refresh", "retry", "expire", "minimum"
         };
-        char mname[512], rname[512];
+        char mname[1024], rname[1024];
         int p = *offset;
         int i;
 
