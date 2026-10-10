@@ -352,10 +352,6 @@ function M.query(qname, opts)
         end
     end
 
-    if #nameservers < 1 then
-        return nil, 'not found valid nameservers'
-    end
-
     if not qname:match('%.') and resolvconf.search then
         qname = qname .. '.' .. resolvconf.search
 
