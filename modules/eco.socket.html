@@ -299,39 +299,39 @@
 	<td class="summary">Create a pair of connected sockets.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tcp">tcp ()</a></td>
+	<td class="name" nowrap><a href="#tcp">tcp ([options])</a></td>
 	<td class="summary">Create a TCP (IPv4) stream socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tcp6">tcp6 ()</a></td>
+	<td class="name" nowrap><a href="#tcp6">tcp6 ([options])</a></td>
 	<td class="summary">Create a TCP (IPv6) stream socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#udp">udp ()</a></td>
+	<td class="name" nowrap><a href="#udp">udp ([options])</a></td>
 	<td class="summary">Create a UDP (IPv4) datagram socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#udp6">udp6 ()</a></td>
+	<td class="name" nowrap><a href="#udp6">udp6 ([options])</a></td>
 	<td class="summary">Create a UDP (IPv6) datagram socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#icmp">icmp ()</a></td>
+	<td class="name" nowrap><a href="#icmp">icmp ([options])</a></td>
 	<td class="summary">Create an ICMP (IPv4) socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#icmp6">icmp6 ()</a></td>
+	<td class="name" nowrap><a href="#icmp6">icmp6 ([options])</a></td>
 	<td class="summary">Create an ICMP (IPv6) socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#unix">unix ()</a></td>
+	<td class="name" nowrap><a href="#unix">unix ([options])</a></td>
 	<td class="summary">Create a Unix stream socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#unix_dgram">unix_dgram ()</a></td>
+	<td class="name" nowrap><a href="#unix_dgram">unix_dgram ([options])</a></td>
 	<td class="summary">Create a Unix datagram socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#netlink">netlink (protocol)</a></td>
+	<td class="name" nowrap><a href="#netlink">netlink (protocol[, options])</a></td>
 	<td class="summary">Create a netlink raw socket.</td>
 	</tr>
 	<tr>
@@ -355,7 +355,7 @@
 	<td class="summary">Create, bind and listen on a Unix domain socket.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connect_unix">connect_unix (server_path[, local_path])</a></td>
+	<td class="name" nowrap><a href="#connect_unix">connect_unix (server_path[, local_path[, options]])</a></td>
 	<td class="summary">Connect to a Unix domain socket.</td>
 	</tr>
 	<tr>
@@ -534,7 +534,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#socket:read">socket:read ()</a></td>
-	<td class="summary">See <a href="../modules/eco.html#reader:read">read</a></td>
+	<td class="summary">Read from the socket.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#socket:recvfull">socket:recvfull ()</a></td>
@@ -542,11 +542,11 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#socket:readfull">socket:readfull ()</a></td>
-	<td class="summary">See <a href="../modules/eco.html#reader:readfull">readfull</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:readfull">readfull</a>.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#socket:readuntil">socket:readuntil ()</a></td>
-	<td class="summary">See <a href="../modules/eco.html#reader:readuntil">readuntil</a></td>
+	<td class="summary">See <a href="../modules/eco.html#reader:readuntil">readuntil</a>.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#socket:recvfrom">socket:recvfrom (n[, timeout])</a></td>
@@ -595,6 +595,9 @@
     <li><code>ipv6_v6only</code> (boolean)</li>
     <li><code>mark</code> (int)</li>
     <li><code>device</code> (string) bind to device name</li>
+    <li><code>read_buffer_size</code> (integer, default 512, minimum 512) user-space reader
+    capacity in bytes for stream sockets, inherited by accepted connections.
+    Ignored for datagram and raw sockets.</li>
 </ul>
 
 
@@ -683,12 +686,20 @@
 </dd>
     <dt>
     <a name = "tcp"></a>
-    <strong>tcp ()</strong>
+    <strong>tcp ([options])</strong>
     </dt>
     <dd>
     Create a TCP (IPv4) stream socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -712,12 +723,20 @@
 </dd>
     <dt>
     <a name = "tcp6"></a>
-    <strong>tcp6 ()</strong>
+    <strong>tcp6 ([options])</strong>
     </dt>
     <dd>
     Create a TCP (IPv6) stream socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -741,12 +760,20 @@
 </dd>
     <dt>
     <a name = "udp"></a>
-    <strong>udp ()</strong>
+    <strong>udp ([options])</strong>
     </dt>
     <dd>
     Create a UDP (IPv4) datagram socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -770,12 +797,20 @@
 </dd>
     <dt>
     <a name = "udp6"></a>
-    <strong>udp6 ()</strong>
+    <strong>udp6 ([options])</strong>
     </dt>
     <dd>
     Create a UDP (IPv6) datagram socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -799,12 +834,20 @@
 </dd>
     <dt>
     <a name = "icmp"></a>
-    <strong>icmp ()</strong>
+    <strong>icmp ([options])</strong>
     </dt>
     <dd>
     Create an ICMP (IPv4) socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -828,12 +871,20 @@
 </dd>
     <dt>
     <a name = "icmp6"></a>
-    <strong>icmp6 ()</strong>
+    <strong>icmp6 ([options])</strong>
     </dt>
     <dd>
     Create an ICMP (IPv6) socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -857,12 +908,20 @@
 </dd>
     <dt>
     <a name = "unix"></a>
-    <strong>unix ()</strong>
+    <strong>unix ([options])</strong>
     </dt>
     <dd>
     Create a Unix stream socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -886,12 +945,20 @@
 </dd>
     <dt>
     <a name = "unix_dgram"></a>
-    <strong>unix_dgram ()</strong>
+    <strong>unix_dgram ([options])</strong>
     </dt>
     <dd>
     Create a Unix datagram socket.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -915,7 +982,7 @@
 </dd>
     <dt>
     <a name = "netlink"></a>
-    <strong>netlink (protocol)</strong>
+    <strong>netlink (protocol[, options])</strong>
     </dt>
     <dd>
     Create a netlink raw socket.
@@ -926,6 +993,11 @@
         <li><span class="parameter">protocol</span>
             <span class="types"><span class="type">integer</span></span>
          Netlink protocol.
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -1191,7 +1263,7 @@
 </dd>
     <dt>
     <a name = "connect_unix"></a>
-    <strong>connect_unix (server_path[, local_path])</strong>
+    <strong>connect_unix (server_path[, local_path[, options]])</strong>
     </dt>
     <dd>
     Connect to a Unix domain socket.
@@ -1206,6 +1278,11 @@
         <li><span class="parameter">local_path</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          Optional local bind path.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">options</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         See <a href="../modules/eco.socket.html">socket</a>.
          (<em>optional</em>)
         </li>
     </ul>
@@ -2380,7 +2457,10 @@
     <strong>socket:read ()</strong>
     </dt>
     <dd>
-    See <a href="../modules/eco.html#reader:read">read</a>
+    Read from the socket.
+ Stream sockets support the formats described by <a href="../modules/eco.html#reader:read">read</a>.
+ Datagram and raw sockets require a positive integer size and receive one
+ packet directly, without a reader buffer.
 
 
 
@@ -2408,7 +2488,7 @@
     <strong>socket:readfull ()</strong>
     </dt>
     <dd>
-    See <a href="../modules/eco.html#reader:readfull">readfull</a>
+    See <a href="../modules/eco.html#reader:readfull">readfull</a>.  Requires a stream socket.
 
 
 
@@ -2422,7 +2502,7 @@
     <strong>socket:readuntil ()</strong>
     </dt>
     <dd>
-    See <a href="../modules/eco.html#reader:readuntil">readuntil</a>
+    See <a href="../modules/eco.html#reader:readuntil">readuntil</a>.  Requires a stream socket.
 
 
 
@@ -2482,7 +2562,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
-<i style="float:right;">Last updated 2026-10-10 04:51:36 </i>
+<i style="float:right;">Last updated 2026-10-13 03:50:48 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 <script type="text/javascript" src="../ldoc_search_data.js"></script>
