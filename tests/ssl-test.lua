@@ -75,6 +75,73 @@ run_case('ssl listen/connect echo', function()
     end)
 end)
 
+for _, capacity in ipairs({512, 8192}) do
+    run_case('ssl reader capacity ' .. capacity, function()
+        local options = {
+            cert = cert,
+            key = key,
+            insecure = true,
+            reuseaddr = true,
+            read_buffer_size = capacity
+        }
+        local server<close> = assert(ssl.listen('127.0.0.1', 0, options))
+        local addr = assert(server.sock:getsockname())
+        local body = string.rep('x', 2500)
+        local payload = body .. 'END' .. body .. '\r\ntail'
+        local finished = false
+
+        assert(options.read_buffer_size == capacity, 'listen must not modify options')
+        assert(server.sock.read_buffer_size == nil, 'TCP reader should use the default capacity')
+
+        local function read_payload(peer)
+            local chunk, found = peer:readuntil('END', 2.0)
+            assert(chunk, found)
+            assert(#chunk == (capacity == 512 and 510 or #body),
+                   'TLS reader must use the requested capacity')
+
+            local chunks = {chunk}
+
+            while not found do
+                chunk, found = peer:readuntil('END', 2.0)
+                assert(chunk, found)
+                chunks[#chunks + 1] = chunk
+            end
+
+            assert(table.concat(chunks) == body)
+            assert(peer:read('l', 2.0) == body, 'long lines must survive small buffers')
+            assert(peer:readfull(4, 2.0) == 'tail')
+        end
+
+        eco.run(function()
+            local peer<close> = assert(server:accept())
+
+            read_payload(peer)
+            assert(peer:send(payload, 2.0) == #payload)
+            finished = true
+        end)
+
+        local client_options = {insecure = true, read_buffer_size = capacity}
+        local client<close> = assert(ssl.connect('127.0.0.1', addr.port, client_options))
+
+        assert(client_options.read_buffer_size == capacity, 'connect must not modify options')
+        assert(client.sock.read_buffer_size == nil, 'TCP reader should use the default capacity')
+        assert(client:send(payload, 2.0) == #payload)
+        read_payload(client)
+
+        test.wait_until('TLS capacity peer completes', function() return finished end)
+    end)
+end
+
+for _, capacity in ipairs({0, 511, 2147483648, 1.5, false, 'invalid'}) do
+    test.expect_error_contains(function()
+        ssl.listen('127.0.0.1', 0, {read_buffer_size = capacity})
+    end, 'read_buffer_size', 'listen must reject invalid capacity before accepting clients')
+
+    test.expect_error_contains(function()
+        ssl.connect('127.0.0.1', 0, {read_buffer_size = capacity})
+    end, 'read_buffer_size', 'connect must reject invalid capacity before connecting')
+end
+
 run_case('ssl readuntil and sendfile', function()
     local path = string.format('/tmp/eco-ssl-sendfile-%d-%d', sys.getpid(), math.floor(time.now() * 1000))
     local f = assert(io.open(path, 'wb'))

@@ -60,6 +60,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -78,7 +79,7 @@ static volatile sig_atomic_t got_sigint;
 
 #define MAX_EVENTS 128
 #define MAX_TIMER_CACHE 32
-#define RD_BUFSIZE 4096
+#define RD_DEFAULT_BUFSIZE 512
 #define FD_HASH_BUCKETS 256
 #define IO_FAIRNESS_DURATION 300
 #define CO_RUN_TIMEOUT 5000
@@ -156,7 +157,8 @@ struct eco_reader {
     int (*read)(void *buf, size_t len, void *ctx, const char **err);
     void *ctx;
     size_t len;
-    char buf[RD_BUFSIZE];
+    size_t capacity;
+    char buf[];
 };
 
 struct eco_writer {
@@ -1073,9 +1075,9 @@ static int eco_reader_read_once(lua_State *L, struct eco_reader *rd,
         if (mode == 'a')
             size = LUAL_BUFFERSIZE;
         else if (mode == 'u')
-            size = RD_BUFSIZE - rd->len;
+            size = rd->capacity - rd->len;
         else if (mode == 'l' || mode == 'L')
-            size = RD_BUFSIZE;
+            size = rd->capacity;
         else /* any or full */
             size = rd->expected;
 
@@ -1440,6 +1442,8 @@ static const struct luaL_Reg reader_metatable[] = {
  * @tparam integer fd File descriptor to wrap
  * @tparam[opt] lightuserdata read Custom read function
  * @tparam[opt] lightuserdata ctx Context pointer for the read function
+ * @tparam[opt=512] integer capacity Read buffer capacity in bytes (minimum 512).
+ * This does not limit the size of data returned by readfull or line reads.
  * @treturn reader The reader object
  * @treturn[2] nil On failure
  * @treturn[2] string Error message
@@ -1457,15 +1461,25 @@ static int lua_eco_reader(lua_State *L)
 {
     int fd = luaL_checkinteger(L, 1);
     int narg = lua_gettop(L);
+    lua_Integer capacity = luaL_optinteger(L, 4, RD_DEFAULT_BUFSIZE);
     struct eco_reader *rd;
 
-    eco_check_custom_rw_callback_args(L, narg);
+    if (!lua_isnoneornil(L, 2))
+        luaL_checktype(L, 2, LUA_TLIGHTUSERDATA);
 
-    rd = eco_new_fd_userdata(L, fd, sizeof(struct eco_reader), ECO_READER_MT);
+    if (!lua_isnoneornil(L, 3))
+        luaL_checktype(L, 3, LUA_TLIGHTUSERDATA);
+
+    luaL_argcheck(L, capacity >= 512 && capacity <= INT_MAX &&
+                  (lua_Unsigned)capacity <= SIZE_MAX - sizeof(struct eco_reader),
+                  4, "capacity out of range");
+
+    rd = eco_new_fd_userdata(L, fd, sizeof(struct eco_reader) + capacity, ECO_READER_MT);
     if (!rd)
         return push_errno(L, errno);
 
     rd->needle_ref = LUA_NOREF;
+    rd->capacity = capacity;
 
     eco_io_init(L, &rd->io, fd);
 

@@ -257,7 +257,7 @@ function methods:accept(timeout)
     return setmetatable({
         sock = sock,
         mutex = sync.mutex(),
-        rd = eco.reader(fd),
+        rd = eco.reader(fd, nil, nil, self.read_buffer_size),
         wr = eco.writer(fd),
         io = eco.io(fd)
     }, metatable), perr
@@ -466,10 +466,12 @@ end
 
 local function socket_init(sock, options, family, domain)
     local fd = sock:getfd()
+    local capacity = options and options.read_buffer_size
     local o = {
         sock = sock,
         mutex = sync.mutex(),
-        rd = eco.reader(fd),
+        read_buffer_size = capacity,
+        rd = eco.reader(fd, nil, nil, capacity),
         wr = eco.writer(fd)
     }
 
@@ -497,6 +499,8 @@ end
 -- - `ipv6_v6only` (boolean)
 -- - `mark` (int)
 -- - `device` (string) bind to device name
+-- - `read_buffer_size` (integer, default 512, minimum 512) user-space reader
+--   capacity in bytes, inherited by accepted connections.
 --
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
@@ -547,74 +551,82 @@ end
 
 --- Create a TCP (IPv4) stream socket.
 -- @function tcp
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.tcp()
-    return M.socket(socket.AF_INET, socket.SOCK_STREAM)
+function M.tcp(options)
+    return M.socket(socket.AF_INET, socket.SOCK_STREAM, nil, options)
 end
 
 --- Create a TCP (IPv6) stream socket.
 -- @function tcp6
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.tcp6()
-    return M.socket(socket.AF_INET6, socket.SOCK_STREAM)
+function M.tcp6(options)
+    return M.socket(socket.AF_INET6, socket.SOCK_STREAM, nil, options)
 end
 
 --- Create a UDP (IPv4) datagram socket.
 -- @function udp
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.udp()
-    return M.socket(socket.AF_INET, socket.SOCK_DGRAM)
+function M.udp(options)
+    return M.socket(socket.AF_INET, socket.SOCK_DGRAM, nil, options)
 end
 
 --- Create a UDP (IPv6) datagram socket.
 -- @function udp6
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.udp6()
-    return M.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+function M.udp6(options)
+    return M.socket(socket.AF_INET6, socket.SOCK_DGRAM, nil, options)
 end
 
 --- Create an ICMP (IPv4) socket.
 -- @function icmp
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.icmp()
-    return M.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_ICMP)
+function M.icmp(options)
+    return M.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_ICMP, options)
 end
 
 --- Create an ICMP (IPv6) socket.
 -- @function icmp6
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.icmp6()
-    return M.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_ICMPV6)
+function M.icmp6(options)
+    return M.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_ICMPV6, options)
 end
 
 --- Create a Unix stream socket.
 -- @function unix
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.unix()
-    return M.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+function M.unix(options)
+    return M.socket(socket.AF_UNIX, socket.SOCK_STREAM, nil, options)
 end
 
 --- Create a Unix datagram socket.
 -- @function unix_dgram
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.unix_dgram()
-    local sock, err = M.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+function M.unix_dgram(options)
+    local sock, err = M.socket(socket.AF_UNIX, socket.SOCK_DGRAM, nil, options)
     if not sock then
         return nil, err
     end
@@ -625,11 +637,12 @@ end
 --- Create a netlink raw socket.
 -- @function netlink
 -- @tparam integer protocol Netlink protocol.
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.netlink(protocol)
-    return M.socket(socket.AF_NETLINK, socket.SOCK_RAW, protocol)
+function M.netlink(protocol, options)
+    return M.socket(socket.AF_NETLINK, socket.SOCK_RAW, protocol, options)
 end
 
 --- Create, bind and listen on a TCP socket.
@@ -772,7 +785,7 @@ end
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function M.listen_unix(path, options)
-    local sock, err = M.unix()
+    local sock, err = M.unix(options)
     if not sock then
         return nil, err
     end
@@ -792,11 +805,12 @@ end
 -- @function connect_unix
 -- @tparam string server_path Server socket path.
 -- @tparam[opt] string local_path Optional local bind path.
+-- @tparam[opt] table options See @{socket}.
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
-function M.connect_unix(server_path, local_path)
-    local sock, err = M.unix()
+function M.connect_unix(server_path, local_path, options)
+    local sock, err = M.unix(options)
     if not sock then
         return nil, err
     end

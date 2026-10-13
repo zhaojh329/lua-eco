@@ -17,6 +17,25 @@ local eco = require 'eco'
 
 local M = {}
 
+local function make_tcp_options(options)
+    if options.read_buffer_size ~= nil then
+        local capacity = math.tointeger(options.read_buffer_size)
+
+        assert(capacity and capacity >= 512 and capacity <= 0x7fffffff,
+               'read_buffer_size must be an integer between 512 and 2147483647')
+    end
+
+    local opts = {}
+
+    for name, value in pairs(options) do
+        opts[name] = value
+    end
+
+    opts.read_buffer_size = nil
+
+    return opts
+end
+
 local function set_ssl_opt(ctx, options)
     local ca = options.ca
     local cert = options.cert
@@ -246,11 +265,11 @@ local function ssl_handshake(ssock, sock)
     end
 end
 
-local function create_ssl_client(sock, ssock, ctx, keep_ctx)
+local function create_ssl_client(sock, ssock, capacity, ctx, keep_ctx)
     local ssock_ptr = ssock:pointer()
     local fd = sock:getfd()
 
-    local rd = eco.reader(fd, ssl.read, ssock_ptr)
+    local rd = eco.reader(fd, ssl.read, ssock_ptr, capacity)
     local wr = eco.writer(fd, ssl.write, ssock_ptr)
 
     return setmetatable({
@@ -293,7 +312,7 @@ function srv_methods:accept()
         return nil, err
     end
 
-    return create_ssl_client(sock, ssock, nil), peer
+    return create_ssl_client(sock, ssock, self.read_buffer_size), peer
 end
 
 --- End of `ssl_server` class section.
@@ -316,6 +335,8 @@ local srv_metatable = {
 -- - `cert`: Path to server certificate file.
 -- - `key`: Path to server private key file.
 -- - `insecure`: When true, disables/relaxes peer verification (backend dependent).
+-- - `read_buffer_size`: TLS reader capacity in bytes (default 512, minimum 512),
+--   inherited by accepted connections.
 --
 -- Other fields are passed to @{eco.socket.listen_tcp}.
 --
@@ -329,7 +350,7 @@ local srv_metatable = {
 function M.listen(ipaddr, port, options)
     options = options or {}
 
-    local sock, err = socket.listen_tcp(ipaddr, port, options)
+    local sock, err = socket.listen_tcp(ipaddr, port, make_tcp_options(options))
     if not sock then
         return nil, err
     end
@@ -343,7 +364,12 @@ function M.listen(ipaddr, port, options)
         return nil, err
     end
 
-    return setmetatable({ ctx = ctx, sock = sock, insecure = options.insecure }, srv_metatable)
+    return setmetatable({
+        ctx = ctx,
+        sock = sock,
+        insecure = options.insecure,
+        read_buffer_size = options.read_buffer_size
+    }, srv_metatable)
 end
 
 --- Create a TLS client connection.
@@ -358,6 +384,7 @@ end
 -- - `insecure`: When true, disables/relaxes peer verification (backend dependent).
 -- - `server_name`: Server identity to verify; also sent as SNI for DNS names.
 -- - `ctx`: An existing ssl context object to reuse.
+-- - `read_buffer_size`: TLS reader capacity in bytes (default 512, minimum 512).
 --
 -- Other fields are passed to @{eco.socket.connect_tcp}.
 --
@@ -379,7 +406,7 @@ end
 function M.connect(ipaddr, port, options)
     options = options or {}
 
-    local sock, err = socket.connect_tcp(ipaddr, port, options)
+    local sock, err = socket.connect_tcp(ipaddr, port, make_tcp_options(options))
     if not sock then
         return nil, err
     end
@@ -425,7 +452,7 @@ function M.connect(ipaddr, port, options)
         return nil, err
     end
 
-    return create_ssl_client(sock, ssock, ctx, keep_ctx)
+    return create_ssl_client(sock, ssock, options.read_buffer_size, ctx, keep_ctx)
 end
 
 return setmetatable(M, { __index = ssl })
