@@ -260,8 +260,7 @@ function methods:accept(timeout)
         sock = sock,
         mutex = sync.mutex(),
         rd = eco.reader(fd, nil, nil, self.read_buffer_size),
-        wr = eco.writer(fd),
-        io = eco.io(fd)
+        wr = eco.writer(fd)
     }, metatable), perr
 end
 
