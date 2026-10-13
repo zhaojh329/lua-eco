@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <limits.h>
 #include <fcntl.h>
 
 #include <sys/ioctl.h>
@@ -300,7 +301,7 @@ static int lua_sendto(lua_State *L)
 static int lua_recvfrom(lua_State *L)
 {
     struct eco_socket *sock = luaL_checkudata(L, 1, SOCKET_MT);
-    int n = luaL_checkinteger(L, 2);
+    lua_Integer n = luaL_checkinteger(L, 2);
     union {
         struct sockaddr_ll ll;
         struct sockaddr_nl nl;
@@ -313,8 +314,7 @@ static int lua_recvfrom(lua_State *L)
     char *p;
     int ret;
 
-    if (n < 1)
-        luaL_argerror(L, 2, "must be greater than 0");
+    luaL_argcheck(L, n > 0 && n <= INT_MAX, 2, "size out of range");
 
     luaL_buffinit(L, &b);
 

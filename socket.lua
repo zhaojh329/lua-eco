@@ -242,6 +242,8 @@ local metatable = {
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function methods:accept(timeout)
+    assert(self.rd, 'accept requires a stream socket')
+
     local ok, err = self.rd:wait(timeout)
     if not ok then
         return nil, err
@@ -419,10 +421,24 @@ function methods:recv(format, timeout)
     return self:read(format, timeout)
 end
 
---- See @{eco.reader:read}
+--- Read from the socket.
+-- Stream sockets support the formats described by @{eco.reader:read}.
+-- Datagram and raw sockets require a positive integer size and receive one
+-- packet directly, without a reader buffer.
 -- @function socket:read
 function methods:read(format, timeout)
-    return self.rd:read(format, timeout)
+    if self.rd then
+        return self.rd:read(format, timeout)
+    end
+
+    assert(math.type(format) == 'integer', 'datagram read size must be an integer')
+
+    local data, err = self:recvfrom(format, timeout)
+    if not data then
+        return nil, err
+    end
+
+    return data
 end
 
 --- Alias of @{socket:readfull}.
@@ -431,15 +447,19 @@ function methods:recvfull(size, timeout)
     return self:readfull(size, timeout)
 end
 
---- See @{eco.reader:readfull}
+--- See @{eco.reader:readfull}. Requires a stream socket.
 -- @function socket:readfull
 function methods:readfull(size, timeout)
+    assert(self.rd, 'readfull requires a stream socket')
+
     return self.rd:readfull(size, timeout)
 end
 
---- See @{eco.reader:readuntil}
+--- See @{eco.reader:readuntil}. Requires a stream socket.
 -- @function socket:readuntil
 function methods:readuntil(needle, timeout)
+    assert(self.rd, 'readuntil requires a stream socket')
+
     return self.rd:readuntil(needle, timeout)
 end
 
@@ -453,7 +473,14 @@ end
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function methods:recvfrom(n, timeout)
-    local ok, err = self.rd:wait(timeout)
+    local ok, err
+
+    if self.rd then
+        ok, err = self.rd:wait(timeout)
+    else
+        ok, err = self.io:wait(eco.READ, timeout)
+    end
+
     if not ok then
         return nil, err
     end
@@ -470,10 +497,15 @@ local function socket_init(sock, options, family, domain)
     local o = {
         sock = sock,
         mutex = sync.mutex(),
-        read_buffer_size = capacity,
-        rd = eco.reader(fd, nil, nil, capacity),
         wr = eco.writer(fd)
     }
+
+    if domain == socket.SOCK_DGRAM or domain == socket.SOCK_RAW then
+        o.io = eco.io(fd)
+    else
+        o.read_buffer_size = capacity
+        o.rd = eco.reader(fd, nil, nil, capacity)
+    end
 
     local opt_names = { 'reuseaddr', 'reuseport', 'ipv6_v6only', 'mark', 'device' }
 
@@ -500,7 +532,8 @@ end
 -- - `mark` (int)
 -- - `device` (string) bind to device name
 -- - `read_buffer_size` (integer, default 512, minimum 512) user-space reader
---   capacity in bytes, inherited by accepted connections.
+--   capacity in bytes for stream sockets, inherited by accepted connections.
+--   Ignored for datagram and raw sockets.
 --
 -- @treturn socket sock
 -- @treturn[2] nil On failure.
