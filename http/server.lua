@@ -937,11 +937,24 @@ end
 --- End of `connection` class section.
 -- @section end
 
+local function peer_name(peer)
+    local name
+    if peer.ipaddr then
+        name = peer.ipaddr .. ':' .. peer.port
+    elseif peer.path then
+        name = peer.path
+    else
+        name = 'unix'
+    end
+
+    return name
+end
+
 local function handle_connection(con, handler)
     local peer = con.peer
     local sock = con.sock
 
-    local log_prefix = peer.ipaddr .. ':' .. peer.port .. ': '
+    local log_prefix = peer_name(peer) .. ': '
     local http_keepalive = con.options.http_keepalive
     local read_timeout = 3.0
 
@@ -1120,6 +1133,56 @@ end
 
 local metatable = { __index = methods }
 
+local function prepare_options(options)
+    options = options or {}
+
+    options.docroot = options.docroot or '.'
+
+    if options.docroot ~= '/' then
+        options.docroot = options.docroot:gsub('/$', '')
+    end
+
+    options.index = options.index or 'index.html'
+    options.http_keepalive = options.http_keepalive or 30
+
+    return options
+end
+
+local function serve(sock, options, handler, listen_message)
+    log.debug(listen_message)
+
+    while true do
+        local c, peer = sock:accept()
+        if c then
+            log.debug(peer_name(peer) .. ': new connection')
+
+            local con = setmetatable({
+                sock = c,
+                resp = {
+                    code = 200,
+                    headers = {
+                        server = server_header_value
+                    },
+                    data = {}
+                },
+                peer = peer,
+                options = options
+            }, metatable)
+
+            eco.run(function()
+                while true do
+                    if not handle_connection(con, handler) then
+                        c:close()
+                        break
+                    end
+                end
+            end)
+        else
+            return nil, peer
+        end
+    end
+end
+
 --- Listen and serve HTTP requests.
 --
 -- This function creates a listening socket and enters an accept loop.
@@ -1153,16 +1216,7 @@ local metatable = { __index = methods }
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function M.listen(ipaddr, port, options, handler)
-    options = options or {}
-
-    options.docroot = options.docroot or '.'
-
-    if options.docroot ~= '/' then
-        options.docroot = options.docroot:gsub('/$', '')
-    end
-
-    options.index = options.index or 'index.html'
-    options.http_keepalive = options.http_keepalive or 30
+    options = prepare_options(options)
 
     local sock, err
 
@@ -1178,38 +1232,28 @@ function M.listen(ipaddr, port, options, handler)
         return nil, err
     end
 
-    log.debug('listen on:', ipaddr, port, options.ssl and 'ssl' or '')
+    return serve(sock, options, handler,
+        'listen on: ' .. tostring(ipaddr) .. ':' .. tostring(port) ..
+        (options.ssl and ' ssl' or ''))
+end
 
-    while true do
-        local c, peer = sock:accept()
-        if c then
-            log.debug(peer.ipaddr .. ':' .. peer.port .. ': new connection')
+--- Listen and serve HTTP requests on a Unix domain socket.
+--
+-- @function listen_unix
+-- @tparam string path Unix socket filesystem path.
+-- @tparam[opt] table options Server options.
+-- @tparam function handler Request handler.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function M.listen_unix(path, options, handler)
+    options = prepare_options(options)
 
-            local con = setmetatable({
-                sock = c,
-                resp = {
-                    code = 200,
-                    headers = {
-                        server = server_header_value
-                    },
-                    data = {}
-                },
-                peer = peer,
-                options = options
-            }, metatable)
-
-            eco.run(function()
-                while true do
-                    if not handle_connection(con, handler) then
-                        c:close()
-                        break
-                    end
-                end
-            end)
-        else
-            return nil, peer
-        end
+    local sock, err = socket.listen_unix(path, options)
+    if not sock then
+        return nil, err
     end
+
+    return serve(sock, options, handler, 'listen on unix: ' .. path)
 end
 
 return M
