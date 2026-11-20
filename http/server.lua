@@ -1148,8 +1148,20 @@ local function prepare_options(options)
     return options
 end
 
-local function serve(sock, options, handler, listen_message)
-    log.debug(listen_message)
+--- Serve HTTP requests from an existing listening socket.
+--
+-- The socket must provide an `accept` method returning a client socket and
+-- peer address. The `handler` is called as `handler(con, req)` for each
+-- request.
+--
+-- @function serve
+-- @tparam userdata sock Listening socket.
+-- @tparam[opt] table options Server options.
+-- @tparam function handler Request handler.
+-- @treturn[2] nil On accept failure.
+-- @treturn[2] string Error message.
+function M.serve(sock, options, handler)
+    options = prepare_options(options)
 
     while true do
         local c, peer = sock:accept()
@@ -1216,7 +1228,7 @@ end
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function M.listen(ipaddr, port, options, handler)
-    options = prepare_options(options)
+    options = options or {}
 
     local sock, err
 
@@ -1232,9 +1244,10 @@ function M.listen(ipaddr, port, options, handler)
         return nil, err
     end
 
-    return serve(sock, options, handler,
-        'listen on: ' .. tostring(ipaddr) .. ':' .. tostring(port) ..
+    log.debug('listen on: ' .. tostring(ipaddr) .. ':' .. tostring(port) ..
         (options.ssl and ' ssl' or ''))
+
+    return M.serve(sock, options, handler)
 end
 
 --- Listen and serve HTTP requests on a Unix domain socket.
@@ -1246,14 +1259,16 @@ end
 -- @treturn[2] nil On failure.
 -- @treturn[2] string Error message.
 function M.listen_unix(path, options, handler)
-    options = prepare_options(options)
+    options = options or {}
 
     local sock, err = socket.listen_unix(path, options)
     if not sock then
         return nil, err
     end
 
-    return serve(sock, options, handler, 'listen on unix: ' .. path)
+    log.debug('listen on unix: ' .. path)
+
+    return M.serve(sock, options, handler)
 end
 
 return M
