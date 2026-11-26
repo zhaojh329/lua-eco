@@ -139,6 +139,9 @@ end
 -- @tfield[opt] string|table protocols `Sec-WebSocket-Protocol` value.
 --   If a table is provided, it will be joined using commas.
 -- @tfield[opt] string origin `Origin` header value.
+-- @tfield[opt] string ca Path to a custom CA certificate file for WSS.
+-- @tfield[opt] string cert Path to a client certificate file for WSS (mTLS).
+-- @tfield[opt] string key Path to the client private key file for WSS (mTLS).
 -- @tfield[opt] boolean insecure Passed to @{eco.http.client} (TLS verify control).
 -- @tfield[opt] number timeout Request timeout in seconds (passed to HTTP client).
 -- @tfield[opt=65535] integer max_payload_len Maximum payload length accepted/sent.
@@ -642,6 +645,9 @@ function M.connect(uri, opts)
     local hc = http.new()
 
     local res, err = hc:request('GET', uri, nil, {
+        ca = opts.ca,
+        cert = opts.cert,
+        key = opts.key,
         insecure = opts.insecure,
         timeout = opts.timeout,
         headers = headers
