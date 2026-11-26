@@ -194,6 +194,7 @@
   <li><a href="../examples/env.lua.html">env.lua</a></li>
   <li><a href="../examples/exec.lua.html">exec.lua</a></li>
   <li><a href="../examples/shell.lua.html">shell.lua</a></li>
+  <li><a href="../examples/stdin.lua.html">stdin.lua</a></li>
   <li><a href="../examples/dir.lua.html">dir.lua</a></li>
   <li><a href="../examples/file.lua.html">file.lua</a></li>
   <li><a href="../examples/flock.lua.html">flock.lua</a></li>
@@ -294,7 +295,7 @@
 	<td class="summary">Execute a program.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#sh">sh (cmd[, timeout=30])</a></td>
+	<td class="name" nowrap><a href="#sh">sh (cmd[, timeout=30[, input]])</a></td>
 	<td class="summary">Execute a shell command and return stdout and stderr.</td>
 	</tr>
 	<tr>
@@ -349,8 +350,16 @@
 <h2><a href="#Class_process">Class process </a></h2>
 <table class="function_list">
 	<tr>
+	<td class="name" nowrap><a href="#process:close_stdin">process:close_stdin ()</a></td>
+	<td class="summary">Close stdin and send EOF without closing stdout or stderr.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#process:write_stdin">process:write_stdin (data[, timeout])</a></td>
+	<td class="summary">Write to process stdin.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#process:close">process:close ()</a></td>
-	<td class="summary">Close stdout and stderr file descriptors.</td>
+	<td class="summary">Close stdin, stdout and stderr file descriptors.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#process:wait">process:wait ([timeout])</a></td>
@@ -400,7 +409,9 @@
     Execute a program. </p>
 
 <p> Spawns a new process and returns a process handle object.
- The returned object provides methods to wait for process exit, read stdout/stderr.</p>
+ The returned object provides methods to wait for process exit, read stdout/stderr
+ and write stdin. Stdin uses a pipe instead of inheriting the parent's input;
+ call <code>p:close_stdin()</code> to send EOF when input is complete.</p>
 
 <p> There are two supported calling forms:</p>
 
@@ -471,7 +482,7 @@
 </dd>
     <dt>
     <a name = "sh"></a>
-    <strong>sh (cmd[, timeout=30])</strong>
+    <strong>sh (cmd[, timeout=30[, input]])</strong>
     </dt>
     <dd>
     Execute a shell command and return stdout and stderr. </p>
@@ -497,8 +508,14 @@
         <li><span class="parameter">timeout</span>
             <span class="types"><span class="type">number</span></span>
          Timeout in seconds for the command,
- including stdout/stderr drain and process exit.
+ including stdin write, stdout/stderr drain and process exit.
          (<em>default</em> 30)
+        </li>
+        <li><span class="parameter">input</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Standard input data. Stdin is closed after writing;
+ omitted or empty input sends EOF immediately.
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -963,11 +980,69 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
           </div>
     <dl class="function">
     <dt>
+    <a name = "process:close_stdin"></a>
+    <strong>process:close_stdin ()</strong>
+    </dt>
+    <dd>
+    Close stdin and send EOF without closing stdout or stderr.
+ Pending writes are canceled. Calling this method repeatedly is safe.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "process:write_stdin"></a>
+    <strong>process:write_stdin (data[, timeout])</strong>
+    </dt>
+    <dd>
+    Write to process stdin.
+ See <a href="../modules/eco.html#writer:write">write</a>. Call <a href="../modules/eco.sys.html#process:close_stdin">process:close_stdin</a> when input is complete.
+ Read output concurrently when exchanging large amounts of data.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Input data, including binary strings.
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout in seconds.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">integer</span></span>
+        Number of bytes written.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        On failure.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "process:close"></a>
     <strong>process:close ()</strong>
     </dt>
     <dd>
-    Close stdout and stderr file descriptors.
+    Close stdin, stdout and stderr file descriptors.
 
 
 
@@ -1196,7 +1271,7 @@ sig, err = sys.<span class="function-name">signal</span>(sys.SIGINT, <span class
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/lunarmodules/ldoc">LDoc 1.5.0</a></i>
-<i style="float:right;">Last updated 2026-11-20 01:51:40 </i>
+<i style="float:right;">Last updated 2026-11-26 07:36:30 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 <script type="text/javascript" src="../ldoc_search_data.js"></script>
