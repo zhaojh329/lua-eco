@@ -467,6 +467,104 @@ os.write(1, b"OUT")
     assert(stdout == nil and stderr == nil and sherr == 'timeout')
 end)
 
+run_loop_case('exec stdin writes and EOF', function()
+    local p<close> = assert(sys.exec('cat'))
+    local data = 'hello\0world\n'
+
+    assert(p:write_stdin('') == 0)
+    assert(p:write_stdin(data, 1) == #data)
+    assert(p:write_stdin('tail', 1) == 4)
+    p:close_stdin()
+    p:close_stdin()
+
+    local n, err = p:write_stdin('late')
+    assert(n == nil and err == 'closed')
+    assert(p:read_stdout('*a', 1) == data .. 'tail')
+    assert(p:wait(1) == p.pid)
+end)
+
+run_loop_case('exec stdin timeout and cancellation', function()
+    for _, close_all in ipairs({ false, true }) do
+        local p<close> = assert(sys.exec('sleep', '60'))
+        local data = string.rep('x', 1024 * 1024)
+        local n, err = p:write_stdin(data, 0.02)
+        assert(n == nil and err == 'timeout')
+
+        local result
+
+        eco.run(function()
+            local written, werr = p:write_stdin(data)
+            result = { written, werr }
+        end)
+
+        eco.sleep(0.02)
+
+        if close_all then
+            p:close()
+        else
+            p:close_stdin()
+        end
+
+        test.wait_until('stdin canceled', function() return result ~= nil end)
+        assert(result[1] == nil and result[2] == 'canceled')
+        assert(p:kill())
+        assert(p:wait(1) == p.pid)
+    end
+end)
+
+run_loop_case('exec stdin broken pipe', function()
+    local p<close> = assert(sys.exec('/bin/sh', '-c', 'exec 0<&-; printf ready; sleep 0.1'))
+    assert(p:read_stdout(5, 1) == 'ready')
+
+    local n, err = p:write_stdin('input', 1)
+    assert(n == nil and type(err) == 'string')
+    assert(p:wait(1) == p.pid)
+end)
+
+run_loop_case('sh stdin', function()
+    for _, cmd in ipairs({ 'cat', { 'cat' } }) do
+        local out, stderr, err = sys.sh(cmd, 1, 'hello\0world')
+        assert(out == 'hello\0world' and stderr == '', err)
+
+        out, stderr, err = sys.sh(cmd, 1, '')
+        assert(out == '' and stderr == '', err)
+
+        out, stderr, err = sys.sh(cmd, 1)
+        assert(out == '' and stderr == '', err)
+    end
+
+    test.expect_error_contains(function()
+        sys.sh('true', 1, {})
+    end, 'input must be a string')
+
+    local data = string.rep('x\0', 512 * 1024)
+    local cmd = { 'python3', '-c', [[import os, select
+assert os.get_blocking(0)
+def output(fd, data):
+    while data:
+        try:
+            n = os.write(fd, data[:4096])
+            data = data[n:]
+        except BlockingIOError:
+            select.select([], [fd], [])
+output(2, b'e' * (1024 * 1024))
+while True:
+    data = os.read(0, 4096)
+    if not data:
+        break
+    output(1, data)
+]] }
+    local out, stderr, err = sys.sh(cmd, 5, data)
+    assert(out == data, err)
+    assert(stderr == string.rep('e', 1024 * 1024))
+
+    out, stderr, err = sys.sh({ 'sleep', '60' }, 0.02, data)
+    assert(out == nil and stderr == nil and err == 'timeout')
+
+    out, stderr, err = sys.sh('exec 0<&-; sleep 0.02', 1, data)
+    assert(out == nil and stderr == nil and type(err) == 'string' and err ~= 'timeout')
+end)
+
 -- Stress + leak regression for repeated exec/wait/close bursts.
 run_loop_case('exec burst memory plateau', function()
     local function exec_burst(rounds, n)
@@ -521,12 +619,13 @@ end)
 -- Automatic GC regression for process handles (__gc should close captured fds).
 do
     local weak = setmetatable({}, { __mode = 'v' })
-    local outfd, errfd
+    local outfd, errfd, infd
 
     run_loop_case('process auto gc close fds', function()
         local p, perr = sys.exec('/bin/sh', '-c', 'printf x; printf y 1>&2; exit 0')
         assert(p, perr)
 
+        infd = p.stdin_fd
         outfd = p.stdout_fd
         errfd = p.stderr_fd
         weak.p = p
@@ -544,6 +643,9 @@ do
     test.full_gc()
 
     assert(weak.p == nil, 'process handle should be collectible when unreachable')
+
+    local c0, e0 = ifile.close(infd)
+    assert(c0 == nil and type(e0) == 'string', 'stdin fd should be auto-closed by __gc')
 
     local c1, e1 = ifile.close(outfd)
     assert(c1 == nil and type(e1) == 'string', 'stdout fd should be auto-closed by __gc')

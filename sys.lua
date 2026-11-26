@@ -55,11 +55,46 @@ end
 -- @type process
 local exec_methods = {}
 
----
--- Close stdout and stderr file descriptors.
+--- Close stdin and send EOF without closing stdout or stderr.
+-- Pending writes are canceled. Calling this method repeatedly is safe.
+--
+-- @function process:close_stdin
+function exec_methods:close_stdin()
+    if self.stdin_wr then
+        self.stdin_wr:cancel()
+        self.stdin_wr = nil
+    end
+
+    if self.stdin_fd then
+        file.close(self.stdin_fd)
+        self.stdin_fd = nil
+    end
+end
+
+--- Write to process stdin.
+-- See @{eco.writer:write}. Call @{process:close_stdin} when input is complete.
+-- Read output concurrently when exchanging large amounts of data.
+--
+-- @function process:write_stdin
+-- @tparam string data Input data, including binary strings.
+-- @tparam[opt] number timeout Timeout in seconds.
+-- @treturn integer Number of bytes written.
+-- @treturn[2] nil On failure.
+-- @treturn[2] string Error message.
+function exec_methods:write_stdin(data, timeout)
+    if not self.stdin_wr then
+        return nil, 'closed'
+    end
+
+    return self.stdin_wr:write(data, timeout)
+end
+
+--- Close stdin, stdout and stderr file descriptors.
 --
 -- @function process:close
 function exec_methods:close()
+    self:close_stdin()
+
     if self.stdout_rd then
         self.stdout_rd:cancel()
         self.stdout_rd = nil
@@ -212,7 +247,9 @@ local exec_metatable = {
 --- Execute a program.
 --
 -- Spawns a new process and returns a process handle object.
--- The returned object provides methods to wait for process exit, read stdout/stderr.
+-- The returned object provides methods to wait for process exit, read stdout/stderr
+-- and write stdin. Stdin uses a pipe instead of inheriting the parent's input;
+-- call `p:close_stdin()` to send EOF when input is complete.
 --
 -- There are two supported calling forms:
 --
@@ -250,15 +287,17 @@ local exec_metatable = {
 function M.exec(...)
     ensure_sigchld()
 
-    local pid, stdout_fd, stderr_fd = sys.exec(...)
+    local pid, stdout_fd, stderr_fd, stdin_fd = sys.exec(...)
     if not pid then
         return nil, stdout_fd
     end
 
     local p = setmetatable({
         pid = pid,
+        stdin_fd = stdin_fd,
         stdout_fd = stdout_fd,
         stderr_fd = stderr_fd,
+        stdin_wr = eco.writer(stdin_fd),
         stdout_rd = eco.reader(stdout_fd),
         stderr_rd = eco.reader(stderr_fd)
     }, exec_metatable)
@@ -280,7 +319,9 @@ end
 --   - If string, executed via `/bin/sh -c`.
 --   - If table, first element is program, remaining are arguments.
 -- @tparam[opt=30] number timeout Timeout in seconds for the command,
--- including stdout/stderr drain and process exit.
+-- including stdin write, stdout/stderr drain and process exit.
+-- @tparam[opt] string input Standard input data. Stdin is closed after writing;
+-- omitted or empty input sends EOF immediately.
 --
 -- @treturn[1] string Standard output of the command.
 -- @treturn[1] string Standard error of the command.
@@ -298,8 +339,9 @@ end
 --
 -- -- Table form with program and arguments
 -- local out, err, e = sys.sh({ 'ls', '-l', '/tmp' })
-function M.sh(cmd, timeout)
+function M.sh(cmd, timeout, input)
     assert(type(cmd) == 'string' or type(cmd) == 'table', 'cmd must be a string or table')
+    assert(input == nil or type(input) == 'string', 'input must be a string')
 
     if type(cmd) == 'string' then
         cmd = { '/bin/sh', '-c', cmd }
@@ -335,9 +377,26 @@ function M.sh(cmd, timeout)
     local wg = sync.waitgroup()
     local stdout, stdout_err
     local stderr, stderr_err
+    local stdin_err
     local wait_err
 
     wg:add(3)
+
+    if input and #input > 0 then
+        wg:add(1)
+
+        eco.run(function()
+            local n, werr = p:write_stdin(input)
+            if not n then
+                stdin_err = werr
+            end
+
+            p:close_stdin()
+            wg:done()
+        end)
+    else
+        p:close_stdin()
+    end
 
     eco.run(function()
         stdout, stdout_err = read_all(function()
@@ -378,6 +437,10 @@ function M.sh(cmd, timeout)
 
     if wait_err then
         return nil, nil, wait_err
+    end
+
+    if stdin_err then
+        return nil, nil, stdin_err
     end
 
     if not stdout then

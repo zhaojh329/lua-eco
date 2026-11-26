@@ -113,6 +113,8 @@ Rules:
 - `get_nprocs`
 - `strerror`
 - `process:close`
+- `process:close_stdin`
+- `process:write_stdin`
 - `process:wait`
 - `process:signal`
 - `process:kill`

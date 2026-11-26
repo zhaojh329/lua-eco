@@ -227,11 +227,14 @@ static int lua_kill(lua_State *L)
 
 static int lua_exec(lua_State *L)
 {
-    int opipe[2] = { -1 };
-    int epipe[2] = { -1 };
+    int ipipe[2] = { -1, -1 };
+    int opipe[2] = { -1, -1 };
+    int epipe[2] = { -1, -1 };
     pid_t pid;
 
-    if (pipe2(opipe, O_CLOEXEC | O_NONBLOCK) < 0
+    if (pipe2(ipipe, O_CLOEXEC) < 0
+        || fcntl(ipipe[1], F_SETFL, O_NONBLOCK) < 0
+        || pipe2(opipe, O_CLOEXEC | O_NONBLOCK) < 0
         || pipe2(epipe, O_CLOEXEC | O_NONBLOCK) < 0) {
         push_errno(L, errno);
         goto err;
@@ -258,11 +261,20 @@ static int lua_exec(lua_State *L)
         sigemptyset(&set);
         sigprocmask(SIG_SETMASK, &set, NULL);
 
-        /* close unused read end */
+        /* close unused ends */
+        close(ipipe[1]);
         close(opipe[0]);
         close(epipe[0]);
 
         /* redirect */
+        if (ipipe[0] != STDIN_FILENO) {
+            if (dup2(ipipe[0], STDIN_FILENO) < 0)
+                _exit(127);
+            close(ipipe[0]);
+        } else if (fcntl(STDIN_FILENO, F_SETFD, 0) < 0) {
+            _exit(127);
+        }
+
         dup2(opipe[1], STDOUT_FILENO);
         dup2(epipe[1], STDERR_FILENO);
         close(opipe[1]);
@@ -340,18 +352,25 @@ out:
         free(args);
         exit(127);
     } else {
-        /* close unused write end */
+        /* close unused ends */
+        close(ipipe[0]);
         close(opipe[1]);
         close(epipe[1]);
 
         lua_pushinteger(L, pid);
         lua_pushinteger(L, opipe[0]);
         lua_pushinteger(L, epipe[0]);
+        lua_pushinteger(L, ipipe[1]);
 
-        return 3;
+        return 4;
     }
 
 err:
+    if (ipipe[0] >= 0) {
+        close(ipipe[0]);
+        close(ipipe[1]);
+    }
+
     if (opipe[0] >= 0) {
         close(opipe[0]);
         close(opipe[1]);

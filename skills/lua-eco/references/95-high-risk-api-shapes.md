@@ -140,6 +140,7 @@ Reject these invented shapes:
 Primary evidence:
 - `examples/exec/exec.lua`
 - `examples/exec/env.lua`
+- `examples/exec/stdin.lua`
 - `tests/sys-test.lua`
 
 Process execution:
@@ -147,14 +148,20 @@ Process execution:
 - `local p, err = sys.exec({ cmd, arg1, arg2, ... }, env)`
 
 Process handle behavior:
+- Stdin is a pipe, not inherited parent input.
+- `local n, err = p:write_stdin(data[, timeout])`: binary-safe string; returns byte count or `nil, err`, including `nil, 'closed'` after closing stdin.
+- `p:close_stdin()` sends EOF, cancels pending writes, and returns no values. It is idempotent and leaves stdout/stderr open.
+- Read output concurrently with large stdin writes to avoid pipe deadlocks.
 - `local stdout, err = p:read_stdout(format[, timeout])`
 - `local stderr, err = p:read_stderr(format[, timeout])`
 - `local pid, status = p:wait([timeout])`
 - `status` is a table; observed fields include `exited`, `signaled`, and `status`
-- `p:close()` closes the process I/O handles
+- `p:close()` cancels pending I/O and closes stdin, stdout, and stderr
 
 Shell wrapper:
-- `local stdout, stderr, err = sys.sh(cmd[, timeout])`
+- Optional `input` is a binary-safe string. Writing runs concurrently with reading stdout/stderr; stdin closes after writing, or immediately if input is omitted/empty.
+- The default 30-second timeout covers input, output, and process exit.
+- `local stdout, stderr, err = sys.sh(cmd[, timeout[, input]])`
 - On success, `stdout` is non-nil, `stderr` is stderr, and `err` is nil.
 - On failure, `err` is the error string.
 
